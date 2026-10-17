@@ -1,0 +1,169 @@
+{
+ "bad_database": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Explicit dedicated agentdb_test_gpt_<10 hex> database is required\n",
+  "stderr_last_line": "agent_lab.py: error: Explicit dedicated agentdb_test_gpt_<10 hex> database is required",
+  "stdout": ""
+ },
+ "diff": {
+  "exit_code": 0,
+  "statements": [
+   "\n          SELECT json_build_object(\n            'rows',(SELECT coalesce(json_agg(d),'[]') FROM vc.diff_rows('22222222-2222-2222-2222-222222222222','33333333-3333-3333-3333-333333333333',vc.table_id('app.products')) d),\n            'files',(SELECT coalesce(json_agg(d),'[]') FROM vc.diff_files('22222222-2222-2222-2222-222222222222','33333333-3333-3333-3333-333333333333') d));\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\n  \"rows\": [],\n  \"files\": [\n    {\n      \"path\": \"experiments/pricing.py\"\n    }\n  ]\n}\n"
+ },
+ "fork": {
+  "exit_code": 0,
+  "statements": [
+   "SELECT vc.fork('gpt-a-1','22222222-2222-2222-2222-222222222222');"
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\n  \"branch\": \"gpt-a-1\",\n  \"head\": \"33333333-3333-3333-3333-333333333333\"\n}\n"
+ },
+ "fork_bad_branch": {
+  "exit_code": 1,
+  "statements": [],
+  "stderr_last_line": "ValueError: Use a gpt- branch name",
+  "stdout": ""
+ },
+ "fork_bad_uuid": {
+  "exit_code": 1,
+  "statements": [],
+  "stderr_last_line": "ValueError: badly formed hexadecimal UUID string",
+  "stdout": ""
+ },
+ "info": {
+  "exit_code": 0,
+  "statements": [
+   "SELECT vc.head();",
+   "SELECT doc FROM vc.rows_at('11111111-1111-1111-1111-111111111111',vc.table_id('app.products')) WHERE pk='{\"id\":101}';",
+   "SELECT current_user;"
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\n  \"database\": \"agentdb_test_gpt_0123456789\",\n  \"effective_role\": \"agentdb_client\",\n  \"current_main\": \"11111111-1111-1111-1111-111111111111\",\n  \"read_revision\": \"11111111-1111-1111-1111-111111111111\",\n  \"product\": {\n    \"id\": 101,\n    \"price\": 10,\n    \"stock\": 100\n  },\n  \"conflict_model\": \"whole row; different columns on the same row may conflict\"\n}\n"
+ },
+ "info_fixed": {
+  "exit_code": 0,
+  "statements": [
+   "SELECT vc.head();",
+   "SELECT doc FROM vc.rows_at('22222222-2222-2222-2222-222222222222',vc.table_id('app.products')) WHERE pk='{\"id\":101}';",
+   "SELECT current_user;"
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\n  \"database\": \"agentdb_test_gpt_0123456789\",\n  \"effective_role\": \"agentdb_client\",\n  \"current_main\": \"11111111-1111-1111-1111-111111111111\",\n  \"read_revision\": \"22222222-2222-2222-2222-222222222222\",\n  \"product\": {\n    \"id\": 101,\n    \"price\": 10,\n    \"stock\": 100\n  },\n  \"conflict_model\": \"whole row; different columns on the same row may conflict\"\n}\n"
+ },
+ "merge": {
+  "exit_code": 0,
+  "statements": [
+   "\n          BEGIN;\n          SELECT vc.merge('main','33333333-3333-3333-3333-333333333333','22222222-2222-2222-2222-222222222222','gpt-a') AS landed \\gset\n          COMMIT;\n          SELECT :'landed';\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\n  \"merged\": true,\n  \"main\": \"33333333-3333-3333-3333-333333333333\"\n}\n"
+ },
+ "merge_no_actor": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: merge requires actor\n",
+  "stderr_last_line": "agent_lab.py: error: merge requires actor",
+  "stdout": ""
+ },
+ "merge_stale": {
+  "exit_code": 2,
+  "statements": [
+   "\n          BEGIN;\n          SELECT vc.merge('main','33333333-3333-3333-3333-333333333333','22222222-2222-2222-2222-222222222222','gpt-b') AS landed \\gset\n          COMMIT;\n          SELECT :'landed';\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\"error\": \"stale_head\", \"sqlstate\": \"40001\", \"detail\": \"ERROR:  40001: stale head\"}\n"
+ },
+ "propose": {
+  "exit_code": 0,
+  "statements": [
+   "\n          BEGIN;\n          SELECT vc.begin_change('gpt-a-1','22222222-2222-2222-2222-222222222222','gpt-a','real GPT proposal') AS draft \\gset\n          UPDATE agent.products SET price=11 WHERE id=101;\n          SELECT vc.write_file('experiments/pricing.py',decode('5052494345203d2031310a','hex')) AS blob \\gset\n          SELECT vc.finish_change() AS revision \\gset\n          COMMIT;\n          SELECT :'revision';\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\n  \"branch\": \"gpt-a-1\",\n  \"revision\": \"33333333-3333-3333-3333-333333333333\",\n  \"code_path\": \"experiments/pricing.py\"\n}\n"
+ },
+ "propose_missing": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: propose requires actor, field, value and code\n",
+  "stderr_last_line": "agent_lab.py: error: propose requires actor, field, value and code",
+  "stdout": ""
+ },
+ "propose_range": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Finite nonnegative value up to 100000 required\n",
+  "stderr_last_line": "agent_lab.py: error: Finite nonnegative value up to 100000 required",
+  "stdout": ""
+ },
+ "propose_stock_fraction": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Stock must be an integer\n",
+  "stderr_last_line": "agent_lab.py: error: Stock must be an integer",
+  "stdout": ""
+ },
+ "propose_syntax": {
+  "exit_code": 1,
+  "statements": [],
+  "stderr_last_line": "SyntaxError: invalid syntax",
+  "stdout": ""
+ },
+ "propose_too_large": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Policy code exceeds 4096 bytes\n",
+  "stderr_last_line": "agent_lab.py: error: Policy code exceeds 4096 bytes",
+  "stdout": ""
+ },
+ "read_code": {
+  "exit_code": 0,
+  "statements": [
+   "\n          SELECT json_build_object('revision','22222222-2222-2222-2222-222222222222','path','experiments/pricing.py',\n            'content',convert_from(vc.read_file('22222222-2222-2222-2222-222222222222','experiments/pricing.py'),'UTF8'));\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\n  \"revision\": \"22222222-2222-2222-2222-222222222222\",\n  \"path\": \"experiments/pricing.py\",\n  \"content\": \"PRICE = 11\\n\"\n}\n"
+ },
+ "read_code_missing_path": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: read-code requires path and revision\n",
+  "stderr_last_line": "agent_lab.py: error: read-code requires path and revision",
+  "stdout": ""
+ },
+ "verify": {
+  "exit_code": 0,
+  "statements": [
+   "SELECT vc.head();",
+   "SELECT doc FROM vc.rows_at('11111111-1111-1111-1111-111111111111',vc.table_id('app.products')) WHERE pk='{\"id\":101}';",
+   "SELECT convert_from(vc.read_file('11111111-1111-1111-1111-111111111111','experiments/pricing.py'),'UTF8');",
+   "SELECT convert_from(vc.read_file('11111111-1111-1111-1111-111111111111','experiments/inventory.py'),'UTF8');",
+   "SELECT current_user;"
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\n  \"database\": \"agentdb_test_gpt_0123456789\",\n  \"main\": \"11111111-1111-1111-1111-111111111111\",\n  \"product\": {\n    \"id\": 101,\n    \"price\": 11,\n    \"stock\": 95\n  },\n  \"policies\": {\n    \"pricing\": \"PRICE = 11\\n\",\n    \"inventory\": \"STOCK = 95\\n\"\n  },\n  \"effective_role\": \"agentdb_client\",\n  \"outcome_verified\": true,\n  \"real_cloud_verified\": false\n}\n"
+ },
+ "verify_fail": {
+  "exit_code": 1,
+  "statements": [
+   "SELECT vc.head();",
+   "SELECT doc FROM vc.rows_at('11111111-1111-1111-1111-111111111111',vc.table_id('app.products')) WHERE pk='{\"id\":101}';",
+   "SELECT convert_from(vc.read_file('11111111-1111-1111-1111-111111111111','experiments/pricing.py'),'UTF8');",
+   "SELECT convert_from(vc.read_file('11111111-1111-1111-1111-111111111111','experiments/inventory.py'),'UTF8');"
+  ],
+  "stderr_last_line": "AssertionError: {'id': 101, 'price': 10, 'stock': 100}",
+  "stdout": ""
+ }
+}

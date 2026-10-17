@@ -74,7 +74,8 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `sql/001_core.sql` | 版本模型、固定版本读取、提交、合并与快照；保持事务和历史语义 |
 | `sql/002_demo_app.sql` | 示例业务表、视图与接入；不要把示例结构扩散到通用版本算法 |
 | `sql/003_manager_role.sql` | 可重入的受限管理角色与快照状态函数迁移；不回写历史 |
-| `db.py` | 连接既有 PostgreSQL；不承担版本算法，不隐式启停数据库 |
+| `sql/004_merge_batch.sql` | 可重入迁移：以 001 中相同定义替换 `vc.merge`（每表一次 `rows_at`）；两处须保持一致，旧安装用 `db.py install-merge-batch`，`check_merge_migration.py` 核验 |
+| `db.py` | 连接既有 PostgreSQL；不承担版本算法，不隐式启停数据库。`Session` 复用一个 psql 进程，每次调用的语义须与 `Connection.execute` 单次进程一致 |
 | `agent_state/storage.py` | 公共对象/错误契约、原有 GCS 适配与内存测试替身 |
 | `agent_state/heads.py`、`oss.py`、`s3.py` | 条件发布接口与提供商适配；不能以普通覆盖代替原子条件操作 |
 | `agent_state/config.py`、`notifications.py` | 后端选择、配置校验与通知转换；SDK 按需加载 |
@@ -86,6 +87,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `agent_state/maintenance.py` | 通过状态接口和数据库连接执行可探测、可恢复的维护 |
 | `deploy/` | ECS 打包、首次安装与 systemd；显式文件清单，排除本机连接及凭据配置 |
 | `review_local.py`、`agent_lab.py` | 仅限现有本机 PostgreSQL 的专用测试库；分别记录脚本并发与真实 GPT 行为 |
+| `agent_lab_gateway.py` | 可选的回环常驻进程，为 `agent_lab.py` 的工作动作复用 `db.Session`；默认关闭，未运行时 `agent_lab.py` 行为不变；不重试，不并入 `agent_state/server.py`（见 [设计](docs/AGENT_LAB_GATEWAY.md)） |
 | `experiments/gpt_repeat/` | 真实 GPT 重复实验、原始 RPC JSONL、独立 SQL 核验及离线统计；不修改生产版本算法，不把预期冲突或服务中断隐藏为成功 |
 
 核心依赖方向为 `runtime → engine → objects / HeadStore → 存储适配器`。网络、时钟、数据库与存储通过明确边界接入，便于替换和故障注入。SDK 集成留在适配器或启动装配层；新增薄层必须解决实际耦合，不为每个函数制造接口。
@@ -124,10 +126,11 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 |---|---|
 | PostgreSQL 版本引擎 | `python run_tests.py`：连接现有服务并创建专用测试数据库；不向项目业务库导入测试数据 |
 | 管理状态与 HTTP | `.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v` |
+| agent_lab 网关 | 单元测试含在上一行中（基于黄金样本，不连数据库）；`python compare_agent_lab_gateway.py` 新建两个 `agentdb_test_gpt_*` 库，对比逐次起进程与经网关两条路径的输出和耗时 |
 | 恢复读取结构 | `.\.venv-cloud\Scripts\python.exe benchmark_cloud_state.py`：内存后端，检查历史增长时的读取量 |
 | 维护与 PG 接手 | `.\.venv-cloud\Scripts\python.exe integration_cloud_postgres.py --database agentdb_test_EXISTING`：替换为已安装示例的测试库 |
 | OSS 读取结构 | `.\.venv-cloud\Scripts\python.exe benchmark_oss_protocol.py`：使用内存 OSS 服务模型，不代表云端性能 |
-| 本机审查与全部合入 | `.\.venv-cloud\Scripts\python.exe review_local.py`：新建专用测试库；18 项原断言、受限角色、两个中断窗口和十个分支最终全部合入；计时包含 COMMIT |
+| 本机审查与全部合入 | `.\.venv-cloud\Scripts\python.exe review_local.py`：新建专用测试库；18 项原断言、受限角色、两个中断窗口和十个分支最终全部合入；计时包含 COMMIT；写入者默认每人复用一个长连接，`--client spawn` 恢复为每次调用启动进程 |
 | 真实云端（未执行，当前暂缓） | `smoke_cloud.py` 仅保留为以后联调入口；当前不运行，不据此宣称任何提供商已通过验证 |
 
 真实模型实验遵循预登记协议：记录接口返回的精确模型 ID、推理强度、运行器版本、提示词与源文件哈希；不把未暴露的权重快照猜成确定版本。固定样本数并保留失败，不以新轮次替换失败轮次。保存未经摘要或截断的工具请求/响应 JSONL，逐 Agent 保存累计用量最后值；缓存输入与推理输出是子项，缺失用量保持未知。每次实际写入后独立核查已发布内容和对方分支，发生覆盖后又恢复仍计为失败。区分受控恢复提示、脚本压力测试和模型自主行为；云端状态仍未经真实验证。
