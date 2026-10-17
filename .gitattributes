@@ -1,0 +1,4 @@
+# Keep LF in the working copy on every platform, regardless of core.autocrlf.
+# deploy/ecs/*.sh and the systemd unit run on Linux, and source hashes recorded
+# by experiments/gpt_repeat must not change with the checkout's line endings.
+* text=auto eol=lf
