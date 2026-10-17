@@ -1,0 +1,30 @@
+[Unit]
+Description=AgentDB cloud management state service
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=agentdb-state
+Group=agentdb-state
+WorkingDirectory=/opt/agentdb-state
+Environment=AGENTDB_OSS_CREDENTIALS=ecs_ram_role
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/agentdb-state/.venv/bin/python -m agent_state.server --config /opt/agentdb-state/deploy/ecs/cloud.ecs.json
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0077
+MemoryMax=512M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

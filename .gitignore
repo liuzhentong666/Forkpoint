@@ -1,0 +1,23 @@
+.runtime/
+__pycache__/
+*.pyc
+test-results.json
+test-results-local.json
+connection.local.json
+pgpass.conf
+.venv-cloud/
+cloud.local.json
+cloud-test-results.json
+cloud-read-benchmark.json
+cloud-postgres-integration.json
+cloud.*.local.json
+storage-backend-test-results.json
+oss-protocol-benchmark.json
+cloud-postgres-oss-protocol.json
+dist/
+local-review-results.json
+manager-migration-results.json
+gpt-agent-experiment.json
+
+# Raw model transcripts and local experiment metadata stay on this machine.
+experiments/gpt_repeat/results/

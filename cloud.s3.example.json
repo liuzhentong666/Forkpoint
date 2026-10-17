@@ -1,0 +1,10 @@
+{
+  "provider": "s3",
+  "bucket": "",
+  "region": "cn-north-1",
+  "endpoint": null,
+  "prefix": "agentdb-state",
+  "host": "127.0.0.1",
+  "port": 8844,
+  "tokenizer": null
+}

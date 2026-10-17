@@ -1,0 +1,10 @@
+{
+  "provider": "gcs",
+  "bucket": "",
+  "project": null,
+  "prefix": "agentdb-state",
+  "host": "127.0.0.1",
+  "port": 8844,
+  "subscription": null,
+  "tokenizer": null
+}
