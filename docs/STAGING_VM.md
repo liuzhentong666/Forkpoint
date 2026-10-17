@@ -93,7 +93,7 @@ shred -u server.key
    winget install --id PostgreSQL.PostgreSQL.16 -e --source winget --override "--mode unattended --unattendedmodeui minimal --disable-components server,pgAdmin,stackbuilder"
    ```
 
-   winget 下载 EDB 官方安装包 `postgresql-16.15-5-windows-x64.exe`（`--override` 替换其默认参数），只保留命令行工具，安装到 `C:\Program Files\PostgreSQL\16`。不装服务器，因此不需要超级用户口令，也不会注册 Windows 服务或占用 5432。安装后应满足：`"C:\Program Files\PostgreSQL\16\bin\psql.exe" --version` 输出 16.x；`Get-Service postgresql*` 没有结果。
+   winget 下载 EDB 官方安装包 `postgresql-16.15-5-windows-x64.exe`（`--override` 替换其默认参数），只保留命令行工具，安装到 `C:\Program Files\PostgreSQL\16`。不装服务器，因此不需要超级用户口令，也不会注册 Windows 服务或占用 5432。安装后应满足：`"C:\Program Files\PostgreSQL\16\bin\psql.exe" --version` 输出 16.x；`Get-Service postgresql*` 没有结果。`bin` 里仍会有 `postgres.exe` 程序文件，但不会创建 `data` 目录或服务，也不会监听 5432。本机 2026-10-18 已按此安装（16.15），核验结果见 [预发布接入](STAGING.md) 末节。
 2. **口令**：写入 `%APPDATA%\postgresql\pgpass.conf`（不存在就新建目录和文件），一行 `192.168.56.10:5432:*:agentdb_staging:<口令>`；或每次运行加 `--password` 隐藏输入。
 3. **连接配置** `connection.staging.local.json`（已被 `.gitignore` 忽略；本机已按下列内容建好）：
 

@@ -61,4 +61,6 @@ python check_merge_migration.py --config connection.staging.local.json
 
 - **虚拟机脚本（WSL 中，不涉及任何 PostgreSQL）**：两个脚本语法检查通过；[make_certs.sh](../deploy/staging/make_certs.sh) 生成的服务器证书链校验通过，SAN 为 `DNS:agentdb-staging.test, IP:192.168.56.10`，仅限服务器认证，私钥 0600，且拒绝覆盖已有目录和非法 IP/主机名。用 `openssl s_server` / `s_client` 做真实 TLS 握手：正确 CA 配 IP 或主机名均校验通过，错误 IP 报地址不匹配，错误 CA 报无法找到签发者，与 `verify-full` 的判定一致。[configure_postgres.sh](../deploy/staging/configure_postgres.sh) 只检查了参数与“必须以 root 运行”的前置拒绝，以及它使用的公钥比对和 `-checkip` 判断；它会修改服务器配置，未在现有 WSL PostgreSQL 上执行。
 
+- **Windows 原生 psql 客户端（2026-10-18）**：经 winget 安装 EDB 的 PostgreSQL 16.15 安装包，禁用 server、pgAdmin、Stack Builder 组件，安装器哈希校验通过。`bin` 中仍带有 `postgres.exe` 程序文件，但没有数据目录、没有 Windows 服务、Windows 侧没有进程监听 5432，因此没有运行中的服务器。经 `db.py`（`wsl_distribution` 留空）用 Windows psql 连本机 WSL 服务器（mirrored 模式下的 `127.0.0.1:5432`），结果与 WSL 客户端一致：正确 CA 配 `verify-ca` 到达认证步骤（`fe_sendauth: no password supplied`）；无关 CA 报 `certificate verify failed`；`verify-full` 连 `127.0.0.1` 报主机名不匹配。用 `connection.staging.local.json` 连 `192.168.56.10` 时，`db.py` 接受该远程配置并把连接交给 psql，因尚无虚拟机在 5 秒连接超时后报 `timeout expired`。Windows 的邻居表显示该地址的 ARP 请求发自 VirtualBox 仅主机网卡（状态 Incomplete，即暂无主机应答），说明 Windows 侧路由正确。（`Find-NetRoute` 报告的是经 WLAN 的默认路由，与实际发包不一致，不以其为准。）
+
 尚未覆盖：以 `agentdb_staging` 登录后完整运行三个套件（需要持久角色与口令）、远程网络与真实 CA 签发的证书。这些属于 S1 本身。
