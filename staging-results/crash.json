@@ -1,0 +1,72 @@
+{
+  "database": "agentdb_test_crash_a6c7e3dc56",
+  "writers": 5,
+  "seconds_before_cut": 10,
+  "ready_after_s": 61.0,
+  "boot_hang_reset": false,
+  "recovered_after_cut_s": 87.8,
+  "postmaster_start_before": "2026-10-17 21:15:43.829702+00",
+  "postmaster_start_after": "2026-10-17 21:17:48.554696+00",
+  "per_branch": [
+    {
+      "branch": "main",
+      "acked": 60,
+      "acked_present": 60,
+      "acked_reachable": 60,
+      "head_state": "last_acked",
+      "writer_error": "RuntimeError: psql session ended:\n"
+    },
+    {
+      "branch": "crash_w1",
+      "acked": 35,
+      "acked_present": 35,
+      "acked_reachable": 35,
+      "head_state": "last_acked",
+      "writer_error": "RuntimeError: psql session ended:\n"
+    },
+    {
+      "branch": "crash_w2",
+      "acked": 37,
+      "acked_present": 37,
+      "acked_reachable": 37,
+      "head_state": "one_unacked_commit_landed",
+      "writer_error": "RuntimeError: psql session ended:\nb14679ae-abc6-42c4-9e99-2693d2c29d07\n"
+    },
+    {
+      "branch": "crash_w3",
+      "acked": 34,
+      "acked_present": 34,
+      "acked_reachable": 34,
+      "head_state": "last_acked",
+      "writer_error": "TimeoutExpired: Command 'C:/Users/lzt/AppData/Local/Temp/agentdb-session-1alucbq2.sql' timed out after 0 seconds"
+    },
+    {
+      "branch": "crash_w4",
+      "acked": 35,
+      "acked_present": 35,
+      "acked_reachable": 35,
+      "head_state": "last_acked",
+      "writer_error": "TimeoutExpired: Command 'C:/Users/lzt/AppData/Local/Temp/agentdb-session-678gnb1h.sql' timed out after 0 seconds"
+    }
+  ],
+  "projection_mismatches_before": 0,
+  "projection_mismatches_after": 0,
+  "after": {
+    "head": "b27c7f8f-d819-4b9c-88b1-7839a6eae614",
+    "changesets": 204,
+    "parents": 203,
+    "row_changes": 4202,
+    "path_changes": 203,
+    "blobs": 61,
+    "snapshots": 1,
+    "unfinished_work_tx": 0,
+    "branches_md5": "7cea4b5094e9cdfa6cddb785e7bcd890",
+    "row_change_md5": "4a1d4922b7ad8bb57be1291bc0388b30",
+    "products_md5": "b6a3b6417a53af842f5d0491940a3c91",
+    "vc_functions": 29,
+    "client_may_merge": true
+  },
+  "commit_after_recovery": "502b584a-2412-481e-9e07-feb5325e0b54",
+  "passed": true,
+  "note": "VBoxManage controlvm poweroff while every writer had commits in flight. Acked means COMMIT returned to the client. A commit in flight at the cut may land without an ack (head is then one past the last ack); it must never be partial."
+}

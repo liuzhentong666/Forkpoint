@@ -1,0 +1,14 @@
+{
+  "database": "agentdb_test_kill_39ed411a6a",
+  "victim_pid": 1691,
+  "victim_state_before_termination": "idle in transaction",
+  "terminated": true,
+  "victim_error": [
+    "connection to server was lost"
+  ],
+  "fingerprint_differences": [],
+  "prices_rows_1_to_10_unchanged": true,
+  "commit_after": "6142aa8b-6d48-4d7f-a4b7-2997438f60e4",
+  "passed": true,
+  "note": "A session staged a versioned change on main (rows and a file) and was terminated before finish_change; nothing of it may remain."
+}

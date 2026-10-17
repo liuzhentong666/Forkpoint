@@ -1,0 +1,21 @@
+{
+  "database": "agentdb_test_growth_518aba9f01",
+  "measured": "2026-10-18, after the first growth run (levels 0/100/1000 completed, then interrupted by laptop sleep 04:25-05:07 local)",
+  "history": {"ancestors_of_head": 2350, "path_change_rows": 2331, "distinct_paths": 51, "row_change_rows": 27480},
+  "server_execution_ms_median_of_3": {
+    "file_state_growth_file": 761.3,
+    "file_state_seed_only_file": 710.3,
+    "rows_at_head_full_read": 871.4,
+    "ancestors_of_head": 529.8
+  },
+  "client_wall_ms_rolled_back": {
+    "commit_10_rows_plus_write_file": 753,
+    "commit_10_rows_without_write_file": 41
+  },
+  "first_run_levels_from_log": [
+    {"commits_added": 0, "read_full_head_ms": 15.99, "read_full_after_snapshot_ms": 11.56, "merge_ms": 92.871},
+    {"commits_added": 100, "read_full_head_ms": 23.315, "read_full_after_snapshot_ms": 8.272, "merge_ms": 378.115},
+    {"commits_added": 1000, "read_full_head_ms": 456.936, "read_full_after_snapshot_ms": 10.578, "merge_ms": 19602.478}
+  ],
+  "note": "Reads are EXPLAIN ANALYZE server times over one long-lived session to the staging VM; commit times are client wall times inside a transaction that was rolled back. The first run's JSON was not written (the script then saved only at the end); its level lines are copied from the run log."
+}

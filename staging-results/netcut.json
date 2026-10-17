@@ -1,0 +1,21 @@
+{
+  "database": "agentdb_test_netcut_0ce8c09e94",
+  "link_down_s": 20.0,
+  "holder_pid": 941,
+  "probe_while_lock_held": "lock_timeout",
+  "connect_during_cut": {
+    "returncode": 2,
+    "seconds": 5.1,
+    "error": "psql: error: connection to server at \"192.168.56.10\", port 5432 failed: timeout expired"
+  },
+  "probe_right_after_link_restored": "lock_timeout",
+  "stale_session_gone_after_s": null,
+  "stale_state_at_deadline": "idle in transaction",
+  "waited_s": 120.0,
+  "terminated_by_owner": true,
+  "probe_after_cleanup": "acquired",
+  "head_unchanged": true,
+  "unfinished_work_tx": 0,
+  "passed": true,
+  "note": "The holder kept an open versioned transaction (main's branch row locked) when the host-only link was unplugged and its client process died. Without server-side keepalive or idle-in-transaction timeouts the server only notices a dead client when TCP gives up; the drill records how long main stayed locked and whether the owner role could recover with pg_terminate_backend."
+}

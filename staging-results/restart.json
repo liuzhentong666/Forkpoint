@@ -1,0 +1,42 @@
+{
+  "database": "agentdb_test_restart_4a7b38a3c0",
+  "shutdown_s": 11.6,
+  "ready_after_s": 81.6,
+  "boot_hang_reset": false,
+  "postmaster_start_before": "2026-10-17 20:03:12.264493+00",
+  "postmaster_start_after": "2026-10-17 21:15:43.829702+00",
+  "before": {
+    "head": "dff4199a-69e3-402b-964b-d3b1b6f46e05",
+    "changesets": 3,
+    "parents": 2,
+    "row_changes": 4001,
+    "path_changes": 1,
+    "blobs": 1,
+    "snapshots": 1,
+    "unfinished_work_tx": 0,
+    "branches_md5": "206bde229da5e36065fc537d7f8a586e",
+    "row_change_md5": "de6a241bc1a16dcc42374c531412caef",
+    "products_md5": "eb364e91f24eddbc9a0e894916405fe2",
+    "vc_functions": 29,
+    "client_may_merge": true
+  },
+  "after": {
+    "head": "dff4199a-69e3-402b-964b-d3b1b6f46e05",
+    "changesets": 3,
+    "parents": 2,
+    "row_changes": 4001,
+    "path_changes": 1,
+    "blobs": 1,
+    "snapshots": 1,
+    "unfinished_work_tx": 0,
+    "branches_md5": "206bde229da5e36065fc537d7f8a586e",
+    "row_change_md5": "de6a241bc1a16dcc42374c531412caef",
+    "products_md5": "eb364e91f24eddbc9a0e894916405fe2",
+    "vc_functions": 29,
+    "client_may_merge": true
+  },
+  "fingerprint_differences": [],
+  "projection_mismatches": 0,
+  "commit_after_restart": "0f0a4c4d-f10b-451b-91fd-c3dfcf56a1e6",
+  "passed": true
+}
