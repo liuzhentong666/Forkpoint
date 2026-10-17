@@ -96,6 +96,8 @@ wsl --distribution Ubuntu --user postgres --exec /usr/bin/psql -h /var/run/postg
 
 参数优先级：命令行 > `PGHOST` / `PGPORT` / `PGUSER` / `PGDATABASE` / `AGENTDB_PSQL` 环境变量 > 配置文件 > 默认值。
 
+远程（非回环）PostgreSQL 只接受 `sslmode` 为 `verify-full` 且指定 `sslrootcert` 的连接；TLS 设置只取自配置文件或 `--sslmode` / `--sslrootcert`，继承的 `PGSSL*` 环境变量会被清除。预发布接入步骤与专用登录角色见 [预发布 PostgreSQL 接入](docs/STAGING.md)，整体阶段与通过条件见 [生产环境测试计划（草案）](docs/PRODUCTION_TEST_PLAN.md)。
+
 需要密码时，可在自己终端运行 `python db.py check --password`，隐藏输入且不保存。长期配置也支持 PostgreSQL 的 [密码文件](https://www.postgresql.org/docs/current/libpq-pgpass.html)：Windows 原生客户端使用 `%APPDATA%\postgresql\pgpass.conf`；WSL 客户端使用对应 Linux 用户的 `~/.pgpass`。密码不写进 JSON 或命令参数。
 
 ## 运行集成测试

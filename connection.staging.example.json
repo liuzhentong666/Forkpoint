@@ -1,0 +1,12 @@
+{
+  "host": "db.staging.example.internal",
+  "port": 5432,
+  "user": "agentdb_staging",
+  "database": "agentdb_staging",
+  "maintenance_database": "postgres",
+  "psql": "",
+  "wsl_distribution": "",
+  "wsl_user": "",
+  "sslmode": "verify-full",
+  "sslrootcert": "/etc/agentdb/staging-ca.pem"
+}

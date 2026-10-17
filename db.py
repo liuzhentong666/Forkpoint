@@ -1,4 +1,8 @@
-"""Connect to an existing local PostgreSQL server; never manage its lifecycle."""
+"""Connect to an existing PostgreSQL server; never manage its lifecycle.
+
+Local servers are reached over loopback or a Unix socket. A remote server is
+accepted only with sslmode verify-full and an explicit CA certificate.
+"""
 import argparse
 import getpass
 import json
@@ -18,7 +22,12 @@ CONFIG = ROOT / "connection.local.json"
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 DEFAULTS = {"host": "127.0.0.1", "port": 5432, "user": "postgres",
             "database": "agentdb", "maintenance_database": "postgres", "psql": "",
-            "wsl_distribution": "", "wsl_user": ""}
+            "wsl_distribution": "", "wsl_user": "", "sslmode": "", "sslrootcert": ""}
+LOOPBACK = {"127.0.0.1", "localhost", "::1"}
+SSLMODES = ("disable", "allow", "prefer", "require", "verify-ca", "verify-full")
+# TLS settings come only from the config file or command line; inherited
+# values could silently weaken or redirect certificate checks.
+SSL_ENVIRONMENT = ("PGSSLMODE", "PGSSLROOTCERT", "PGREQUIRESSL", "PGSSLNEGOTIATION")
 
 
 def database_name(value):
@@ -37,6 +46,8 @@ def add_connection_arguments(parser):
     parser.add_argument("--psql", help="Path to the installed psql client")
     parser.add_argument("--wsl-distribution", help="Use psql inside this existing WSL distribution")
     parser.add_argument("--wsl-user", help="Linux user for the WSL client process")
+    parser.add_argument("--sslmode", choices=SSLMODES, help="libpq sslmode; a remote host requires verify-full")
+    parser.add_argument("--sslrootcert", help="CA certificate file, as a path readable by the psql client")
     parser.add_argument("--role", help="SET ROLE for each connection; membership must already be granted")
     parser.add_argument("--password", action="store_true", help="Prompt privately; do not put a password in command arguments")
 
@@ -85,10 +96,24 @@ class Connection:
         for key in DEFAULTS:
             if getattr(args, key, None) is not None:
                 settings[key] = getattr(args, key)
-        unix_socket = isinstance(settings["host"], str) and settings["host"].startswith("/")
-        if settings["host"] not in {"127.0.0.1", "localhost", "::1"} and not (
-                unix_socket and (os.name != "nt" or settings["wsl_distribution"])):
-            raise ValueError("Use a loopback host or a local Unix socket directory (native Linux / WSL).")
+        for key in ("host", "sslmode", "sslrootcert", "wsl_distribution", "wsl_user", "psql"):
+            if not isinstance(settings[key], str):
+                raise ValueError(f"Connection setting {key} must be a string")
+        if settings["sslmode"] and settings["sslmode"] not in SSLMODES:
+            raise ValueError("sslmode must be one of " + ", ".join(SSLMODES))
+        if settings["sslmode"] in ("verify-ca", "verify-full") and not settings["sslrootcert"]:
+            raise ValueError("sslmode verify-ca / verify-full needs sslrootcert, the CA certificate file")
+        host = settings["host"]
+        if host.startswith("/"):
+            if os.name == "nt" and not settings["wsl_distribution"]:
+                raise ValueError("A Unix socket directory needs native Linux or the WSL transport.")
+        elif host not in LOOPBACK:
+            # One host name or address: no comma lists (libpq multi-host), spaces or URIs.
+            if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?|[0-9A-Fa-f:]{2,39}", host):
+                raise ValueError("Use a single host name or IP address.")
+            if settings["sslmode"] != "verify-full":
+                raise ValueError("A remote host requires sslmode verify-full with sslrootcert; "
+                                 "loopback and local Unix sockets do not.")
         settings["port"] = int(settings["port"])
         if not 1 <= settings["port"] <= 65535:
             raise ValueError("Invalid PostgreSQL port")
@@ -100,9 +125,15 @@ class Connection:
         self.env = dict(os.environ)
         # Explicit local connection parameters must not be redirected by an
         # unrelated libpq host address or service profile inherited from a shell.
-        for key in ("PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE"):
+        for key in ("PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE") + SSL_ENVIRONMENT:
             self.env.pop(key, None)
         self.env.update(PGCONNECT_TIMEOUT="5", PGCLIENTENCODING="UTF8", PGAPPNAME="agentdb")
+        tls = {}
+        if settings["sslmode"]:
+            tls["PGSSLMODE"] = settings["sslmode"]
+        if settings["sslrootcert"]:
+            tls["PGSSLROOTCERT"] = settings["sslrootcert"]
+        self.env.update(tls)
         if args.password:
             self.env["PGPASSWORD"] = getpass.getpass("PostgreSQL password (not saved): ")
         if settings["wsl_distribution"]:
@@ -114,9 +145,13 @@ class Connection:
             self.prefix = [executable, "--distribution", settings["wsl_distribution"]]
             if settings["wsl_user"]:
                 self.prefix += ["--user", settings["wsl_user"]]
-            self.prefix += ["--exec", "/usr/bin/env", "-u", "PGHOSTADDR", "-u", "PGSERVICE",
-                            "-u", "PGSERVICEFILE", "PGCONNECT_TIMEOUT=5", "PGCLIENTENCODING=UTF8",
-                            "PGAPPNAME=agentdb", settings["psql"] or "/usr/bin/psql"]
+            self.prefix += ["--exec", "/usr/bin/env", "-u", "PGHOSTADDR", "-u", "PGSERVICE", "-u", "PGSERVICEFILE"]
+            for key in SSL_ENVIRONMENT:
+                self.prefix += ["-u", key]
+            # sslrootcert is then a path inside the distribution, like the psql path.
+            self.prefix += ["PGCONNECT_TIMEOUT=5", "PGCLIENTENCODING=UTF8", "PGAPPNAME=agentdb"]
+            self.prefix += [f"{key}={value}" for key, value in tls.items()]
+            self.prefix += [settings["psql"] or "/usr/bin/psql"]
             # WSLENV forwards secrets as environment variables, never as argv.
             forwarded = [x for x in self.env.get("WSLENV", "").split(":") if x]
             for key in ("PGPASSWORD", "PGPASSFILE"):
@@ -163,10 +198,16 @@ class Connection:
           SELECT json_build_object('server_version',current_setting('server_version'),
             'server_version_num',current_setting('server_version_num')::integer,
             'host',inet_server_addr(),'port',current_setting('port')::integer,
-            'user',current_user,'database',current_database());
+            'user',current_user,'database',current_database(),
+            'ssl',coalesce((SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()),false),
+            'ssl_version',(SELECT version FROM pg_stat_ssl WHERE pid=pg_backend_pid()));
         """, self.settings["maintenance_database"]))
         if result["server_version_num"] < 160000:
             raise RuntimeError("AgentDB requires PostgreSQL 16 or later")
+        host = self.settings["host"]
+        if not host.startswith("/") and host not in LOOPBACK and not result["ssl"]:
+            raise RuntimeError("Remote connection is not using TLS")  # verify-full makes this unreachable
+        result["sslmode"] = self.settings["sslmode"] or "libpq default"
         result["configured_host"] = self.settings["host"]
         result["transport"] = "wsl" if self.settings["wsl_distribution"] else "native"
         if self.settings["wsl_distribution"]:

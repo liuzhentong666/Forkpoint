@@ -86,6 +86,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `agent_state/client.py` | 本机维护执行器访问远程状态 API；无持久缓存，不隐式重试或改写命令 |
 | `agent_state/maintenance.py` | 通过状态接口和数据库连接执行可探测、可恢复的维护 |
 | `deploy/` | ECS 打包、首次安装与 systemd；显式文件清单，排除本机连接及凭据配置 |
+| `deploy/staging/` | 预发布 PostgreSQL 的专用登录角色脚本（非超级用户，仅 CREATEDB，对两个 NOLOGIN 角色只有 SET 权限）；由服务器管理员执行，口令交互设置，不写入文件（见 [预发布接入](docs/STAGING.md)） |
 | `review_local.py`、`agent_lab.py` | 仅限现有本机 PostgreSQL 的专用测试库；分别记录脚本并发与真实 GPT 行为 |
 | `agent_lab_gateway.py` | 可选的回环常驻进程，为 `agent_lab.py` 的工作动作复用 `db.Session`；默认关闭，未运行时 `agent_lab.py` 行为不变；不重试，不并入 `agent_state/server.py`（见 [设计](docs/AGENT_LAB_GATEWAY.md)） |
 | `experiments/gpt_repeat/` | 真实 GPT 重复实验、原始 RPC JSONL、独立 SQL 核验及离线统计；不修改生产版本算法，不把预期冲突或服务中断隐藏为成功 |
