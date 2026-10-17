@@ -37,7 +37,7 @@
 
 ## 2. 检查 WSL 能否到达虚拟机（用户操作）
 
-本机 WSL 使用 mirrored 网络模式（`.wslconfig` 中 `networkingMode=mirrored`）。这种模式只在 WSL 启动时镜像 Windows 网卡，安装 VirtualBox 之前已经运行的 WSL 看不到新的仅主机网卡：`ip route get 192.168.56.10` 会显示经由普通网络的默认网关，而不是 192.168.56.0/24 网段。安装 VirtualBox 后执行一次 `wsl --shutdown`，下次进入 WSL 时即重新镜像。它会结束所有 WSL 进程和终端；开发用 PostgreSQL 在 systemd 中设为开机启动，会随 WSL 一起重新启动。重启后 `wsl --distribution Ubuntu --exec ip -br -4 addr` 应能看到 `192.168.56.1`。
+本机 WSL 使用 mirrored 网络模式（`.wslconfig` 中 `networkingMode=mirrored`）。这种模式只在 WSL 启动时镜像 Windows 网卡，安装 VirtualBox 之前已经运行的 WSL 看不到新的仅主机网卡：`ip route get 192.168.56.10` 会显示经由普通网络的默认网关，而不是 192.168.56.0/24 网段。安装 VirtualBox 后执行一次 `wsl --shutdown`，下次进入 WSL 时即重新镜像。它会结束所有 WSL 进程和终端；开发用 PostgreSQL 在 systemd 中设为开机启动，会随 WSL 一起重新启动。重启后 `wsl --distribution Ubuntu --exec ip -br -4 addr` 应能看到 `192.168.56.1`。**本机 2026-10-18 实测：重启后仍只镜像了主网卡，仅主机网卡没有出现，路由仍走默认网关**（开发用 PostgreSQL 在 1 秒内恢复）。因此本机改用下文的 Windows 原生 psql 方案。
 
 在 Windows 终端执行：
 
@@ -45,7 +45,7 @@
 wsl --distribution Ubuntu --exec bash -c "timeout 3 bash -c '</dev/tcp/192.168.56.10/22' && echo reachable"
 ```
 
-输出 `reachable` 才继续。若重启 WSL 后仍不通（mirrored 模式不一定镜像所有虚拟网卡），改用 Windows 原生 psql 作为客户端：安装 PostgreSQL 16 客户端，客户端配置中 `wsl_distribution` 留空、`psql` 填 `psql.exe` 的路径，`sslrootcert` 改为 Windows 路径（把 `ca.pem` 复制到 Windows 侧），口令文件改用 `%APPDATA%\postgresql\pgpass.conf`。这样流量直接从 Windows 进入仅主机网卡。
+输出 `reachable` 才继续。若重启 WSL 后仍不通（mirrored 模式不一定镜像所有虚拟网卡），改用 Windows 原生 psql 作为客户端：只安装 PostgreSQL 客户端，**不要装 Windows 版服务器**（mirrored 模式下 Windows 与 WSL 共用端口，会与 WSL 中的 5432 冲突）。EDB 安装包可用 `--mode unattended --disable-components server,pgAdmin,stackbuilder` 只装命令行工具，安装后确认 `C:\Program Files\PostgreSQL\<版本>\bin\psql.exe` 存在、且没有新增 `postgresql-x64-*` Windows 服务。客户端配置中 `wsl_distribution` 留空、`psql` 填 `psql.exe` 的路径，`sslrootcert` 改为 Windows 路径（把 `ca.pem` 复制到 Windows 侧），口令文件改用 `%APPDATA%\postgresql\pgpass.conf`。这样流量直接从 Windows 进入仅主机网卡。
 
 ## 3. 生成证书（在 WSL 中，客户端一侧）
 
