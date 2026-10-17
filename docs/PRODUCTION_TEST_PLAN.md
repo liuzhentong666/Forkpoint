@@ -24,7 +24,7 @@
 | 阶段 | 内容 | 通过条件 | 状态 |
 |---|---|---|---|
 | S0 基线 | 冻结一个已审查的提交，本机全部套件通过 | `run_tests.py`、状态单元测试、`review_local.py`、`check_merge_migration.py` 全部通过，记录提交号 | 已完成：提交 06243d7 |
-| S1 预发布 PostgreSQL | Linux 主机上的 PostgreSQL 16+，经 TLS 远程连接；专用登录角色（见 [预发布接入](STAGING.md)） | `db.py check` 显示 `ssl=true`，`sslmode=verify-full`；以专用角色运行 `run_tests.py`、`review_local.py`、`check_merge_migration.py` 全部通过；不需要超级用户 | 代码与脚本已就绪；主机待定 |
+| S1 预发布 PostgreSQL | Linux 主机上的 PostgreSQL 16+，经 TLS 远程连接；专用登录角色（见 [预发布接入](STAGING.md)） | `db.py check` 显示 `ssl=true`，`sslmode=verify-full`；以专用角色运行 `run_tests.py`、`review_local.py`、`check_merge_migration.py` 全部通过；不需要超级用户 | 代码与脚本已就绪；主机为本机 VirtualBox 虚拟机（方案 B，见 [虚拟机步骤](STAGING_VM.md)），待用户建立 |
 | S2 真实对象存储 | 解除云端暂缓，仅对一个隔离 prefix 运行 `smoke_cloud.py` | 十写者只有一个发布成功；旧命令重试返回原结果；发布前后中断均可接手；冷读取只读两个逻辑对象；结果标注提供商、地域与日期 | 待用户解除暂缓 |
 | S3 状态服务部署 | ECS（或其他主机）常驻状态服务 + SSH 隧道 | 服务重启后经 API 读回已有任务并核对版本；`maintain_snapshot.py --state-url` 在预发布 PostgreSQL 上完成一次接手 | 待 S2 |
 | S4 负载与增长 | 目标负载重复 3 次；再把历史加深一个数量级 | 记录合入阶段耗时、重试次数、`vc.merge` SQL 时间、读取量；与本机结果并列；无断言失败 | 待 S1 |
@@ -40,7 +40,7 @@
 
 ## 5. 需要用户决定的事项
 
-1. **预发布 PostgreSQL 放在哪里**（待定）：一台 Linux 主机或云数据库实例；需要其主机名、CA 证书（`sslrootcert`），以及一个可以创建专用角色的管理员。
+1. **预发布 PostgreSQL 放在哪里**（已定，2026-10-18）：S1 使用本机 VirtualBox 虚拟机（方案 B），不产生云费用。客户端与服务器共用一台机器，S1/S4 的计时只作参考。生产环境最终用自管云主机还是托管数据库，留到解除云端暂缓时再定，届时在所选环境上简短重跑 S1。
 2. **是否解除云端暂缓**（待定）：仅限 S2/S3，使用已报告的杭州 OSS 桶 `agentdb-dev-goudan` 还是新桶，以及可接受的费用上限。
 3. **生产环境最终是否接触真实业务数据**（待定）：若是，需要先补齐备份恢复演练、独立登录身份与审计，再单独制定数据迁移方案。
 4. **负载目标是否改变**（待定）：维持 4,000 行 / 10 Agent，还是给出新的行数、Agent 数和历史长度。

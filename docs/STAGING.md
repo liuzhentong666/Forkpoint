@@ -1,6 +1,6 @@
 # 预发布 PostgreSQL 接入（S1）
 
-2026-10-18。[生产环境测试计划](PRODUCTION_TEST_PLAN.md) 第 S1 阶段的接入说明。**尚无预发布主机**：下文的代码与脚本已在本机核验到能核验的程度（见末节），真正的 S1 结果要在用户提供主机后才能产生。云服务仍未经真实验证，本阶段不涉及对象存储。
+2026-10-18。[生产环境测试计划](PRODUCTION_TEST_PLAN.md) 第 S1 阶段的接入说明。用户已选择本机虚拟机作为预发布主机，逐步操作见 [本机虚拟机步骤](STAGING_VM.md)；本文是与主机形态无关的通用规则。**尚无预发布主机**：下文的代码与脚本已在本机核验到能核验的程度（见末节），真正的 S1 结果要在用户提供主机后才能产生。云服务仍未经真实验证，本阶段不涉及对象存储。
 
 ## 连接规则
 
@@ -58,5 +58,7 @@ python check_merge_migration.py --config connection.staging.local.json
 - **设置检查**：[tests/test_db_connection.py](../tests/test_db_connection.py) 共 10 项，不需要数据库：远程主机必须 `verify-full`、验证模式必须有 CA 文件、拒绝多主机列表与连接串、清除继承的 TLS 变量、配置文件中的 TLS 字段、WSL 传输把 TLS 变量传进发行版。
 - **角色脚本**：在本机集群中把脚本连续执行两次后检查角色属性与成员关系（非超级用户、仅 CREATEDB、两个角色均为 SET 而非继承），确认其不能建角色、可以 SET ROLE 到两个角色，然后整体 ROLLBACK；回滚后集群中不存在 `agentdb_staging`。
 - **非超级用户安装**：在新建的专用库 `agentdb_test_staginginstall_7cac3bcb` 中，同一事务内执行角色脚本、授予该库 CREATE 权限、SET ROLE 为 `agentdb_staging` 后安装 001–004 全部 SQL：三个 schema 与 `vc.merge` 均归该角色所有，`agentdb_client` 可读取 head；随后 ROLLBACK，角色与对象均未保留，空库保留供检查。
+
+- **虚拟机脚本（WSL 中，不涉及任何 PostgreSQL）**：两个脚本语法检查通过；[make_certs.sh](../deploy/staging/make_certs.sh) 生成的服务器证书链校验通过，SAN 为 `DNS:agentdb-staging.test, IP:192.168.56.10`，仅限服务器认证，私钥 0600，且拒绝覆盖已有目录和非法 IP/主机名。用 `openssl s_server` / `s_client` 做真实 TLS 握手：正确 CA 配 IP 或主机名均校验通过，错误 IP 报地址不匹配，错误 CA 报无法找到签发者，与 `verify-full` 的判定一致。[configure_postgres.sh](../deploy/staging/configure_postgres.sh) 只检查了参数与“必须以 root 运行”的前置拒绝，以及它使用的公钥比对和 `-checkip` 判断；它会修改服务器配置，未在现有 WSL PostgreSQL 上执行。
 
 尚未覆盖：以 `agentdb_staging` 登录后完整运行三个套件（需要持久角色与口令）、远程网络与真实 CA 签发的证书。这些属于 S1 本身。
