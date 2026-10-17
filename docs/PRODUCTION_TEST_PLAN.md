@@ -24,7 +24,7 @@
 | 阶段 | 内容 | 通过条件 | 状态 |
 |---|---|---|---|
 | S0 基线 | 冻结一个已审查的提交，本机全部套件通过 | `run_tests.py`、状态单元测试、`review_local.py`、`check_merge_migration.py` 全部通过，记录提交号 | 已完成：提交 06243d7 |
-| S1 预发布 PostgreSQL | Linux 主机上的 PostgreSQL 16+，经 TLS 远程连接；专用登录角色（见 [预发布接入](STAGING.md)） | `db.py check` 显示 `ssl=true`，`sslmode=verify-full`；以专用角色运行 `run_tests.py`、`review_local.py`、`check_merge_migration.py` 全部通过；不需要超级用户 | 代码与脚本已就绪；主机为本机 VirtualBox 虚拟机（方案 B，见 [虚拟机步骤](STAGING_VM.md)），待用户建立 |
+| S1 预发布 PostgreSQL | Linux 主机上的 PostgreSQL 16+，经 TLS 远程连接；专用登录角色（见 [预发布接入](STAGING.md)） | `db.py check` 显示 `ssl=true`，`sslmode=verify-full`；以专用角色运行 `run_tests.py`、`review_local.py`、`check_merge_migration.py` 全部通过；不需要超级用户 | **已通过（2026-10-18）**：本机 VirtualBox 虚拟机（方案 B），四项核验全部通过，见 [S1 结果](STAGING_S1_RESULTS.md) |
 | S2 真实对象存储 | 解除云端暂缓，仅对一个隔离 prefix 运行 `smoke_cloud.py` | 十写者只有一个发布成功；旧命令重试返回原结果；发布前后中断均可接手；冷读取只读两个逻辑对象；结果标注提供商、地域与日期 | 待用户解除暂缓 |
 | S3 状态服务部署 | ECS（或其他主机）常驻状态服务 + SSH 隧道 | 服务重启后经 API 读回已有任务并核对版本；`maintain_snapshot.py --state-url` 在预发布 PostgreSQL 上完成一次接手 | 待 S2 |
 | S4 负载与增长 | 目标负载重复 3 次；再把历史加深一个数量级 | 记录合入阶段耗时、重试次数、`vc.merge` SQL 时间、读取量；与本机结果并列；无断言失败 | 待 S1 |

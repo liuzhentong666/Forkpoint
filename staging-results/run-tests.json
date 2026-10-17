@@ -1,0 +1,541 @@
+{
+  "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "database": "agentdb_test_273d7423471f",
+  "connection": {
+    "server_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "server_version_num": 160015,
+    "host": "192.168.56.10",
+    "port": 5432,
+    "user": "agentdb_staging",
+    "database": "postgres",
+    "ssl": true,
+    "ssl_version": "TLSv1.3",
+    "sslmode": "verify-full",
+    "configured_host": "192.168.56.10",
+    "transport": "native"
+  },
+  "tests": [
+    {
+      "name": "code_and_native_data_publish_atomically",
+      "passed": true,
+      "ms": 141.49
+    },
+    {
+      "name": "branch_does_not_follow_live_main",
+      "passed": true,
+      "ms": 219.87
+    },
+    {
+      "name": "forks_copy_no_rows_or_blobs",
+      "passed": true,
+      "ms": 121.17
+    },
+    {
+      "name": "repeated_updates_coalesce_and_insert_delete_cancels",
+      "passed": true,
+      "ms": 128.09
+    },
+    {
+      "name": "primary_key_change_is_delete_plus_insert",
+      "passed": true,
+      "ms": 212.84
+    },
+    {
+      "name": "missing_finalize_rolls_back_native_table",
+      "passed": true,
+      "ms": 116.67
+    },
+    {
+      "name": "direct_native_write_requires_context",
+      "passed": true,
+      "ms": 113.56
+    },
+    {
+      "name": "duplicate_branch_pk_in_one_statement_is_rejected",
+      "passed": true,
+      "ms": 150.69
+    },
+    {
+      "name": "published_history_cannot_be_updated",
+      "passed": true,
+      "ms": 103.12
+    },
+    {
+      "name": "client_cannot_append_to_published_changeset",
+      "passed": true,
+      "ms": 133.23
+    },
+    {
+      "name": "branch_unique_violation_rejected_when_merged",
+      "passed": true,
+      "ms": 220.23
+    },
+    {
+      "name": "branch_foreign_key_violation_rejected_when_merged",
+      "passed": true,
+      "ms": 178.79
+    },
+    {
+      "name": "branch_check_violation_rejected_when_merged",
+      "passed": true,
+      "ms": 186.08
+    },
+    {
+      "name": "disjoint_merges_preserve_both_parents_and_main_projection",
+      "passed": true,
+      "ms": 262.33
+    },
+    {
+      "name": "row_conflict_aborts_merge",
+      "passed": true,
+      "ms": 272.04
+    },
+    {
+      "name": "file_conflict_rolls_back_rows_applied_before_it",
+      "passed": true,
+      "ms": 262.99
+    },
+    {
+      "name": "materialized_snapshot_matches_replay",
+      "passed": true,
+      "ms": 268.63
+    },
+    {
+      "name": "stale_head_is_rejected",
+      "passed": true,
+      "ms": 137.46
+    }
+  ],
+  "concurrency": {
+    "rows": 4000,
+    "agents": 10,
+    "new_row_log_entries_for_forks": 0,
+    "independent_successes": 10,
+    "parallel_wall_ms": 641.65,
+    "transaction_median_ms": 99.68,
+    "transaction_max_ms": 146.63,
+    "same_head_winners": 1,
+    "same_head_stale_rejections": 9,
+    "measurements": [
+      {
+        "agent": 0,
+        "revision": "b8ed2f09-0f64-4d1a-acca-57e0c906f3df",
+        "transaction_ms": 112.219
+      },
+      {
+        "agent": 1,
+        "revision": "e3bd1869-2e96-402d-9583-16d931d7c2f7",
+        "transaction_ms": 146.631
+      },
+      {
+        "agent": 2,
+        "revision": "e41ae972-18b8-4277-b8b1-bff8e998ea48",
+        "transaction_ms": 116.337
+      },
+      {
+        "agent": 3,
+        "revision": "7732ea2b-1eae-4bbd-8ca2-9df40caac5fe",
+        "transaction_ms": 85.923
+      },
+      {
+        "agent": 4,
+        "revision": "03adb600-1ae0-41b7-a14b-9959b74c75af",
+        "transaction_ms": 93.745
+      },
+      {
+        "agent": 5,
+        "revision": "2121d3cc-513e-4de0-b348-f74dba630b96",
+        "transaction_ms": 129.885
+      },
+      {
+        "agent": 6,
+        "revision": "06b36ed9-1851-43a1-addc-e468e4b4e203",
+        "transaction_ms": 66.523
+      },
+      {
+        "agent": 7,
+        "revision": "4e136bf8-4351-421f-bbae-dc77132e8b48",
+        "transaction_ms": 105.606
+      },
+      {
+        "agent": 8,
+        "revision": "24483750-a5a4-4225-a7d4-31a11927bd54",
+        "transaction_ms": 73.827
+      },
+      {
+        "agent": 9,
+        "revision": "64e5b7ab-b512-4d47-a98f-7249c74ef9c3",
+        "transaction_ms": 91.013
+      }
+    ],
+    "note": "One local run. Transaction timing excludes final COMMIT; wall time includes CLI startup. Not a production benchmark."
+  },
+  "session": {
+    "session_select1_median_ms": 10.1,
+    "spawned_select1_median_ms": 115.3,
+    "checks": [
+      "stop_at_first_error",
+      "rollback_open_transaction",
+      "no_state_or_variable_leak",
+      "per_call_role",
+      "stale_head_retry",
+      "timeout_restarts_process"
+    ]
+  },
+  "merge_semantics": {
+    "main_state": {
+      "native": [
+        {
+          "id": 3001,
+          "sku": "sku-3001",
+          "name": "product-3001",
+          "price": 31.0,
+          "stock": 100
+        },
+        {
+          "id": 3002,
+          "sku": "sku-3002",
+          "name": "product-3002",
+          "price": 32.0,
+          "stock": 100
+        },
+        {
+          "id": 3004,
+          "sku": "sku-3004",
+          "name": "product-3004",
+          "price": 10.0,
+          "stock": 100
+        },
+        {
+          "id": 3005,
+          "sku": "sku-3005",
+          "name": "product-3005",
+          "price": 10.0,
+          "stock": 100
+        },
+        {
+          "id": 9001,
+          "sku": "mc-9001",
+          "name": "mc",
+          "price": 5.0,
+          "stock": 5
+        }
+      ],
+      "orders": [
+        {
+          "id": 9101,
+          "quantity": 2,
+          "product_id": 3004
+        }
+      ],
+      "products": [
+        {
+          "id": 3001,
+          "sku": "sku-3001",
+          "name": "product-3001",
+          "price": 31.0,
+          "stock": 100
+        },
+        {
+          "id": 3002,
+          "sku": "sku-3002",
+          "name": "product-3002",
+          "price": 32.0,
+          "stock": 100
+        },
+        {
+          "id": 3004,
+          "sku": "sku-3004",
+          "name": "product-3004",
+          "price": 10.0,
+          "stock": 100
+        },
+        {
+          "id": 3005,
+          "sku": "sku-3005",
+          "name": "product-3005",
+          "price": 10.0,
+          "stock": 100
+        },
+        {
+          "id": 9001,
+          "sku": "mc-9001",
+          "name": "mc",
+          "price": 5.0,
+          "stock": 5
+        }
+      ]
+    },
+    "branch_state": {
+      "orders": [
+        {
+          "id": 9101,
+          "quantity": 2,
+          "product_id": 3004
+        }
+      ],
+      "products": [
+        {
+          "id": 3001,
+          "sku": "sku-3001",
+          "name": "product-3001",
+          "price": 31.0,
+          "stock": 100
+        },
+        {
+          "id": 3002,
+          "sku": "sku-3002",
+          "name": "product-3002",
+          "price": 32.0,
+          "stock": 100
+        },
+        {
+          "id": 3004,
+          "sku": "sku-3004",
+          "name": "product-3004",
+          "price": 10.0,
+          "stock": 100
+        },
+        {
+          "id": 3005,
+          "sku": "sku-3005",
+          "name": "product-3005",
+          "price": 35.0,
+          "stock": 100
+        },
+        {
+          "id": 9001,
+          "sku": "mc-9001",
+          "name": "mc",
+          "price": 5.0,
+          "stock": 5
+        }
+      ]
+    },
+    "conflict_into_branch": {
+      "message": "Row conflict: table app.products, key {\"id\": 3002}",
+      "sqlstate": "P0001",
+      "head_unchanged": true,
+      "no_open_change": true
+    },
+    "main_inserts_and_file": {
+      "rows": [
+        [
+          "app.products",
+          {
+            "id": 3001
+          },
+          "U",
+          {
+            "id": 3001,
+            "sku": "sku-3001",
+            "name": "product-3001",
+            "price": 10.0,
+            "stock": 100
+          },
+          {
+            "id": 3001,
+            "sku": "sku-3001",
+            "name": "product-3001",
+            "price": 31.0,
+            "stock": 100
+          }
+        ],
+        [
+          "app.products",
+          {
+            "id": 9001
+          },
+          "I",
+          null,
+          {
+            "id": 9001,
+            "sku": "mc-9001",
+            "name": "mc",
+            "price": 5.0,
+            "stock": 5
+          }
+        ]
+      ],
+      "paths": [
+        "mc/a.txt"
+      ],
+      "parents": 2,
+      "message_names_source": true,
+      "second_parent_is_source": true
+    },
+    "conflict_both_modified": {
+      "message": "Row conflict: table app.products, key {\"id\": 3002}",
+      "sqlstate": "P0001",
+      "head_unchanged": true,
+      "no_open_change": true
+    },
+    "already_merged_returns_head": true,
+    "conflict_both_inserted_differently": {
+      "message": "Row conflict: table app.products, key {\"id\": 9001}",
+      "sqlstate": "P0001",
+      "head_unchanged": true,
+      "no_open_change": true
+    },
+    "main_skips_row_identical_to_source": {
+      "rows": [
+        [
+          "app.orders",
+          {
+            "id": 9101
+          },
+          "I",
+          null,
+          {
+            "id": 9101,
+            "quantity": 2,
+            "product_id": 3004
+          }
+        ],
+        [
+          "app.products",
+          {
+            "id": 3002
+          },
+          "U",
+          {
+            "id": 3002,
+            "sku": "sku-3002",
+            "name": "product-3002",
+            "price": 10.0,
+            "stock": 100
+          },
+          {
+            "id": 3002,
+            "sku": "sku-3002",
+            "name": "product-3002",
+            "price": 32.0,
+            "stock": 100
+          }
+        ],
+        [
+          "app.products",
+          {
+            "id": 3003
+          },
+          "D",
+          {
+            "id": 3003,
+            "sku": "sku-3003",
+            "name": "product-3003",
+            "price": 10.0,
+            "stock": 100
+          },
+          null
+        ]
+      ],
+      "paths": [],
+      "parents": 2,
+      "message_names_source": true,
+      "second_parent_is_source": true
+    },
+    "both_inserted_identically_is_skipped": {
+      "merged": {
+        "rows": [],
+        "paths": [],
+        "parents": 2,
+        "message_names_source": true,
+        "second_parent_is_source": true
+      }
+    },
+    "conflict_first_of_several_in_diff_order": {
+      "message": "Row conflict: table app.products, key {\"id\": 3001}",
+      "sqlstate": "P0001",
+      "head_unchanged": true,
+      "no_open_change": true
+    },
+    "conflict_target_deleted_source_modified": {
+      "message": "Row conflict: table app.products, key {\"id\": 3003}",
+      "sqlstate": "P0001",
+      "head_unchanged": true,
+      "no_open_change": true
+    },
+    "conflict_target_modified_source_deleted": {
+      "message": "Row conflict: table app.products, key {\"id\": 3001}",
+      "sqlstate": "P0001",
+      "head_unchanged": true,
+      "no_open_change": true
+    },
+    "branch_stages_target_state_as_before_row": {
+      "rows": [
+        [
+          "app.orders",
+          {
+            "id": 9101
+          },
+          "I",
+          null,
+          {
+            "id": 9101,
+            "quantity": 2,
+            "product_id": 3004
+          }
+        ],
+        [
+          "app.products",
+          {
+            "id": 3001
+          },
+          "U",
+          {
+            "id": 3001,
+            "sku": "sku-3001",
+            "name": "product-3001",
+            "price": 10.0,
+            "stock": 100
+          },
+          {
+            "id": 3001,
+            "sku": "sku-3001",
+            "name": "product-3001",
+            "price": 31.0,
+            "stock": 100
+          }
+        ],
+        [
+          "app.products",
+          {
+            "id": 3003
+          },
+          "D",
+          {
+            "id": 3003,
+            "sku": "sku-3003",
+            "name": "product-3003",
+            "price": 10.0,
+            "stock": 100
+          },
+          null
+        ],
+        [
+          "app.products",
+          {
+            "id": 9001
+          },
+          "I",
+          null,
+          {
+            "id": 9001,
+            "sku": "mc-9001",
+            "name": "mc",
+            "price": 5.0,
+            "stock": 5
+          }
+        ]
+      ],
+      "paths": [
+        "mc/a.txt"
+      ],
+      "parents": 2,
+      "message_names_source": true,
+      "second_parent_is_source": true
+    }
+  },
+  "native_products": 4000,
+  "unfinished_transactions": 0
+}

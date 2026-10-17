@@ -1,0 +1,46 @@
+{
+  "database": "agentdb_test_mergemig_ef8b856aa0",
+  "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "old_ref": "8aeb3d7",
+  "migration": "sql/004_merge_batch.sql via Connection.install_merge_batch (db.py install-merge-batch)",
+  "migration_runs": 2,
+  "regression_tests_before": 18,
+  "regression_tests_after": 18,
+  "data_and_history_unchanged": true,
+  "function_attributes_unchanged": true,
+  "function": {
+    "acl": [
+      "agentdb_staging=X/agentdb_staging",
+      "agentdb_client=X/agentdb_staging"
+    ],
+    "owner": "agentdb_staging",
+    "config": [
+      "search_path=pg_catalog, vc"
+    ],
+    "volatility": "v",
+    "security_definer": true,
+    "client_can_execute": true,
+    "public_can_execute": false,
+    "manager_can_execute": false
+  },
+  "before": {
+    "counts": {
+      "changesets": 4,
+      "row_changes": 4002,
+      "merge_commits": 1
+    },
+    "orders": "d41d8cd98f00b204e9800998ecf8427e",
+    "parents": "0dfcf05e9f4f2d329cc71c57fd28b0f9",
+    "branches": "89f5006371d4b16fa228a43fb693eef7",
+    "products": "aee55dc96719b0722f80c7e9623841a0",
+    "changesets": "2188c3c2c794e10b9daefd03a84ab8e9",
+    "row_changes": "1a9e1ef7ac0ade2d4b06e552b4857dd8",
+    "path_changes": "eec79c84ffce6687a4876394c559cf7a",
+    "snapshot_rows": 4000
+  },
+  "merge_cases": 13,
+  "merge_outcomes_identical": true,
+  "client_merge_after_migration": true,
+  "real_cloud_verified": false,
+  "note": "Local dedicated test database on the existing PostgreSQL server; the project database was not touched."
+}

@@ -1,0 +1,195 @@
+{
+  "database": "agentdb_test_review_12b899a534",
+  "postgresql": {
+    "server_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "server_version_num": 160015,
+    "host": "192.168.56.10",
+    "port": 5432,
+    "user": "agentdb_staging",
+    "database": "postgres",
+    "ssl": true,
+    "ssl_version": "TLSv1.3",
+    "sslmode": "verify-full",
+    "configured_host": "192.168.56.10",
+    "transport": "native"
+  },
+  "regression_tests": 18,
+  "manager": {
+    "effective_role": "agentdb_manager",
+    "attributes": {
+      "superuser": false,
+      "createdb": false,
+      "createrole": false,
+      "replication": false,
+      "bypassrls": false,
+      "login": false
+    },
+    "denied_sqlstate": "42501",
+    "denied_operations": [
+      "read_raw_history",
+      "rewrite_history",
+      "write_snapshot_table",
+      "write_business_table",
+      "create_version",
+      "create_function",
+      "create_role"
+    ]
+  },
+  "maintenance": {
+    "after_intent": {
+      "target": {
+        "revision": "2fa5cfe1-728b-4847-84d2-054489e4fe5a",
+        "table_id": "a5e2864e-0bb9-463f-a194-c37a1c0ca34e"
+      },
+      "snapshot_before_resume": false,
+      "resumed": {
+        "task_id": "after_intent",
+        "verified": true,
+        "applied": true,
+        "version": 1
+      }
+    },
+    "after_apply": {
+      "target": {
+        "revision": "2f650870-5dc8-4019-a60c-f18dd27df778",
+        "table_id": "a5e2864e-0bb9-463f-a194-c37a1c0ca34e"
+      },
+      "snapshot_before_resume": true,
+      "resumed": {
+        "task_id": "after_apply",
+        "verified": true,
+        "applied": false,
+        "version": 1
+      }
+    },
+    "zombie": {
+      "a_result": "conflict",
+      "b_result": {
+        "task_id": "zombie",
+        "verified": true,
+        "applied": false,
+        "version": 1
+      },
+      "final_version": 1,
+      "target": {
+        "revision": "41938cdf-ade2-426e-b408-8ccb6aaae983",
+        "table_id": "a5e2864e-0bb9-463f-a194-c37a1c0ca34e"
+      }
+    }
+  },
+  "merge_all": {
+    "agents": 10,
+    "actual_llm_agents": false,
+    "client": "session",
+    "session_open_ms": 559.859,
+    "table_rows": 4000,
+    "changed_rows": 100,
+    "all_merged": 10,
+    "base": "bbe659ea-dcdc-424f-8b06-657bdbef8d68",
+    "final_head": "3ce75bde-a980-499d-92c2-ee55e932b706",
+    "fork_copied_history_rows": 0,
+    "branch_phase_wall_ms": 594.961,
+    "merge_phase_wall_ms": 941.29,
+    "end_to_end_wall_ms": 1804.325,
+    "merge_median_ms": 524.805,
+    "merge_max_ms": 936.548,
+    "stale_head_retries": 45,
+    "results": [
+      {
+        "agent": 0,
+        "revision": "d4f84c9c-5cbc-43ab-9dd2-5335ba2dd395",
+        "branch_commit_wall_ms": 178.04,
+        "merged_head": "d96be053-2cb8-4f10-b053-f75f5f0614bc",
+        "attempts": 2,
+        "stale_head_retries": 1,
+        "merge_wall_ms": 191.624
+      },
+      {
+        "agent": 1,
+        "revision": "7cf2024e-941d-47e8-9aeb-7454ce37b6d1",
+        "branch_commit_wall_ms": 205.084,
+        "merged_head": "16d4455e-3e65-40c0-a8a2-bff01280b5ba",
+        "attempts": 8,
+        "stale_head_retries": 7,
+        "merge_wall_ms": 749.257
+      },
+      {
+        "agent": 2,
+        "revision": "94e556eb-9815-4389-9d34-9233b45b3c9a",
+        "branch_commit_wall_ms": 142.88,
+        "merged_head": "c8c29e50-35bb-42d3-bb72-f6137882a8b5",
+        "attempts": 6,
+        "stale_head_retries": 5,
+        "merge_wall_ms": 571.588
+      },
+      {
+        "agent": 3,
+        "revision": "fbb51124-1ea4-4c20-88c8-99ce7d77dce3",
+        "branch_commit_wall_ms": 222.306,
+        "merged_head": "3ce75bde-a980-499d-92c2-ee55e932b706",
+        "attempts": 10,
+        "stale_head_retries": 9,
+        "merge_wall_ms": 936.548
+      },
+      {
+        "agent": 4,
+        "revision": "07026878-e3b2-4c25-9cce-c1e36259c31d",
+        "branch_commit_wall_ms": 139.253,
+        "merged_head": "1924e865-76de-44be-b3be-f9f4cb8d1720",
+        "attempts": 4,
+        "stale_head_retries": 3,
+        "merge_wall_ms": 395.986
+      },
+      {
+        "agent": 5,
+        "revision": "509f18f3-613f-4ac1-ba79-c27ea8308e45",
+        "branch_commit_wall_ms": 143.932,
+        "merged_head": "3afcafaa-7aa0-45f2-a8d9-68edb8cbae8b",
+        "attempts": 7,
+        "stale_head_retries": 6,
+        "merge_wall_ms": 664.372
+      },
+      {
+        "agent": 6,
+        "revision": "9738180f-c8b0-467e-8ae2-1e083f8d699d",
+        "branch_commit_wall_ms": 209.449,
+        "merged_head": "f8b43646-856f-460e-82f8-0ace95319ebe",
+        "attempts": 3,
+        "stale_head_retries": 2,
+        "merge_wall_ms": 298.068
+      },
+      {
+        "agent": 7,
+        "revision": "4ce67af8-beb7-429f-b35a-aa949ae0dc5d",
+        "branch_commit_wall_ms": 221.724,
+        "merged_head": "a1bf2376-660a-45b5-b248-c0e5a40432e1",
+        "attempts": 1,
+        "stale_head_retries": 0,
+        "merge_wall_ms": 92.635
+      },
+      {
+        "agent": 8,
+        "revision": "06629462-7c95-4b39-89d7-6ca5ffb9b5c6",
+        "branch_commit_wall_ms": 222.855,
+        "merged_head": "ed68e8c8-0a71-4b85-af5a-7b0deab41435",
+        "attempts": 5,
+        "stale_head_retries": 4,
+        "merge_wall_ms": 478.022
+      },
+      {
+        "agent": 9,
+        "revision": "b7da175b-e2ef-469c-a1eb-d82b13352419",
+        "branch_commit_wall_ms": 185.356,
+        "merged_head": "b2093cc8-3a79-4512-87fe-c5ba43c5da80",
+        "attempts": 9,
+        "stale_head_retries": 8,
+        "merge_wall_ms": 835.324
+      }
+    ],
+    "verification": "100 changed rows, 3900 unchanged rows, 10 code files, 10 reachable source commits, fixed base, no unfinished transactions",
+    "timing_scope": "Client wall time includes lock waits, retries and final COMMIT; each writer reuses one long-lived psql session opened before timing (session_open_ms); not a production throughput claim"
+  },
+  "real_cloud_verified": false,
+  "state_backend": "MemoryStore-test-only",
+  "note": "Existing PostgreSQL service reused without replacement or restart; dedicated test database retained. No model used in synthetic merge benchmark."
+}
