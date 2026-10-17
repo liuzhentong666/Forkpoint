@@ -16,6 +16,8 @@
 
 现有安装使用新版快照维护器前，先由数据库所有者执行 `python db.py install-manager`，新增 `vc.snapshot_status` 与 `agentdb_manager`，不改业务记录或版本历史。常规维护可加 `--role agentdb_manager`，只使用快照检查/物化权限；修改系统规则仍由原管理员身份承担。该 NOLOGIN 角色不自动分配给其他登录用户。
 
+`vc.merge` 现在每张表只调用一次 `vc.rows_at` 解析全部改动行的目标状态，冲突规则与历史不变（见 [合入耗时分解](docs/MERGE_BENCHMARK.md)）。新安装已包含；现有安装由数据库所有者执行 `python db.py install-merge-batch`（`sql/004_merge_batch.sql`，可重复执行，只替换函数，保留授权，不改业务记录或版本历史）。`python check_merge_migration.py` 在新建的旧版测试库上核验这一迁移。
+
 ## 可替换云存储的管理 Agent 状态服务
 
 设计目标是将管理任务的最新状态、事件、规则版本与证据保存到配置选择的云端对象存储（GCS / 阿里云 OSS / S3），常驻进程只保留有界内存缓存。相关适配代码已编写，但尚无真实云服务运行结果。任务入口、条件发布、命令去重、分页历史和带预算的上下文 API 目前仅有本地实现与测试。
@@ -63,6 +65,8 @@ Agent 选择固定版本
 | 持久项目数据库 | agentdb |
 
 Windows Python 通过 WSL 调用已经安装的 psql，并使用现有的本地认证设置。连接参数在 `connection.local.json`，该文件已加入忽略列表。项目脚本不会初始化、启动、停止或重新配置 PostgreSQL；旧 `.runtime` 目录不再被使用。
+
+`Connection.execute()` 每次调用都启动一个 `wsl.exe` + psql 进程，本机约需 0.2–2 s。需要连续调用的客户端可改用 `connection.session()`：它保持一个 psql 进程，提供同样的 `execute()` / `sql()`，本机每次调用约 1–2 ms。每次调用的行为与单独起一个进程相同：遇到第一个错误即停止（返回码非零，错误写在 stderr）；未结束的事务回滚；服务端会话状态（设置、角色、临时表、咨询锁）和 psql 变量在下一次调用前重置。一个 Session 一次只执行一个调用，每个线程或写入者各用一个。合入耗时对比见 [合入耗时分解](docs/MERGE_BENCHMARK.md)。
 
 需要 Python 3.10+，不需要第三方 Python 包。在本项目目录执行：
 

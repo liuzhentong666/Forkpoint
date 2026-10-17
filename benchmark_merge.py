@@ -11,7 +11,7 @@ Modes:
   baseline               review_local.py merge-all client, uninstrumented
   spawn_concurrent       10 writers, one wsl.exe + psql process per call
   spawn_serialized       writers take turns with the known head (no 40001)
-  persistent_concurrent  10 writers, one long-lived psql session each
+  persistent_concurrent  10 writers, one long-lived db.Session each
   persistent_serialized  persistent sessions taking turns
   profile                persistent_serialized with track_functions=all plus
                          EXPLAIN ANALYZE of the merge's component queries
@@ -58,92 +58,33 @@ def summary(values):
                 min=round(min(values), 3), max=round(max(values), 3))
 
 
-class Session:
-    """One long-lived psql process, driven over stdin with an end marker."""
-
-    def __init__(self, connection, database):
-        # Same client flags as Connection.execute, without ON_ERROR_STOP so the
-        # session survives a 40001 and the script decides what to do next.
-        settings = connection.settings
-        args = connection.prefix + ["-X", "-qAt", "--no-password", "-h", settings["host"],
-                                    "-p", str(settings["port"]), "-U", settings["user"], "-d", database,
-                                    "-v", "VERBOSITY=verbose"]
-        began = time.perf_counter()
-        self.process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE, env=connection.env, creationflags=FLAGS)
-        self.stderr = []
-        threading.Thread(target=self._drain, daemon=True).start()
-        self.run("SELECT 1;")
-        self.open_ms = ms(time.perf_counter() - began)
-
-    def _drain(self):
-        for line in iter(self.process.stderr.readline, b""):
-            self.stderr.append(line.decode("utf-8", "replace").rstrip("\r\n"))
-
-    def run(self, script):
-        """Return (stdout lines, fields after the __END__ marker)."""
-        marker = "__END__" + uuid.uuid4().hex
-        self.process.stdin.write((script + "\n\\echo " + marker + " :ERROR :SQLSTATE\n").encode("utf-8"))
-        self.process.stdin.flush()
-        lines = []
-        while True:
-            raw = self.process.stdout.readline()
-            if not raw:
-                raise RuntimeError("psql session ended:\n" + "\n".join(self.stderr[-20:]))
-            line = raw.decode("utf-8", "replace").rstrip("\r\n")
-            if line.startswith(marker):
-                return lines, line.split()[1:]
-            lines.append(line)
-
-    def close(self):
-        try:
-            self.process.stdin.write(b"\\q\n")
-            self.process.stdin.flush()
-            self.process.stdin.close()
-        except OSError:
-            pass
-        self.process.wait(timeout=30)
-
-
 def stamp(label):
     return f"SELECT 'T','{label}',extract(epoch FROM clock_timestamp());"
 
 
-def merge_script(item, expected, persistent):
+def merge_script(item, expected):
     # Taking the main row lock first is a no-op for begin_change's own FOR
     # UPDATE in the same transaction; its expected-head check is unchanged.
-    head = f"""{stamp('start')}
+    return f"""{stamp('start')}
 BEGIN;
 SELECT 1 FROM vc.branch WHERE name='main' FOR UPDATE;
 {stamp('locked')}
-SELECT vc.merge('main','{item['revision']}','{expected}','synthetic-{item['agent']}') AS merged \\gset"""
-    tail = f"""{stamp('merged')}
+SELECT vc.merge('main','{item['revision']}','{expected}','synthetic-{item['agent']}') AS merged \\gset
+{stamp('merged')}
 COMMIT;
 {stamp('committed')}
 SELECT 'R',:'merged';"""
-    if not persistent:
-        return head + "\n" + tail  # ON_ERROR_STOP ends the process at a 40001
-    return head + f"""
-\\if :ERROR
-\\set failed_state :SQLSTATE
-ROLLBACK;
-SELECT 'F',:'failed_state';
-\\else
-{tail}
-\\endif"""
 
 
 def parse(lines):
-    stamps, merged, failed = {}, None, None
+    stamps, merged = {}, None
     for line in lines:
         fields = line.split("|")
         if fields[0] == "T" and len(fields) == 3:
             stamps[fields[1]] = float(fields[2])
         elif fields[0] == "R" and len(fields) == 2:
             merged = fields[1]
-        elif fields[0] == "F" and len(fields) == 2:
-            failed = fields[1]
-    return stamps, merged, failed
+    return stamps, merged
 
 
 class Writer:
@@ -151,37 +92,25 @@ class Writer:
 
     def __init__(self, args, database, persistent, role=None):
         self.connection = connect(args, database, role)
-        self.session = Session(self.connection, database) if persistent else None
+        began = time.perf_counter()
+        # db.Session keeps Connection.execute semantics, so both clients run the same script.
+        self.client = self.connection.session(database) if persistent else self.connection
+        self.open_ms = ms(time.perf_counter() - began) if persistent else None
         self.calls = []
 
     def _merge_once(self, item, expected):
-        script = merge_script(item, expected, self.session is not None)
         began = time.perf_counter()
-        if self.session:
-            lines, _ = self.session.run(script)
-            wall = time.perf_counter() - began
-            stamps, merged, failed = parse(lines)
-            stderr = "\n".join(self.session.stderr[-6:])
-        else:
-            result = self.connection.execute(script)
-            wall = time.perf_counter() - began
-            stamps, merged, failed = parse(result.stdout.splitlines())
-            stderr = result.stderr
-            if result.returncode:
-                failed = "40001" if "40001" in stderr else "other"
-        if merged is None and failed is None:
-            failed = "other"
-        return wall, stamps, merged, failed, stderr
+        result = self.client.execute(merge_script(item, expected))
+        wall = time.perf_counter() - began
+        stamps, merged = parse(result.stdout.splitlines())
+        failed = None
+        if result.returncode or merged is None:
+            failed = "40001" if "40001" in result.stderr else "other"
+        return wall, stamps, merged, failed, result.stderr
 
     def _read_head(self):
         began = time.perf_counter()
-        if self.session:
-            lines, end = self.session.run("SELECT vc.head();")
-            if end[0] != "false":
-                raise AssertionError("\n".join(self.session.stderr[-6:]))
-            head = lines[-1].strip()
-        else:
-            head = self.connection.sql("SELECT vc.head();")
+        head = self.client.sql("SELECT vc.head();")
         self.calls.append(dict(kind="reread", wall_ms=ms(time.perf_counter() - began)))
         return head
 
@@ -201,8 +130,8 @@ class Writer:
         raise AssertionError("Merge retry bound exhausted")
 
     def close(self):
-        if self.session:
-            self.session.close()
+        if self.client is not self.connection:
+            self.client.close()
 
 
 # Server stamps come from the WSL guest clock, client wall time from Windows
@@ -273,7 +202,7 @@ def run_writers(args, database, base, proposals, mode):
     persistent = mode.startswith("persistent")
     writers = [Writer(args, database, persistent) for _ in proposals]
     try:
-        session_open = [w.session.open_ms for w in writers if w.session]
+        session_open = [w.open_ms for w in writers if w.open_ms is not None]
         started = time.perf_counter()
         if mode.endswith("serialized"):
             landed, expected = [], base
@@ -395,7 +324,8 @@ def components(owner, head, source):
         source_in_target_ancestors=explain_ms(owner, f"SELECT 1 FROM vc._ancestors('{head}') WHERE id='{source}'"),
         merge_base=explain_ms(owner, f"SELECT vc.merge_base('{head}','{source}')"),
         diff_rows=explain_ms(owner, f"SELECT * FROM vc.diff_rows('{base_id}','{source}','{table}')"),
-        # vc.merge resolves "ours" with one full rows_at per changed row.
+        # Before 004_merge_batch, vc.merge ran one full rows_at per changed row to
+        # resolve "ours"; it now runs the batched form once per table.
         rows_at_single_key=explain_ms(owner, f"SELECT r.doc FROM vc.rows_at('{head}','{table}') r WHERE r.pk='{{\"id\": 1}}'::jsonb"),
         rows_at_batched_keys=explain_ms(owner, f"""SELECT r.pk,r.doc FROM vc.rows_at('{head}','{table}') r
           WHERE r.pk IN (SELECT pk FROM vc.diff_rows('{base_id}','{source}','{table}'))"""),
@@ -442,15 +372,17 @@ def spawn_probe(owner, database, rounds=3):
             return ms(time.perf_counter() - began)
         with ThreadPoolExecutor(max_workers=WRITERS) as pool:
             concurrent.extend(pool.map(one, range(WRITERS)))
-    session = Session(owner, database)
+    began = time.perf_counter()
+    session = owner.session(database)
+    opened = ms(time.perf_counter() - began)
     roundtrip = []
     for _ in range(20):
         began = time.perf_counter()
-        session.run("SELECT 1;")
+        session.sql("SELECT 1;")
         roundtrip.append(ms(time.perf_counter() - began))
     session.close()
     return dict(spawn_select1_sequential_ms=summary(sequential), spawn_select1_10_concurrent_ms=summary(concurrent),
-                persistent_session_open_ms=session.open_ms, persistent_select1_roundtrip_ms=summary(roundtrip),
+                persistent_session_open_ms=opened, persistent_select1_roundtrip_ms=summary(roundtrip),
                 raw=dict(sequential=sequential, concurrent=concurrent, roundtrip=roundtrip))
 
 

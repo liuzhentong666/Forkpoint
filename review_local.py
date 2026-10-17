@@ -123,19 +123,36 @@ def maintenance_checks(owner, manager):
     return results
 
 
-def merge_all(owner, worker):
+def merge_all(owner, worker, client="session"):
     count, rows_per_agent = 10, 10
+    clients, session_open_ms = [worker] * count, None
+    if client == "session":
+        # One long-lived psql process per writer, opened before timing starts,
+        # as a connection pool would be.
+        began = time.perf_counter()
+        with ThreadPoolExecutor(max_workers=count) as pool:
+            clients = list(pool.map(lambda _: worker.session(), range(count)))
+        session_open_ms = round((time.perf_counter()-began)*1000, 3)
+    try:
+        return _merge_all(owner, worker, clients, client, session_open_ms, count, rows_per_agent)
+    finally:
+        for writer in clients:
+            if writer is not worker:
+                writer.close()
+
+
+def _merge_all(owner, worker, clients, client, session_open_ms, count, rows_per_agent):
     base = worker.sql("SELECT vc.head();")
     history_before = int(owner.sql("SELECT count(*) FROM vc.row_change;"))
     started = time.perf_counter()
     for i in range(count):
-        worker.sql(f"SELECT vc.fork('merge-all-{i}','{base}');")
+        clients[i].sql(f"SELECT vc.fork('merge-all-{i}','{base}');")
     assert int(owner.sql("SELECT count(*) FROM vc.row_change;")) == history_before
     barrier = threading.Barrier(count)
     def propose(i):
         barrier.wait(timeout=30)
         began = time.perf_counter()
-        revision = worker.sql(f"""
+        revision = clients[i].sql(f"""
           BEGIN;
           SELECT vc.begin_change('merge-all-{i}','{base}','synthetic-{i}','ten rows and code') AS draft \gset
           UPDATE agent.products SET price={100+i} WHERE id BETWEEN {10*i+1} AND {10*i+10};
@@ -153,9 +170,9 @@ def merge_all(owner, worker):
     barrier = threading.Barrier(count)
     def land(item):
         barrier.wait(timeout=30)
-        began, expected, stale = time.perf_counter(), base, 0
+        began, expected, stale, writer = time.perf_counter(), base, 0, clients[item["agent"]]
         for attempt in range(1, 31):
-            result = worker.execute(f"""
+            result = writer.execute(f"""
               BEGIN;
               SELECT vc.merge('main','{item['revision']}','{expected}','synthetic-{item['agent']}') AS merged \gset
               COMMIT;
@@ -167,7 +184,7 @@ def merge_all(owner, worker):
             if "40001" not in result.stderr:
                 raise AssertionError(result.stderr)  # Never retry semantic/constraint conflicts blindly.
             stale += 1
-            expected = worker.sql("SELECT vc.head();")
+            expected = writer.sql("SELECT vc.head();")
         raise AssertionError("Merge retry bound exhausted")
     merge_started = time.perf_counter()
     with ThreadPoolExecutor(max_workers=count) as pool:
@@ -185,19 +202,25 @@ def merge_all(owner, worker):
         assert owner.sql(f"SELECT EXISTS(SELECT 1 FROM vc._ancestors('{final_head}') WHERE id='{item['revision']}');") == "t"
     assert owner.sql("SELECT count(*) FROM vc.work_tx;") == "0"
     latencies = [item["merge_wall_ms"] for item in landed]
-    return dict(agents=count, actual_llm_agents=False, table_rows=4000, changed_rows=count*rows_per_agent,
+    return dict(agents=count, actual_llm_agents=False, client=client, session_open_ms=session_open_ms,
+                table_rows=4000, changed_rows=count*rows_per_agent,
                 all_merged=len(landed), base=base, final_head=final_head,
                 fork_copied_history_rows=0, branch_phase_wall_ms=round(branches_ms,3),
                 merge_phase_wall_ms=round(merge_ms,3), end_to_end_wall_ms=round(complete_ms,3),
                 merge_median_ms=round(statistics.median(latencies),3), merge_max_ms=max(latencies),
                 stale_head_retries=sum(item["stale_head_retries"] for item in landed), results=landed,
                 verification="100 changed rows, 3900 unchanged rows, 10 code files, 10 reachable source commits, fixed base, no unfinished transactions",
-                timing_scope="Client wall time includes psql/WSL startup, lock waits, retries and final COMMIT; not a production throughput claim")
+                timing_scope=("Client wall time includes lock waits, retries and final COMMIT; " +
+                              ("each writer reuses one long-lived psql session opened before timing (session_open_ms)"
+                               if client == "session" else "every call starts wsl.exe + psql") +
+                              "; not a production throughput claim"))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     add_connection_arguments(parser)
+    parser.add_argument("--client", choices=("session", "spawn"), default="session",
+                        help="merge-all writers: one long-lived psql session each (default), or one process per call")
     args = parser.parse_args()
     database = "agentdb_test_review_" + uuid.uuid4().hex[:10]
     owner = connect(args, database)
@@ -214,7 +237,7 @@ def main():
     print("PASS restricted manager permissions", flush=True)
     maintenance = maintenance_checks(owner, manager)
     print("PASS two crash windows and zombie conflict on real PostgreSQL", flush=True)
-    merges = merge_all(owner, worker)
+    merges = merge_all(owner, worker, args.client)
     output = dict(database=database, postgresql=details, regression_tests=len(regression),
                   manager=permissions, maintenance=maintenance, merge_all=merges,
                   real_cloud_verified=False, state_backend="MemoryStore-test-only",

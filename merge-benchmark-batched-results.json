@@ -1,0 +1,4776 @@
+{
+  "generated_at": "2026-10-17T16:08:00.579827+00:00",
+  "finished_at": "2026-10-17T16:09:34.088444+00:00",
+  "clock_tolerance_ms": 10.0,
+  "scope": "Local synthetic load on the existing WSL PostgreSQL; 10 script writers, not LLM agents; not a production capacity measurement. No cloud service used.",
+  "environment": {
+    "postgresql": {
+      "server_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+      "server_version_num": 160015,
+      "host": null,
+      "port": 5432,
+      "user": "postgres",
+      "database": "postgres",
+      "configured_host": "/var/run/postgresql",
+      "transport": "wsl",
+      "wsl_distribution": "Ubuntu"
+    },
+    "server_settings": {
+      "default_transaction_isolation": "read committed",
+      "fsync": "on",
+      "jit": "on",
+      "max_connections": "100",
+      "shared_buffers": "16384",
+      "synchronous_commit": "on",
+      "track_functions": "none",
+      "work_mem": "4096"
+    },
+    "server_version_string": "PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+    "client_os": "Windows-10-10.0.26200-SP0",
+    "client_python": "3.10.11",
+    "cpu_count": 22,
+    "wsl_version": [
+      "WSL \u7248\u672c: 2.6.3.0",
+      "\u5185\u6838\u7248\u672c: 6.6.87.2-1"
+    ],
+    "transport": "wsl.exe -> /usr/bin/psql -> unix socket"
+  },
+  "template": {
+    "database": "agentdb_test_mergebench_bb4c8a05_tpl",
+    "base": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+    "proposals": [
+      {
+        "agent": 0,
+        "revision": "c62218ac-373a-4423-a4d4-d8e0c311389a"
+      },
+      {
+        "agent": 1,
+        "revision": "5c58ab58-f127-4b4a-9844-3b10e6f6ae9c"
+      },
+      {
+        "agent": 2,
+        "revision": "3404b2a2-879c-4934-9ae4-0d8e6a12db86"
+      },
+      {
+        "agent": 3,
+        "revision": "e951add6-9734-4bcf-99fb-6e2a692f323a"
+      },
+      {
+        "agent": 4,
+        "revision": "0cd8ea07-73a9-4e9a-8cfe-4693bde857a8"
+      },
+      {
+        "agent": 5,
+        "revision": "c7c16f29-5988-4d99-b009-6f94daf79415"
+      },
+      {
+        "agent": 6,
+        "revision": "7e6d356f-c478-46fd-8359-7b1f9aec1fbd"
+      },
+      {
+        "agent": 7,
+        "revision": "e56b830e-43b4-4a8b-bc32-becc89abea03"
+      },
+      {
+        "agent": 8,
+        "revision": "4ef3e32a-8518-4055-825f-c98d263f8925"
+      },
+      {
+        "agent": 9,
+        "revision": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698"
+      }
+    ],
+    "regression_tests": 18,
+    "history": {
+      "changesets": 12,
+      "row_changes": 4100,
+      "paths": 11,
+      "main_first_parent_depth": 1
+    }
+  },
+  "spawn_probe": {
+    "spawn_select1_sequential_ms": {
+      "n": 10,
+      "median": 376.394,
+      "min": 320.471,
+      "max": 518.717
+    },
+    "spawn_select1_10_concurrent_ms": {
+      "n": 30,
+      "median": 2229.581,
+      "min": 1179.13,
+      "max": 2842.115
+    },
+    "persistent_session_open_ms": 611.547,
+    "persistent_select1_roundtrip_ms": {
+      "n": 20,
+      "median": 1.479,
+      "min": 0.995,
+      "max": 7.324
+    },
+    "raw": {
+      "sequential": [
+        518.717,
+        409.04,
+        320.471,
+        372.476,
+        472.814,
+        364.195,
+        416.426,
+        380.311,
+        363.398,
+        360.228
+      ],
+      "concurrent": [
+        1486.261,
+        2196.007,
+        1490.664,
+        1762.383,
+        1552.783,
+        1812.241,
+        2285.877,
+        1900.014,
+        2362.396,
+        2263.155,
+        2189.084,
+        2152.092,
+        1287.556,
+        1773.989,
+        2479.36,
+        2572.67,
+        1518.052,
+        1179.13,
+        2468.524,
+        1897.284,
+        2842.115,
+        2346.362,
+        2730.398,
+        1816.656,
+        2785.453,
+        2766.068,
+        2392.637,
+        2462.243,
+        2650.35,
+        2406.117
+      ],
+      "roundtrip": [
+        2.198,
+        1.528,
+        1.083,
+        1.286,
+        1.122,
+        3.477,
+        1.131,
+        0.995,
+        1.291,
+        1.461,
+        1.982,
+        2.47,
+        2.235,
+        7.324,
+        4.554,
+        2.378,
+        1.497,
+        1.168,
+        1.219,
+        1.418
+      ]
+    }
+  },
+  "summary": {
+    "persistent_concurrent": {
+      "runs": 3,
+      "merge_phase_wall_ms": {
+        "n": 3,
+        "median": 842.477,
+        "min": 830.916,
+        "max": 875.651
+      },
+      "merge_median_ms": {
+        "n": 3,
+        "median": 428.034,
+        "min": 364.806,
+        "max": 479.457
+      },
+      "stale_head_retries": {
+        "n": 3,
+        "median": 45,
+        "min": 45,
+        "max": 45
+      },
+      "writer_breakdown_sum_ms": {
+        "final_client_overhead": {
+          "n": 3,
+          "median": 101.031,
+          "min": 35.542,
+          "max": 153.604
+        },
+        "final_lock_wait": {
+          "n": 3,
+          "median": 18.192,
+          "min": 5.851,
+          "max": 30.295
+        },
+        "merge_sql": {
+          "n": 3,
+          "median": 507.993,
+          "min": 501.728,
+          "max": 597.727
+        },
+        "commit": {
+          "n": 3,
+          "median": 31.552,
+          "min": 29.613,
+          "max": 42.03
+        },
+        "retry_client_overhead": {
+          "n": 3,
+          "median": 650.173,
+          "min": 291.673,
+          "max": 829.565
+        },
+        "retry_lock_wait": {
+          "n": 3,
+          "median": 2667.041,
+          "min": 2268.456,
+          "max": 2888.962
+        },
+        "retry_reread": {
+          "n": 3,
+          "median": 205.249,
+          "min": 198.069,
+          "max": 424.1
+        },
+        "clock_step_unattributed": {
+          "n": 3,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      },
+      "lock_timeline_runs": 3,
+      "server_span_ms": {
+        "n": 3,
+        "median": 765.001,
+        "min": 666.828,
+        "max": 828.752
+      },
+      "lock_held_by_winners_ms": {
+        "n": 3,
+        "median": 539.545,
+        "min": 531.341,
+        "max": 639.757
+      },
+      "lock_free_ms": {
+        "n": 3,
+        "median": 188.995,
+        "min": 135.487,
+        "max": 225.456
+      },
+      "lock_held_fraction": {
+        "n": 3,
+        "median": 0.772,
+        "min": 0.705,
+        "max": 0.797
+      },
+      "handoff_gap_median_ms": {
+        "n": 3,
+        "median": 14.99,
+        "min": 7.522,
+        "max": 18.996
+      }
+    },
+    "persistent_serialized": {
+      "runs": 3,
+      "merge_phase_wall_ms": {
+        "n": 3,
+        "median": 659.581,
+        "min": 538.698,
+        "max": 786.165
+      },
+      "merge_median_ms": {
+        "n": 3,
+        "median": 63.915,
+        "min": 50.141,
+        "max": 64.256
+      },
+      "stale_head_retries": {
+        "n": 3,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "writer_breakdown_sum_ms": {
+        "final_client_overhead": {
+          "n": 3,
+          "median": 67.73,
+          "min": 67.433,
+          "max": 105.652
+        },
+        "final_lock_wait": {
+          "n": 3,
+          "median": 12.256,
+          "min": 11.306,
+          "max": 13.359
+        },
+        "merge_sql": {
+          "n": 3,
+          "median": 551.873,
+          "min": 433.176,
+          "max": 603.105
+        },
+        "commit": {
+          "n": 3,
+          "median": 28.23,
+          "min": 25.236,
+          "max": 63.082
+        },
+        "retry_client_overhead": {
+          "n": 3,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "retry_lock_wait": {
+          "n": 3,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "retry_reread": {
+          "n": 3,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "clock_step_unattributed": {
+          "n": 3,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      },
+      "lock_timeline_runs": 3,
+      "server_span_ms": {
+        "n": 3,
+        "median": 654.492,
+        "min": 555.975,
+        "max": 848.95
+      },
+      "lock_held_by_winners_ms": {
+        "n": 3,
+        "median": 580.103,
+        "min": 458.412,
+        "max": 666.187
+      },
+      "lock_free_ms": {
+        "n": 3,
+        "median": 97.563,
+        "min": 74.389,
+        "max": 182.763
+      },
+      "lock_held_fraction": {
+        "n": 3,
+        "median": 0.825,
+        "min": 0.785,
+        "max": 0.886
+      },
+      "handoff_gap_median_ms": {
+        "n": 3,
+        "median": 4.012,
+        "min": 3.694,
+        "max": 7.168
+      }
+    }
+  },
+  "runs": [
+    {
+      "mode": "persistent_concurrent",
+      "repetition": 1,
+      "database": "agentdb_test_mergebench_bb4c8a05_persc_1",
+      "session_open_ms": {
+        "n": 10,
+        "median": 301.309,
+        "min": 218.409,
+        "max": 532.887
+      },
+      "merge_phase_wall_ms": 842.477,
+      "merge_median_ms": 479.457,
+      "merge_max_ms": 829.893,
+      "stale_head_retries": 45,
+      "verification": {
+        "final_head": "35e7c670-8c42-4535-8458-6d5d0a1c4c19",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "writers": [
+        {
+          "agent": 0,
+          "revision": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+          "merged_head": "86431e7b-f80f-4b1a-a87e-0d54bd583c0e",
+          "attempts": 6,
+          "stale_head_retries": 5,
+          "merge_wall_ms": 545.479,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 101.548,
+              "server": {
+                "start": 1792253335.426772,
+                "locked": 1792253335.489445
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.197
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 73.733,
+              "server": {
+                "start": 1792253335.527505,
+                "locked": 1792253335.592299
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.787
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "528aabf9-cde0-40f6-885b-122221a55951",
+              "wall_ms": 61.94,
+              "server": {
+                "start": 1792253335.602262,
+                "locked": 1792253335.658394
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.244
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "50db5744-b647-4f5f-b15f-569f55c6bb37",
+              "wall_ms": 60.424,
+              "server": {
+                "start": 1792253335.66745,
+                "locked": 1792253335.723262
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.105
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "48046eda-5d22-4b62-88df-399df9956204",
+              "wall_ms": 105.55,
+              "server": {
+                "start": 1792253335.731236,
+                "locked": 1792253335.773027
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.284
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "a4703232-c0e0-444a-9ee4-f94fcbab7e58",
+              "wall_ms": 127.559,
+              "server": {
+                "start": 1792253335.838996,
+                "locked": 1792253335.839403,
+                "merged": 1792253335.956337,
+                "committed": 1792253335.960786
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 1,
+          "revision": "5c58ab58-f127-4b4a-9844-3b10e6f6ae9c",
+          "merged_head": "28f4fb66-3e89-4028-84f8-4c32359936a5",
+          "attempts": 7,
+          "stale_head_retries": 6,
+          "merge_wall_ms": 644.505,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 101.146,
+              "server": {
+                "start": 1792253335.4216,
+                "locked": 1792253335.487657
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.645
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 70.013,
+              "server": {
+                "start": 1792253335.528196,
+                "locked": 1792253335.593529
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.011
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "528aabf9-cde0-40f6-885b-122221a55951",
+              "wall_ms": 61.438,
+              "server": {
+                "start": 1792253335.600926,
+                "locked": 1792253335.657702
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.026
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "50db5744-b647-4f5f-b15f-569f55c6bb37",
+              "wall_ms": 57.35,
+              "server": {
+                "start": 1792253335.666315,
+                "locked": 1792253335.720831
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.634
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "48046eda-5d22-4b62-88df-399df9956204",
+              "wall_ms": 109.549,
+              "server": {
+                "start": 1792253335.725453,
+                "locked": 1792253335.77058
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.474
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "a4703232-c0e0-444a-9ee4-f94fcbab7e58",
+              "wall_ms": 126.415,
+              "server": {
+                "start": 1792253335.839677,
+                "locked": 1792253335.961005
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.144
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "86431e7b-f80f-4b1a-a87e-0d54bd583c0e",
+              "wall_ms": 97.493,
+              "server": {
+                "start": 1792253335.96798,
+                "locked": 1792253335.968308,
+                "merged": 1792253336.048211,
+                "committed": 1792253336.06386
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 2,
+          "revision": "3404b2a2-879c-4934-9ae4-0d8e6a12db86",
+          "merged_head": "b9585e81-3dec-4116-a4f5-097681ce3cb2",
+          "attempts": 9,
+          "stale_head_retries": 8,
+          "merge_wall_ms": 769.609,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 97.941,
+              "server": {
+                "start": 1792253335.426678,
+                "locked": 1792253335.48308
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.213
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 68.931,
+              "server": {
+                "start": 1792253335.525381,
+                "locked": 1792253335.59096
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.49
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "528aabf9-cde0-40f6-885b-122221a55951",
+              "wall_ms": 63.436,
+              "server": {
+                "start": 1792253335.604628,
+                "locked": 1792253335.659669
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.039
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "50db5744-b647-4f5f-b15f-569f55c6bb37",
+              "wall_ms": 59.597,
+              "server": {
+                "start": 1792253335.667244,
+                "locked": 1792253335.722527
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.498
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "48046eda-5d22-4b62-88df-399df9956204",
+              "wall_ms": 102.449,
+              "server": {
+                "start": 1792253335.731602,
+                "locked": 1792253335.773683
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 6.942
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "a4703232-c0e0-444a-9ee4-f94fcbab7e58",
+              "wall_ms": 125.842,
+              "server": {
+                "start": 1792253335.841327,
+                "locked": 1792253335.962214
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.355
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "86431e7b-f80f-4b1a-a87e-0d54bd583c0e",
+              "wall_ms": 98.434,
+              "server": {
+                "start": 1792253335.971594,
+                "locked": 1792253336.064848
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.478
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "28f4fb66-3e89-4028-84f8-4c32359936a5",
+              "wall_ms": 72.532,
+              "server": {
+                "start": 1792253336.068881,
+                "locked": 1792253336.116071
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.597
+            },
+            {
+              "kind": "merge",
+              "attempt": 9,
+              "expected": "3ee57fca-d915-430a-9619-08be9620931d",
+              "wall_ms": 47.584,
+              "server": {
+                "start": 1792253336.144147,
+                "locked": 1792253336.144665,
+                "merged": 1792253336.186479,
+                "committed": 1792253336.188458
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 3,
+          "revision": "e951add6-9734-4bcf-99fb-6e2a692f323a",
+          "merged_head": "528aabf9-cde0-40f6-885b-122221a55951",
+          "attempts": 2,
+          "stale_head_retries": 1,
+          "merge_wall_ms": 179.157,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 88.127,
+              "server": {
+                "start": 1792253335.42147,
+                "locked": 1792253335.473234
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.59
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 77.385,
+              "server": {
+                "start": 1792253335.52305,
+                "locked": 1792253335.523617,
+                "merged": 1792253335.584311,
+                "committed": 1792253335.588646
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 4,
+          "revision": "0cd8ea07-73a9-4e9a-8cfe-4693bde857a8",
+          "merged_head": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 87.371,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 87.356,
+              "server": {
+                "start": 1792253335.422435,
+                "locked": 1792253335.424228,
+                "merged": 1792253335.47189,
+                "committed": 1792253335.473194
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 5,
+          "revision": "c7c16f29-5988-4d99-b009-6f94daf79415",
+          "merged_head": "3ee57fca-d915-430a-9619-08be9620931d",
+          "attempts": 8,
+          "stale_head_retries": 7,
+          "merge_wall_ms": 718.929,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 100.619,
+              "server": {
+                "start": 1792253335.421898,
+                "locked": 1792253335.485509
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.499
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 68.979,
+              "server": {
+                "start": 1792253335.527611,
+                "locked": 1792253335.592952
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.211
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "528aabf9-cde0-40f6-885b-122221a55951",
+              "wall_ms": 64.622,
+              "server": {
+                "start": 1792253335.600604,
+                "locked": 1792253335.657033
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.839
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "50db5744-b647-4f5f-b15f-569f55c6bb37",
+              "wall_ms": 58.257,
+              "server": {
+                "start": 1792253335.668011,
+                "locked": 1792253335.723905
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.637
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "48046eda-5d22-4b62-88df-399df9956204",
+              "wall_ms": 106.561,
+              "server": {
+                "start": 1792253335.730705,
+                "locked": 1792253335.772204
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.949
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "a4703232-c0e0-444a-9ee4-f94fcbab7e58",
+              "wall_ms": 126.947,
+              "server": {
+                "start": 1792253335.84097,
+                "locked": 1792253335.963257
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.125
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "86431e7b-f80f-4b1a-a87e-0d54bd583c0e",
+              "wall_ms": 96.588,
+              "server": {
+                "start": 1792253335.971398,
+                "locked": 1792253336.063948
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.362
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "28f4fb66-3e89-4028-84f8-4c32359936a5",
+              "wall_ms": 71.522,
+              "server": {
+                "start": 1792253336.068562,
+                "locked": 1792253336.068935,
+                "merged": 1792253336.114571,
+                "committed": 1792253336.115954
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 6,
+          "revision": "7e6d356f-c478-46fd-8359-7b1f9aec1fbd",
+          "merged_head": "50db5744-b647-4f5f-b15f-569f55c6bb37",
+          "attempts": 3,
+          "stale_head_retries": 2,
+          "merge_wall_ms": 236.343,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 88.577,
+              "server": {
+                "start": 1792253335.42161,
+                "locked": 1792253335.476636
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.173
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 67.057,
+              "server": {
+                "start": 1792253335.52354,
+                "locked": 1792253335.58866
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.367
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "528aabf9-cde0-40f6-885b-122221a55951",
+              "wall_ms": 64.098,
+              "server": {
+                "start": 1792253335.593681,
+                "locked": 1792253335.594025,
+                "merged": 1792253335.650216,
+                "committed": 1792253335.655364
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 7,
+          "revision": "e56b830e-43b4-4a8b-bc32-becc89abea03",
+          "merged_head": "48046eda-5d22-4b62-88df-399df9956204",
+          "attempts": 4,
+          "stale_head_retries": 3,
+          "merge_wall_ms": 300.038,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 89.372,
+              "server": {
+                "start": 1792253335.425225,
+                "locked": 1792253335.480504
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 15.152
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 70.598,
+              "server": {
+                "start": 1792253335.527039,
+                "locked": 1792253335.591655
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.301
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "528aabf9-cde0-40f6-885b-122221a55951",
+              "wall_ms": 60.289,
+              "server": {
+                "start": 1792253335.598371,
+                "locked": 1792253335.656332
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.462
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "50db5744-b647-4f5f-b15f-569f55c6bb37",
+              "wall_ms": 59.484,
+              "server": {
+                "start": 1792253335.662335,
+                "locked": 1792253335.66295,
+                "merged": 1792253335.716596,
+                "committed": 1792253335.719881
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 8,
+          "revision": "4ef3e32a-8518-4055-825f-c98d263f8925",
+          "merged_head": "35e7c670-8c42-4535-8458-6d5d0a1c4c19",
+          "attempts": 10,
+          "stale_head_retries": 9,
+          "merge_wall_ms": 829.893,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 87.721,
+              "server": {
+                "start": 1792253335.42216,
+                "locked": 1792253335.475018
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 15.192
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 76.945,
+              "server": {
+                "start": 1792253335.525203,
+                "locked": 1792253335.590271
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.317
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "528aabf9-cde0-40f6-885b-122221a55951",
+              "wall_ms": 60.664,
+              "server": {
+                "start": 1792253335.603166,
+                "locked": 1792253335.659069
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.96
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "50db5744-b647-4f5f-b15f-569f55c6bb37",
+              "wall_ms": 58.236,
+              "server": {
+                "start": 1792253335.666991,
+                "locked": 1792253335.721581
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.483
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "48046eda-5d22-4b62-88df-399df9956204",
+              "wall_ms": 107.767,
+              "server": {
+                "start": 1792253335.726754,
+                "locked": 1792253335.771472
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 6.588
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "a4703232-c0e0-444a-9ee4-f94fcbab7e58",
+              "wall_ms": 127.601,
+              "server": {
+                "start": 1792253335.842047,
+                "locked": 1792253335.964118
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.276
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "86431e7b-f80f-4b1a-a87e-0d54bd583c0e",
+              "wall_ms": 98.335,
+              "server": {
+                "start": 1792253335.972186,
+                "locked": 1792253336.065539
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.402
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "28f4fb66-3e89-4028-84f8-4c32359936a5",
+              "wall_ms": 70.938,
+              "server": {
+                "start": 1792253336.069752,
+                "locked": 1792253336.116787
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.723
+            },
+            {
+              "kind": "merge",
+              "attempt": 9,
+              "expected": "3ee57fca-d915-430a-9619-08be9620931d",
+              "wall_ms": 48.56,
+              "server": {
+                "start": 1792253336.144384,
+                "locked": 1792253336.188665
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.235
+            },
+            {
+              "kind": "merge",
+              "attempt": 10,
+              "expected": "b9585e81-3dec-4116-a4f5-097681ce3cb2",
+              "wall_ms": 57.551,
+              "server": {
+                "start": 1792253336.194843,
+                "locked": 1792253336.195346,
+                "merged": 1792253336.247138,
+                "committed": 1792253336.250222
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 9,
+          "revision": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+          "merged_head": "a4703232-c0e0-444a-9ee4-f94fcbab7e58",
+          "attempts": 5,
+          "stale_head_retries": 4,
+          "merge_wall_ms": 413.434,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 89.43,
+              "server": {
+                "start": 1792253335.422471,
+                "locked": 1792253335.478663
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.37
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "1eae5e5a-18c6-4aeb-89ae-7cd96e91a2b3",
+              "wall_ms": 68.069,
+              "server": {
+                "start": 1792253335.523944,
+                "locked": 1792253335.589457
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.723
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "528aabf9-cde0-40f6-885b-122221a55951",
+              "wall_ms": 63.708,
+              "server": {
+                "start": 1792253335.595466,
+                "locked": 1792253335.655518
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 6.961
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "50db5744-b647-4f5f-b15f-569f55c6bb37",
+              "wall_ms": 55.692,
+              "server": {
+                "start": 1792253335.666174,
+                "locked": 1792253335.720069
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.189
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "48046eda-5d22-4b62-88df-399df9956204",
+              "wall_ms": 109.18,
+              "server": {
+                "start": 1792253335.725101,
+                "locked": 1792253335.725504,
+                "merged": 1792253335.768959,
+                "committed": 1792253335.770373
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        }
+      ],
+      "writer_breakdown_sum_ms": {
+        "final_client_overhead": 153.604,
+        "final_lock_wait": 5.851,
+        "merge_sql": 597.727,
+        "commit": 42.03,
+        "retry_client_overhead": 829.565,
+        "retry_lock_wait": 2888.962,
+        "retry_reread": 205.249,
+        "clock_step_unattributed": 0.0
+      },
+      "writer_breakdown_median_ms": {
+        "final_client_overhead": 4.521,
+        "final_lock_wait": 0.455,
+        "merge_sql": 52.719,
+        "commit": 3.184,
+        "retry_client_overhead": 79.588,
+        "retry_lock_wait": 258.427,
+        "retry_reread": 20.425,
+        "clock_step_unattributed": 0.0
+      },
+      "lock_timeline": {
+        "server_span_ms": 828.752,
+        "lock_held_by_winners_ms": 639.757,
+        "lock_free_ms": 188.995,
+        "lock_held_fraction": 0.772,
+        "first_start_to_first_lock_ms": 2.758,
+        "handoff_gap_ms": {
+          "n": 9,
+          "median": 7.522,
+          "min": 5.075,
+          "max": 69.03
+        }
+      }
+    },
+    {
+      "mode": "persistent_serialized",
+      "repetition": 1,
+      "database": "agentdb_test_mergebench_bb4c8a05_perss_1",
+      "session_open_ms": {
+        "n": 10,
+        "median": 477.115,
+        "min": 333.745,
+        "max": 701.294
+      },
+      "merge_phase_wall_ms": 659.581,
+      "merge_median_ms": 63.915,
+      "merge_max_ms": 109.033,
+      "stale_head_retries": 0,
+      "verification": {
+        "final_head": "a56ecee3-3c15-4df1-a5a6-033a26e82e5a",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "writers": [
+        {
+          "agent": 0,
+          "revision": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+          "merged_head": "c0c8f4af-c291-442e-b2bb-78e1f7240f3b",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 49.818,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 49.783,
+              "server": {
+                "start": 1792253343.694944,
+                "locked": 1792253343.69591,
+                "merged": 1792253343.740694,
+                "committed": 1792253343.742852
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 1,
+          "revision": "5c58ab58-f127-4b4a-9844-3b10e6f6ae9c",
+          "merged_head": "80a62a9d-a2e7-418b-8d61-0e68b90d6244",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 65.407,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "c0c8f4af-c291-442e-b2bb-78e1f7240f3b",
+              "wall_ms": 65.38,
+              "server": {
+                "start": 1792253343.7455,
+                "locked": 1792253343.746546,
+                "merged": 1792253343.80353,
+                "committed": 1792253343.808837
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 2,
+          "revision": "3404b2a2-879c-4934-9ae4-0d8e6a12db86",
+          "merged_head": "c8d7c42a-52f0-422e-a8fc-bd2f1b787b33",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 68.334,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "80a62a9d-a2e7-418b-8d61-0e68b90d6244",
+              "wall_ms": 68.282,
+              "server": {
+                "start": 1792253343.810943,
+                "locked": 1792253343.811949,
+                "merged": 1792253343.868059,
+                "committed": 1792253343.869647
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 3,
+          "revision": "e951add6-9734-4bcf-99fb-6e2a692f323a",
+          "merged_head": "5442ed00-789c-4659-957f-cf705e823a93",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 62.423,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "c8d7c42a-52f0-422e-a8fc-bd2f1b787b33",
+              "wall_ms": 62.375,
+              "server": {
+                "start": 1792253343.879357,
+                "locked": 1792253343.880287,
+                "merged": 1792253343.930388,
+                "committed": 1792253343.932901
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 4,
+          "revision": "0cd8ea07-73a9-4e9a-8cfe-4693bde857a8",
+          "merged_head": "b6f40553-95de-4b38-8116-fd0519411019",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 66.463,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "5442ed00-789c-4659-957f-cf705e823a93",
+              "wall_ms": 66.434,
+              "server": {
+                "start": 1792253343.942088,
+                "locked": 1792253343.943686,
+                "merged": 1792253344.001274,
+                "committed": 1792253344.005884
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 5,
+          "revision": "c7c16f29-5988-4d99-b009-6f94daf79415",
+          "merged_head": "fde2bcc0-e5b5-4a69-a15f-7e6d92560bbd",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 57.53,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "b6f40553-95de-4b38-8116-fd0519411019",
+              "wall_ms": 57.488,
+              "server": {
+                "start": 1792253344.008492,
+                "locked": 1792253344.009524,
+                "merged": 1792253344.05697,
+                "committed": 1792253344.058375
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 6,
+          "revision": "7e6d356f-c478-46fd-8359-7b1f9aec1fbd",
+          "merged_head": "96b55c19-168e-4470-995e-f2880f0b8d7f",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 68.349,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "fde2bcc0-e5b5-4a69-a15f-7e6d92560bbd",
+              "wall_ms": 68.308,
+              "server": {
+                "start": 1792253344.065735,
+                "locked": 1792253344.06675,
+                "merged": 1792253344.108688,
+                "committed": 1792253344.110341
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 7,
+          "revision": "e56b830e-43b4-4a8b-bc32-becc89abea03",
+          "merged_head": "91f407e9-5319-4c72-8754-fe7d3ded55fa",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 109.033,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "96b55c19-168e-4470-995e-f2880f0b8d7f",
+              "wall_ms": 109.003,
+              "server": {
+                "start": 1792253344.134918,
+                "locked": 1792253344.136699,
+                "merged": 1792253344.236228,
+                "committed": 1792253344.241107
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 8,
+          "revision": "4ef3e32a-8518-4055-825f-c98d263f8925",
+          "merged_head": "7715b1c0-c71c-48b9-b699-5c450dbb8077",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 53.899,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "91f407e9-5319-4c72-8754-fe7d3ded55fa",
+              "wall_ms": 53.869,
+              "server": {
+                "start": 1792253344.243228,
+                "locked": 1792253344.244246,
+                "merged": 1792253344.292705,
+                "committed": 1792253344.294272
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 9,
+          "revision": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+          "merged_head": "a56ecee3-3c15-4df1-a5a6-033a26e82e5a",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 58.245,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "7715b1c0-c71c-48b9-b699-5c450dbb8077",
+              "wall_ms": 58.217,
+              "server": {
+                "start": 1792253344.297038,
+                "locked": 1792253344.297952,
+                "merged": 1792253344.346886,
+                "committed": 1792253344.349436
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        }
+      ],
+      "writer_breakdown_sum_ms": {
+        "final_client_overhead": 67.73,
+        "final_lock_wait": 11.306,
+        "merge_sql": 551.873,
+        "commit": 28.23,
+        "retry_client_overhead": 0.0,
+        "retry_lock_wait": 0.0,
+        "retry_reread": 0.0,
+        "clock_step_unattributed": 0.0
+      },
+      "writer_breakdown_median_ms": {
+        "final_client_overhead": 4.322,
+        "final_lock_wait": 1.016,
+        "merge_sql": 49.517,
+        "commit": 2.335,
+        "retry_client_overhead": 0.0,
+        "retry_lock_wait": 0.0,
+        "retry_reread": 0.0,
+        "clock_step_unattributed": 0.0
+      },
+      "lock_timeline": {
+        "server_span_ms": 654.492,
+        "lock_held_by_winners_ms": 580.103,
+        "lock_free_ms": 74.389,
+        "lock_held_fraction": 0.8863,
+        "first_start_to_first_lock_ms": 0.966,
+        "handoff_gap_ms": {
+          "n": 9,
+          "median": 3.694,
+          "min": 3.112,
+          "max": 26.358
+        }
+      }
+    },
+    {
+      "mode": "persistent_concurrent",
+      "repetition": 2,
+      "database": "agentdb_test_mergebench_bb4c8a05_persc_2",
+      "session_open_ms": {
+        "n": 10,
+        "median": 437.147,
+        "min": 278.931,
+        "max": 523.724
+      },
+      "merge_phase_wall_ms": 830.916,
+      "merge_median_ms": 364.806,
+      "merge_max_ms": 634.203,
+      "stale_head_retries": 45,
+      "verification": {
+        "final_head": "61614372-6096-431e-9b2a-04b9104b8ba3",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "writers": [
+        {
+          "agent": 0,
+          "revision": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+          "merged_head": "dd070133-f2da-4a25-965a-ed761fece450",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 52.39,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 52.352,
+              "server": {
+                "start": 1792253350.599473,
+                "locked": 1792253350.60049,
+                "merged": 1792253350.64884,
+                "committed": 1792253350.652808
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 1,
+          "revision": "5c58ab58-f127-4b4a-9844-3b10e6f6ae9c",
+          "merged_head": "9a268e46-ec70-4752-9f60-ee4d97d97887",
+          "attempts": 8,
+          "stale_head_retries": 7,
+          "merge_wall_ms": 538.918,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 67.843,
+              "server": {
+                "start": 1792253350.600123,
+                "locked": 1792253350.665329
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.834
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 63.113,
+              "server": {
+                "start": 1792253350.673847,
+                "locked": 1792253350.722741
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 8.092
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+              "wall_ms": 50.405,
+              "server": {
+                "start": 1792253350.749492,
+                "locked": 1792253350.798393
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 27.721
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "bc564df2-d7b3-4d5a-9e8e-be3e4a2fe100",
+              "wall_ms": 53.906,
+              "server": {
+                "start": 1792253350.832478,
+                "locked": 1792253350.875661
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.366
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "1e3ea692-765f-4233-89f0-8e9504696dd9",
+              "wall_ms": 67.629,
+              "server": {
+                "start": 1792253350.930239,
+                "locked": 1792253350.960061
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 7.001
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "46a28e4f-9cea-4042-bcc3-d72c59ed0c69",
+              "wall_ms": 47.568,
+              "server": {
+                "start": 1792253350.970923,
+                "locked": 1792253351.018122
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.824
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "59e833ae-6413-4973-a5c1-c6ada83024d8",
+              "wall_ms": 53.712,
+              "server": {
+                "start": 1792253351.025769,
+                "locked": 1792253351.071595
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 11.908
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "a19bf40a-b1d4-4108-9d6a-e99fc7712fcf",
+              "wall_ms": 71.581,
+              "server": {
+                "start": 1792253351.095672,
+                "locked": 1792253351.096227,
+                "merged": 1792253351.15743,
+                "committed": 1792253351.166185
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 2,
+          "revision": "3404b2a2-879c-4934-9ae4-0d8e6a12db86",
+          "merged_head": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+          "attempts": 2,
+          "stale_head_retries": 1,
+          "merge_wall_ms": 124.478,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 52.361,
+              "server": {
+                "start": 1792253350.600724,
+                "locked": 1792253350.652984
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.218
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 69.837,
+              "server": {
+                "start": 1792253350.658504,
+                "locked": 1792253350.67197,
+                "merged": 1792253350.715802,
+                "committed": 1792253350.718592
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 3,
+          "revision": "e951add6-9734-4bcf-99fb-6e2a692f323a",
+          "merged_head": "1e3ea692-765f-4233-89f0-8e9504696dd9",
+          "attempts": 4,
+          "stale_head_retries": 3,
+          "merge_wall_ms": 266.758,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 56.947,
+              "server": {
+                "start": 1792253350.601886,
+                "locked": 1792253350.657214
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 7.223
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 66.714,
+              "server": {
+                "start": 1792253350.669755,
+                "locked": 1792253350.720254
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 8.157
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+              "wall_ms": 49.426,
+              "server": {
+                "start": 1792253350.749165,
+                "locked": 1792253350.797668
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 16.038
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "bc564df2-d7b3-4d5a-9e8e-be3e4a2fe100",
+              "wall_ms": 62.157,
+              "server": {
+                "start": 1792253350.818582,
+                "locked": 1792253350.819203,
+                "merged": 1792253350.870818,
+                "committed": 1792253350.872295
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 4,
+          "revision": "0cd8ea07-73a9-4e9a-8cfe-4693bde857a8",
+          "merged_head": "69c5df85-3481-40b7-806e-629a559b04c4",
+          "attempts": 9,
+          "stale_head_retries": 8,
+          "merge_wall_ms": 582.793,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 67.484,
+              "server": {
+                "start": 1792253350.623554,
+                "locked": 1792253350.670052
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.24
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 62.485,
+              "server": {
+                "start": 1792253350.674907,
+                "locked": 1792253350.723378
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 8.434
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+              "wall_ms": 50.407,
+              "server": {
+                "start": 1792253350.750724,
+                "locked": 1792253350.799056
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 26.616
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "bc564df2-d7b3-4d5a-9e8e-be3e4a2fe100",
+              "wall_ms": 53.985,
+              "server": {
+                "start": 1792253350.833018,
+                "locked": 1792253350.876358
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 27.458
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "1e3ea692-765f-4233-89f0-8e9504696dd9",
+              "wall_ms": 41.921,
+              "server": {
+                "start": 1792253350.918405,
+                "locked": 1792253350.959448
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.232
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "46a28e4f-9cea-4042-bcc3-d72c59ed0c69",
+              "wall_ms": 51.322,
+              "server": {
+                "start": 1792253350.968653,
+                "locked": 1792253351.017037
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 24.499
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "59e833ae-6413-4973-a5c1-c6ada83024d8",
+              "wall_ms": 31.968,
+              "server": {
+                "start": 1792253351.048908,
+                "locked": 1792253351.072405
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 12.501
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "a19bf40a-b1d4-4108-9d6a-e99fc7712fcf",
+              "wall_ms": 65.394,
+              "server": {
+                "start": 1792253351.09586,
+                "locked": 1792253351.163105
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.429
+            },
+            {
+              "kind": "merge",
+              "attempt": 9,
+              "expected": "9a268e46-ec70-4752-9f60-ee4d97d97887",
+              "wall_ms": 49.973,
+              "server": {
+                "start": 1792253351.166526,
+                "locked": 1792253351.166943,
+                "merged": 1792253351.215654,
+                "committed": 1792253351.217372
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 5,
+          "revision": "c7c16f29-5988-4d99-b009-6f94daf79415",
+          "merged_head": "46a28e4f-9cea-4042-bcc3-d72c59ed0c69",
+          "attempts": 5,
+          "stale_head_retries": 4,
+          "merge_wall_ms": 339.727,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 56.07,
+              "server": {
+                "start": 1792253350.603172,
+                "locked": 1792253350.659073
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 6.422
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 58.446,
+              "server": {
+                "start": 1792253350.669219,
+                "locked": 1792253350.71956
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.143
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+              "wall_ms": 51.164,
+              "server": {
+                "start": 1792253350.745169,
+                "locked": 1792253350.794026
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 18.33
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "bc564df2-d7b3-4d5a-9e8e-be3e4a2fe100",
+              "wall_ms": 63.067,
+              "server": {
+                "start": 1792253350.818721,
+                "locked": 1792253350.873379
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.067
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "1e3ea692-765f-4233-89f0-8e9504696dd9",
+              "wall_ms": 67.935,
+              "server": {
+                "start": 1792253350.890843,
+                "locked": 1792253350.891291,
+                "merged": 1792253350.954134,
+                "committed": 1792253350.956474
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 6,
+          "revision": "7e6d356f-c478-46fd-8359-7b1f9aec1fbd",
+          "merged_head": "61614372-6096-431e-9b2a-04b9104b8ba3",
+          "attempts": 10,
+          "stale_head_retries": 9,
+          "merge_wall_ms": 634.203,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 61.015,
+              "server": {
+                "start": 1792253350.603515,
+                "locked": 1792253350.66102
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.139
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 57.551,
+              "server": {
+                "start": 1792253350.67042,
+                "locked": 1792253350.720876
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.139
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+              "wall_ms": 52.077,
+              "server": {
+                "start": 1792253350.745361,
+                "locked": 1792253350.794898
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 19.561
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "bc564df2-d7b3-4d5a-9e8e-be3e4a2fe100",
+              "wall_ms": 63.75,
+              "server": {
+                "start": 1792253350.821478,
+                "locked": 1792253350.874859
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 27.29
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "1e3ea692-765f-4233-89f0-8e9504696dd9",
+              "wall_ms": 41.9,
+              "server": {
+                "start": 1792253350.918193,
+                "locked": 1792253350.958409
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.202
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "46a28e4f-9cea-4042-bcc3-d72c59ed0c69",
+              "wall_ms": 49.589,
+              "server": {
+                "start": 1792253350.967841,
+                "locked": 1792253351.015764
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.241
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "59e833ae-6413-4973-a5c1-c6ada83024d8",
+              "wall_ms": 55.964,
+              "server": {
+                "start": 1792253351.022581,
+                "locked": 1792253351.070685
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.048
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "a19bf40a-b1d4-4108-9d6a-e99fc7712fcf",
+              "wall_ms": 65.804,
+              "server": {
+                "start": 1792253351.095933,
+                "locked": 1792253351.16395
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.261
+            },
+            {
+              "kind": "merge",
+              "attempt": 9,
+              "expected": "9a268e46-ec70-4752-9f60-ee4d97d97887",
+              "wall_ms": 49.916,
+              "server": {
+                "start": 1792253351.169941,
+                "locked": 1792253351.217586
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.316
+            },
+            {
+              "kind": "merge",
+              "attempt": 10,
+              "expected": "69c5df85-3481-40b7-806e-629a559b04c4",
+              "wall_ms": 51.07,
+              "server": {
+                "start": 1792253351.221176,
+                "locked": 1792253351.221533,
+                "merged": 1792253351.263674,
+                "committed": 1792253351.266301
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 7,
+          "revision": "e56b830e-43b4-4a8b-bc32-becc89abea03",
+          "merged_head": "59e833ae-6413-4973-a5c1-c6ada83024d8",
+          "attempts": 6,
+          "stale_head_retries": 5,
+          "merge_wall_ms": 389.885,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 58.415,
+              "server": {
+                "start": 1792253350.604791,
+                "locked": 1792253350.663068
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.584
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 59.69,
+              "server": {
+                "start": 1792253350.671013,
+                "locked": 1792253350.721522
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.127
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+              "wall_ms": 52.246,
+              "server": {
+                "start": 1792253350.745668,
+                "locked": 1792253350.79575
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 16.363
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "bc564df2-d7b3-4d5a-9e8e-be3e4a2fe100",
+              "wall_ms": 63.272,
+              "server": {
+                "start": 1792253350.818485,
+                "locked": 1792253350.872512
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.581
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "1e3ea692-765f-4233-89f0-8e9504696dd9",
+              "wall_ms": 63.551,
+              "server": {
+                "start": 1792253350.891169,
+                "locked": 1792253350.956591
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.873
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "46a28e4f-9cea-4042-bcc3-d72c59ed0c69",
+              "wall_ms": 53.051,
+              "server": {
+                "start": 1792253350.961641,
+                "locked": 1792253350.962046,
+                "merged": 1792253351.013048,
+                "committed": 1792253351.014797
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 8,
+          "revision": "4ef3e32a-8518-4055-825f-c98d263f8925",
+          "merged_head": "bc564df2-d7b3-4d5a-9e8e-be3e4a2fe100",
+          "attempts": 3,
+          "stale_head_retries": 2,
+          "merge_wall_ms": 186.119,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 56.345,
+              "server": {
+                "start": 1792253350.601709,
+                "locked": 1792253350.655089
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.371
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 60.281,
+              "server": {
+                "start": 1792253350.667276,
+                "locked": 1792253350.718782
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.162
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+              "wall_ms": 50.854,
+              "server": {
+                "start": 1792253350.745019,
+                "locked": 1792253350.745499,
+                "merged": 1792253350.791878,
+                "committed": 1792253350.793992
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 9,
+          "revision": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+          "merged_head": "a19bf40a-b1d4-4108-9d6a-e99fc7712fcf",
+          "attempts": 7,
+          "stale_head_retries": 6,
+          "merge_wall_ms": 456.047,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 68.754,
+              "server": {
+                "start": 1792253350.622655,
+                "locked": 1792253350.668309
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.763
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "dd070133-f2da-4a25-965a-ed761fece450",
+              "wall_ms": 62.733,
+              "server": {
+                "start": 1792253350.673238,
+                "locked": 1792253350.722133
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 8.454
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "af63303a-be4a-4d9b-addf-c4a0b77f5322",
+              "wall_ms": 49.357,
+              "server": {
+                "start": 1792253350.748985,
+                "locked": 1792253350.796699
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 15.555
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "bc564df2-d7b3-4d5a-9e8e-be3e4a2fe100",
+              "wall_ms": 66.901,
+              "server": {
+                "start": 1792253350.821123,
+                "locked": 1792253350.874147
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.707
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "1e3ea692-765f-4233-89f0-8e9504696dd9",
+              "wall_ms": 64.233,
+              "server": {
+                "start": 1792253350.891361,
+                "locked": 1792253350.957394
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.414
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "46a28e4f-9cea-4042-bcc3-d72c59ed0c69",
+              "wall_ms": 53.448,
+              "server": {
+                "start": 1792253350.966074,
+                "locked": 1792253351.015035
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.196
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "59e833ae-6413-4973-a5c1-c6ada83024d8",
+              "wall_ms": 56.265,
+              "server": {
+                "start": 1792253351.022276,
+                "locked": 1792253351.022702,
+                "merged": 1792253351.068354,
+                "committed": 1792253351.070429
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        }
+      ],
+      "writer_breakdown_sum_ms": {
+        "final_client_overhead": 35.542,
+        "final_lock_wait": 18.192,
+        "merge_sql": 501.728,
+        "commit": 29.613,
+        "retry_client_overhead": 291.673,
+        "retry_lock_wait": 2268.456,
+        "retry_reread": 424.1,
+        "clock_step_unattributed": 0.0
+      },
+      "writer_breakdown_median_ms": {
+        "final_client_overhead": 2.092,
+        "final_lock_wait": 0.464,
+        "merge_sql": 48.531,
+        "commit": 2.227,
+        "retry_client_overhead": 18.923,
+        "retry_lock_wait": 244.037,
+        "retry_reread": 36.808,
+        "clock_step_unattributed": 0.0
+      },
+      "lock_timeline": {
+        "server_span_ms": 666.828,
+        "lock_held_by_winners_ms": 531.341,
+        "lock_free_ms": 135.487,
+        "lock_held_fraction": 0.7968,
+        "first_start_to_first_lock_ms": 1.017,
+        "handoff_gap_ms": {
+          "n": 9,
+          "median": 18.996,
+          "min": 0.758,
+          "max": 26.907
+        }
+      }
+    },
+    {
+      "mode": "persistent_serialized",
+      "repetition": 2,
+      "database": "agentdb_test_mergebench_bb4c8a05_perss_2",
+      "session_open_ms": {
+        "n": 10,
+        "median": 338.886,
+        "min": 242.597,
+        "max": 427.505
+      },
+      "merge_phase_wall_ms": 786.165,
+      "merge_median_ms": 64.256,
+      "merge_max_ms": 154.656,
+      "stale_head_retries": 0,
+      "verification": {
+        "final_head": "8871e1f3-5c69-473d-a23e-db7634736951",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "writers": [
+        {
+          "agent": 0,
+          "revision": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+          "merged_head": "37a3607e-13ef-41e2-9f8b-06a2024d69c2",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 57.476,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 57.442,
+              "server": {
+                "start": 1792253357.758108,
+                "locked": 1792253357.759365,
+                "merged": 1792253357.804296,
+                "committed": 1792253357.806284
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 1,
+          "revision": "5c58ab58-f127-4b4a-9844-3b10e6f6ae9c",
+          "merged_head": "7c1fa13c-2d67-4e17-aedf-ab80a692c208",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 69.459,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "37a3607e-13ef-41e2-9f8b-06a2024d69c2",
+              "wall_ms": 69.369,
+              "server": {
+                "start": 1792253357.820516,
+                "locked": 1792253357.82179,
+                "merged": 1792253357.886173,
+                "committed": 1792253357.892805
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 2,
+          "revision": "3404b2a2-879c-4934-9ae4-0d8e6a12db86",
+          "merged_head": "3436b74f-fe86-4304-bdac-321e5737a899",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 120.885,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "7c1fa13c-2d67-4e17-aedf-ab80a692c208",
+              "wall_ms": 120.819,
+              "server": {
+                "start": 1792253357.897138,
+                "locked": 1792253357.899973,
+                "merged": 1792253357.949179,
+                "committed": 1792253357.95064
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 3,
+          "revision": "e951add6-9734-4bcf-99fb-6e2a692f323a",
+          "merged_head": "76057e96-b94c-422a-bae0-3954ef545b93",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 154.656,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "3436b74f-fe86-4304-bdac-321e5737a899",
+              "wall_ms": 154.625,
+              "server": {
+                "start": 1792253358.062839,
+                "locked": 1792253358.064097,
+                "merged": 1792253358.174357,
+                "committed": 1792253358.19168
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 4,
+          "revision": "0cd8ea07-73a9-4e9a-8cfe-4693bde857a8",
+          "merged_head": "5a825743-1b54-426f-bbe4-24fb94014de3",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 79.446,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "76057e96-b94c-422a-bae0-3954ef545b93",
+              "wall_ms": 79.419,
+              "server": {
+                "start": 1792253358.193722,
+                "locked": 1792253358.194631,
+                "merged": 1792253358.260976,
+                "committed": 1792253358.269275
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 5,
+          "revision": "c7c16f29-5988-4d99-b009-6f94daf79415",
+          "merged_head": "47c1962b-1b42-437c-885f-9bfc32709636",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 57.434,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "5a825743-1b54-426f-bbe4-24fb94014de3",
+              "wall_ms": 57.286,
+              "server": {
+                "start": 1792253358.279784,
+                "locked": 1792253358.280889,
+                "merged": 1792253358.332955,
+                "committed": 1792253358.338415
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 6,
+          "revision": "7e6d356f-c478-46fd-8359-7b1f9aec1fbd",
+          "merged_head": "394f1691-1472-4e26-99f7-4dfb1be1d3bf",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 56.871,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "47c1962b-1b42-437c-885f-9bfc32709636",
+              "wall_ms": 56.841,
+              "server": {
+                "start": 1792253358.342115,
+                "locked": 1792253358.343018,
+                "merged": 1792253358.395112,
+                "committed": 1792253358.400924
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 7,
+          "revision": "e56b830e-43b4-4a8b-bc32-becc89abea03",
+          "merged_head": "7cd684ad-32cf-470a-9185-8998f5d45801",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 61.303,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "394f1691-1472-4e26-99f7-4dfb1be1d3bf",
+              "wall_ms": 61.255,
+              "server": {
+                "start": 1792253358.403712,
+                "locked": 1792253358.404736,
+                "merged": 1792253358.451917,
+                "committed": 1792253358.453414
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 8,
+          "revision": "4ef3e32a-8518-4055-825f-c98d263f8925",
+          "merged_head": "9a3b4885-d8ab-44e8-b4cf-920e3ace6219",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 64.723,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "7cd684ad-32cf-470a-9185-8998f5d45801",
+              "wall_ms": 64.693,
+              "server": {
+                "start": 1792253358.47039,
+                "locked": 1792253358.472,
+                "merged": 1792253358.528478,
+                "committed": 1792253358.537894
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 9,
+          "revision": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+          "merged_head": "8871e1f3-5c69-473d-a23e-db7634736951",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 63.789,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "9a3b4885-d8ab-44e8-b4cf-920e3ace6219",
+              "wall_ms": 63.449,
+              "server": {
+                "start": 1792253358.540519,
+                "locked": 1792253358.541703,
+                "merged": 1792253358.601864,
+                "committed": 1792253358.607058
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        }
+      ],
+      "writer_breakdown_sum_ms": {
+        "final_client_overhead": 105.652,
+        "final_lock_wait": 13.359,
+        "merge_sql": 603.105,
+        "commit": 63.082,
+        "retry_client_overhead": 0.0,
+        "retry_lock_wait": 0.0,
+        "retry_reread": 0.0,
+        "clock_step_unattributed": 0.0
+      },
+      "writer_breakdown_median_ms": {
+        "final_client_overhead": 1.26,
+        "final_lock_wait": 1.22,
+        "merge_sql": 54.286,
+        "commit": 5.636,
+        "retry_client_overhead": 0.0,
+        "retry_lock_wait": 0.0,
+        "retry_reread": 0.0,
+        "clock_step_unattributed": 0.0
+      },
+      "lock_timeline": {
+        "server_span_ms": 848.95,
+        "lock_held_by_winners_ms": 666.187,
+        "lock_free_ms": 182.763,
+        "lock_held_fraction": 0.7847,
+        "first_start_to_first_lock_ms": 1.257,
+        "handoff_gap_ms": {
+          "n": 9,
+          "median": 7.168,
+          "min": 2.951,
+          "max": 113.457
+        }
+      }
+    },
+    {
+      "mode": "persistent_concurrent",
+      "repetition": 3,
+      "database": "agentdb_test_mergebench_bb4c8a05_persc_3",
+      "session_open_ms": {
+        "n": 10,
+        "median": 389.063,
+        "min": 205.593,
+        "max": 752.712
+      },
+      "merge_phase_wall_ms": 875.651,
+      "merge_median_ms": 428.034,
+      "merge_max_ms": 713.311,
+      "stale_head_retries": 45,
+      "verification": {
+        "final_head": "cc3e4139-065b-4dcb-b873-e1bd242b1af3",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "writers": [
+        {
+          "agent": 0,
+          "revision": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+          "merged_head": "cc3e4139-065b-4dcb-b873-e1bd242b1af3",
+          "attempts": 10,
+          "stale_head_retries": 9,
+          "merge_wall_ms": 713.311,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 88.461,
+              "server": {
+                "start": 1792253364.937189,
+                "locked": 1792253365.022107
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.245
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 66.37,
+              "server": {
+                "start": 1792253365.028522,
+                "locked": 1792253365.095122
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.784
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+              "wall_ms": 117.833,
+              "server": {
+                "start": 1792253365.103788,
+                "locked": 1792253365.145288
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 8.816
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "64556783-19c2-49e5-b9a6-bf233a234bcc",
+              "wall_ms": 66.06,
+              "server": {
+                "start": 1792253365.239661,
+                "locked": 1792253365.302431
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.94
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "0e499df2-afc6-4b64-8714-8aa00e3c97d8",
+              "wall_ms": 52.674,
+              "server": {
+                "start": 1792253365.312523,
+                "locked": 1792253365.366818
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.268
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "f0a1cb47-a96f-4955-83b1-e55717b60f0f",
+              "wall_ms": 44.027,
+              "server": {
+                "start": 1792253365.373965,
+                "locked": 1792253365.416338
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 13.547
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "169fd60e-4b53-4a8a-99b4-b39683071f9d",
+              "wall_ms": 52.603,
+              "server": {
+                "start": 1792253365.437423,
+                "locked": 1792253365.480811
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.936
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "4604edb5-75c1-46ef-a13d-742992b6ff7f",
+              "wall_ms": 76.894,
+              "server": {
+                "start": 1792253365.50353,
+                "locked": 1792253365.544156
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.735
+            },
+            {
+              "kind": "merge",
+              "attempt": 9,
+              "expected": "df6927f3-49a6-477b-8152-9b73afe38380",
+              "wall_ms": 62.891,
+              "server": {
+                "start": 1792253365.581701,
+                "locked": 1792253365.647158
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.236
+            },
+            {
+              "kind": "merge",
+              "attempt": 10,
+              "expected": "785e5dfe-d827-45d7-981a-58b874bf8ced",
+              "wall_ms": 45.664,
+              "server": {
+                "start": 1792253365.650661,
+                "locked": 1792253365.650998,
+                "merged": 1792253365.696519,
+                "committed": 1792253365.697949
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 1,
+          "revision": "5c58ab58-f127-4b4a-9844-3b10e6f6ae9c",
+          "merged_head": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+          "attempts": 2,
+          "stale_head_retries": 1,
+          "merge_wall_ms": 150.439,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 68.3,
+              "server": {
+                "start": 1792253364.932948,
+                "locked": 1792253365.001037
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.355
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 80.704,
+              "server": {
+                "start": 1792253365.006523,
+                "locked": 1792253365.030022,
+                "merged": 1792253365.086546,
+                "committed": 1792253365.090293
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 2,
+          "revision": "3404b2a2-879c-4934-9ae4-0d8e6a12db86",
+          "merged_head": "f0a1cb47-a96f-4955-83b1-e55717b60f0f",
+          "attempts": 5,
+          "stale_head_retries": 4,
+          "merge_wall_ms": 403.676,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 80.614,
+              "server": {
+                "start": 1792253364.935072,
+                "locked": 1792253365.015075
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.142
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 72.834,
+              "server": {
+                "start": 1792253365.019729,
+                "locked": 1792253365.093571
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.474
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+              "wall_ms": 121.387,
+              "server": {
+                "start": 1792253365.099672,
+                "locked": 1792253365.143041
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 6.804
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "64556783-19c2-49e5-b9a6-bf233a234bcc",
+              "wall_ms": 60.575,
+              "server": {
+                "start": 1792253365.23805,
+                "locked": 1792253365.300925
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.399
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "0e499df2-afc6-4b64-8714-8aa00e3c97d8",
+              "wall_ms": 55.314,
+              "server": {
+                "start": 1792253365.308791,
+                "locked": 1792253365.30915,
+                "merged": 1792253365.362735,
+                "committed": 1792253365.364639
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 3,
+          "revision": "e951add6-9734-4bcf-99fb-6e2a692f323a",
+          "merged_head": "785e5dfe-d827-45d7-981a-58b874bf8ced",
+          "attempts": 9,
+          "stale_head_retries": 8,
+          "merge_wall_ms": 666.137,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 72.645,
+              "server": {
+                "start": 1792253364.933472,
+                "locked": 1792253365.006803
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.943
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 75.564,
+              "server": {
+                "start": 1792253365.013932,
+                "locked": 1792253365.091291
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.64
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+              "wall_ms": 129.518,
+              "server": {
+                "start": 1792253365.10233,
+                "locked": 1792253365.1437
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.905
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "64556783-19c2-49e5-b9a6-bf233a234bcc",
+              "wall_ms": 60.686,
+              "server": {
+                "start": 1792253365.242466,
+                "locked": 1792253365.304391
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.488
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "0e499df2-afc6-4b64-8714-8aa00e3c97d8",
+              "wall_ms": 56.64,
+              "server": {
+                "start": 1792253365.31218,
+                "locked": 1792253365.366156
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.904
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "f0a1cb47-a96f-4955-83b1-e55717b60f0f",
+              "wall_ms": 44.023,
+              "server": {
+                "start": 1792253365.375223,
+                "locked": 1792253365.416951
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 15.632
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "169fd60e-4b53-4a8a-99b4-b39683071f9d",
+              "wall_ms": 50.078,
+              "server": {
+                "start": 1792253365.439514,
+                "locked": 1792253365.4834
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 10.089
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "4604edb5-75c1-46ef-a13d-742992b6ff7f",
+              "wall_ms": 68.619,
+              "server": {
+                "start": 1792253365.50458,
+                "locked": 1792253365.544985
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.79
+            },
+            {
+              "kind": "merge",
+              "attempt": 9,
+              "expected": "df6927f3-49a6-477b-8152-9b73afe38380",
+              "wall_ms": 62.749,
+              "server": {
+                "start": 1792253365.581521,
+                "locked": 1792253365.582173,
+                "merged": 1792253365.638823,
+                "committed": 1792253365.647066
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 4,
+          "revision": "0cd8ea07-73a9-4e9a-8cfe-4693bde857a8",
+          "merged_head": "df6927f3-49a6-477b-8152-9b73afe38380",
+          "attempts": 8,
+          "stale_head_retries": 7,
+          "merge_wall_ms": 598.771,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 84.572,
+              "server": {
+                "start": 1792253364.937205,
+                "locked": 1792253365.017228
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.308
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 69.445,
+              "server": {
+                "start": 1792253365.024537,
+                "locked": 1792253365.094406
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.766
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+              "wall_ms": 121.39,
+              "server": {
+                "start": 1792253365.103492,
+                "locked": 1792253365.144473
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 5.796
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "64556783-19c2-49e5-b9a6-bf233a234bcc",
+              "wall_ms": 65.924,
+              "server": {
+                "start": 1792253365.240983,
+                "locked": 1792253365.303813
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.9
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "0e499df2-afc6-4b64-8714-8aa00e3c97d8",
+              "wall_ms": 52.197,
+              "server": {
+                "start": 1792253365.313332,
+                "locked": 1792253365.367457
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.824
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "f0a1cb47-a96f-4955-83b1-e55717b60f0f",
+              "wall_ms": 44.975,
+              "server": {
+                "start": 1792253365.377422,
+                "locked": 1792253365.417505
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 14.237
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "169fd60e-4b53-4a8a-99b4-b39683071f9d",
+              "wall_ms": 50.576,
+              "server": {
+                "start": 1792253365.439324,
+                "locked": 1792253365.482303
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.964
+            },
+            {
+              "kind": "merge",
+              "attempt": 8,
+              "expected": "4604edb5-75c1-46ef-a13d-742992b6ff7f",
+              "wall_ms": 75.576,
+              "server": {
+                "start": 1792253365.495197,
+                "locked": 1792253365.495573,
+                "merged": 1792253365.542113,
+                "committed": 1792253365.543828
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 5,
+          "revision": "c7c16f29-5988-4d99-b009-6f94daf79415",
+          "merged_head": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 64.277,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 64.25,
+              "server": {
+                "start": 1792253364.933356,
+                "locked": 1792253364.934172,
+                "merged": 1792253364.998827,
+                "committed": 1792253365.000837
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 6,
+          "revision": "7e6d356f-c478-46fd-8359-7b1f9aec1fbd",
+          "merged_head": "64556783-19c2-49e5-b9a6-bf233a234bcc",
+          "attempts": 3,
+          "stale_head_retries": 2,
+          "merge_wall_ms": 271.977,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 69.651,
+              "server": {
+                "start": 1792253364.93322,
+                "locked": 1792253365.003334
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.173
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 77.15,
+              "server": {
+                "start": 1792253365.009136,
+                "locked": 1792253365.090298
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.532
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+              "wall_ms": 122.376,
+              "server": {
+                "start": 1792253365.09399,
+                "locked": 1792253365.096454,
+                "merged": 1792253365.139339,
+                "committed": 1792253365.14108
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 7,
+          "revision": "e56b830e-43b4-4a8b-bc32-becc89abea03",
+          "merged_head": "4604edb5-75c1-46ef-a13d-742992b6ff7f",
+          "attempts": 7,
+          "stale_head_retries": 6,
+          "merge_wall_ms": 519.674,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 91.387,
+              "server": {
+                "start": 1792253364.938039,
+                "locked": 1792253365.026385
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.56
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 64.665,
+              "server": {
+                "start": 1792253365.03311,
+                "locked": 1792253365.095924
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.778
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+              "wall_ms": 119.877,
+              "server": {
+                "start": 1792253365.104608,
+                "locked": 1792253365.145893
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.257
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "64556783-19c2-49e5-b9a6-bf233a234bcc",
+              "wall_ms": 62.903,
+              "server": {
+                "start": 1792253365.238479,
+                "locked": 1792253365.301784
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.691
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "0e499df2-afc6-4b64-8714-8aa00e3c97d8",
+              "wall_ms": 52.289,
+              "server": {
+                "start": 1792253365.310959,
+                "locked": 1792253365.365524
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 4.813
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "f0a1cb47-a96f-4955-83b1-e55717b60f0f",
+              "wall_ms": 44.878,
+              "server": {
+                "start": 1792253365.372668,
+                "locked": 1792253365.415569
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 14.815
+            },
+            {
+              "kind": "merge",
+              "attempt": 7,
+              "expected": "169fd60e-4b53-4a8a-99b4-b39683071f9d",
+              "wall_ms": 51.565,
+              "server": {
+                "start": 1792253365.437036,
+                "locked": 1792253365.437683,
+                "merged": 1792253365.477978,
+                "committed": 1792253365.480583
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 8,
+          "revision": "4ef3e32a-8518-4055-825f-c98d263f8925",
+          "merged_head": "169fd60e-4b53-4a8a-99b4-b39683071f9d",
+          "attempts": 6,
+          "stale_head_retries": 5,
+          "merge_wall_ms": 452.391,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 74.923,
+              "server": {
+                "start": 1792253364.934417,
+                "locked": 1792253365.008925
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.753
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 73.792,
+              "server": {
+                "start": 1792253365.016083,
+                "locked": 1792253365.092067
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.44
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+              "wall_ms": 123.069,
+              "server": {
+                "start": 1792253365.098362,
+                "locked": 1792253365.142185
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 8.255
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "64556783-19c2-49e5-b9a6-bf233a234bcc",
+              "wall_ms": 61.852,
+              "server": {
+                "start": 1792253365.239986,
+                "locked": 1792253365.30314
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 3.095
+            },
+            {
+              "kind": "merge",
+              "attempt": 5,
+              "expected": "0e499df2-afc6-4b64-8714-8aa00e3c97d8",
+              "wall_ms": 53.837,
+              "server": {
+                "start": 1792253365.30962,
+                "locked": 1792253365.36478
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.396
+            },
+            {
+              "kind": "merge",
+              "attempt": 6,
+              "expected": "f0a1cb47-a96f-4955-83b1-e55717b60f0f",
+              "wall_ms": 47.599,
+              "server": {
+                "start": 1792253365.369114,
+                "locked": 1792253365.369548,
+                "merged": 1792253365.413623,
+                "committed": 1792253365.415154
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 9,
+          "revision": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+          "merged_head": "0e499df2-afc6-4b64-8714-8aa00e3c97d8",
+          "attempts": 4,
+          "stale_head_retries": 3,
+          "merge_wall_ms": 347.418,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 79.27,
+              "server": {
+                "start": 1792253364.93503,
+                "locked": 1792253365.011983
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 1.409
+            },
+            {
+              "kind": "merge",
+              "attempt": 2,
+              "expected": "f0671367-a7a0-4b2a-9832-06153245f4d2",
+              "wall_ms": 71.611,
+              "server": {
+                "start": 1792253365.018125,
+                "locked": 1792253365.092831
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 2.424
+            },
+            {
+              "kind": "merge",
+              "attempt": 3,
+              "expected": "027eeae1-b1c4-48c4-81aa-a525047f07e2",
+              "wall_ms": 117.685,
+              "server": {
+                "start": 1792253365.098037,
+                "locked": 1792253365.141324
+              },
+              "sqlstate": "40001"
+            },
+            {
+              "kind": "reread",
+              "wall_ms": 9.811
+            },
+            {
+              "kind": "merge",
+              "attempt": 4,
+              "expected": "64556783-19c2-49e5-b9a6-bf233a234bcc",
+              "wall_ms": 65.074,
+              "server": {
+                "start": 1792253365.236159,
+                "locked": 1792253365.23687,
+                "merged": 1792253365.294133,
+                "committed": 1792253365.300759
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        }
+      ],
+      "writer_breakdown_sum_ms": {
+        "final_client_overhead": 101.031,
+        "final_lock_wait": 30.295,
+        "merge_sql": 507.993,
+        "commit": 31.552,
+        "retry_client_overhead": 650.173,
+        "retry_lock_wait": 2667.041,
+        "retry_reread": 198.069,
+        "clock_step_unattributed": 0.0
+      },
+      "writer_breakdown_median_ms": {
+        "final_client_overhead": -0.03,
+        "final_lock_wait": 0.649,
+        "merge_sql": 50.062,
+        "commit": 1.957,
+        "retry_client_overhead": 75.082,
+        "retry_lock_wait": 286.359,
+        "retry_reread": 15.291,
+        "clock_step_unattributed": 0.0
+      },
+      "lock_timeline": {
+        "server_span_ms": 765.001,
+        "lock_held_by_winners_ms": 539.545,
+        "lock_free_ms": 225.456,
+        "lock_held_fraction": 0.7053,
+        "first_start_to_first_lock_ms": 1.224,
+        "handoff_gap_ms": {
+          "n": 9,
+          "median": 14.99,
+          "min": 3.932,
+          "max": 95.79
+        }
+      }
+    },
+    {
+      "mode": "persistent_serialized",
+      "repetition": 3,
+      "database": "agentdb_test_mergebench_bb4c8a05_perss_3",
+      "session_open_ms": {
+        "n": 10,
+        "median": 354.832,
+        "min": 310.955,
+        "max": 575.291
+      },
+      "merge_phase_wall_ms": 538.698,
+      "merge_median_ms": 50.141,
+      "merge_max_ms": 88.504,
+      "stale_head_retries": 0,
+      "verification": {
+        "final_head": "98765450-7131-4e64-ba0b-1a29213aa4aa",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "writers": [
+        {
+          "agent": 0,
+          "revision": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+          "merged_head": "a5ac3662-a55c-41ac-9869-94ade0764d6c",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 88.504,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+              "wall_ms": 88.452,
+              "server": {
+                "start": 1792253371.800558,
+                "locked": 1792253371.801704,
+                "merged": 1792253371.843316,
+                "committed": 1792253371.845347
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 1,
+          "revision": "5c58ab58-f127-4b4a-9844-3b10e6f6ae9c",
+          "merged_head": "4f2e1931-8321-4a89-a36a-8a1e59386586",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 51.518,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "a5ac3662-a55c-41ac-9869-94ade0764d6c",
+              "wall_ms": 51.483,
+              "server": {
+                "start": 1792253371.894063,
+                "locked": 1792253371.895541,
+                "merged": 1792253371.943235,
+                "committed": 1792253371.945077
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 2,
+          "revision": "3404b2a2-879c-4934-9ae4-0d8e6a12db86",
+          "merged_head": "ef92120e-8cf7-4fc5-9dc7-eb6add39077f",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 43.758,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "4f2e1931-8321-4a89-a36a-8a1e59386586",
+              "wall_ms": 43.73,
+              "server": {
+                "start": 1792253371.947479,
+                "locked": 1792253371.94844,
+                "merged": 1792253371.985706,
+                "committed": 1792253371.991374
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 3,
+          "revision": "e951add6-9734-4bcf-99fb-6e2a692f323a",
+          "merged_head": "ab5eee54-9f30-404d-9ae8-49e090ce6877",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 42.789,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "ef92120e-8cf7-4fc5-9dc7-eb6add39077f",
+              "wall_ms": 42.738,
+              "server": {
+                "start": 1792253371.993503,
+                "locked": 1792253371.994736,
+                "merged": 1792253372.03358,
+                "committed": 1792253372.03589
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 4,
+          "revision": "0cd8ea07-73a9-4e9a-8cfe-4693bde857a8",
+          "merged_head": "bd58fe69-1e4e-4d73-87fe-9c7c6291e650",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 45.689,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "ab5eee54-9f30-404d-9ae8-49e090ce6877",
+              "wall_ms": 45.638,
+              "server": {
+                "start": 1792253372.038256,
+                "locked": 1792253372.039507,
+                "merged": 1792253372.080763,
+                "committed": 1792253372.083188
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 5,
+          "revision": "c7c16f29-5988-4d99-b009-6f94daf79415",
+          "merged_head": "266e1e34-4333-43ef-935f-09d3d51df18c",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 62.186,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "bd58fe69-1e4e-4d73-87fe-9c7c6291e650",
+              "wall_ms": 62.156,
+              "server": {
+                "start": 1792253372.086362,
+                "locked": 1792253372.087704,
+                "merged": 1792253372.140599,
+                "committed": 1792253372.143123
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 6,
+          "revision": "7e6d356f-c478-46fd-8359-7b1f9aec1fbd",
+          "merged_head": "9876ef35-4a03-42ff-8761-a6d14f378329",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 48.941,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "266e1e34-4333-43ef-935f-09d3d51df18c",
+              "wall_ms": 48.913,
+              "server": {
+                "start": 1792253372.151727,
+                "locked": 1792253372.152834,
+                "merged": 1792253372.199339,
+                "committed": 1792253372.200902
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 7,
+          "revision": "e56b830e-43b4-4a8b-bc32-becc89abea03",
+          "merged_head": "ec263971-92cc-4887-9e16-95077d803f2b",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 51.021,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "9876ef35-4a03-42ff-8761-a6d14f378329",
+              "wall_ms": 50.93,
+              "server": {
+                "start": 1792253372.203516,
+                "locked": 1792253372.204777,
+                "merged": 1792253372.250954,
+                "committed": 1792253372.254046
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 8,
+          "revision": "4ef3e32a-8518-4055-825f-c98d263f8925",
+          "merged_head": "0734a74c-ee6c-4143-bcfb-6db04c22fadc",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 54.903,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "ec263971-92cc-4887-9e16-95077d803f2b",
+              "wall_ms": 54.852,
+              "server": {
+                "start": 1792253372.256677,
+                "locked": 1792253372.258058,
+                "merged": 1792253372.30017,
+                "committed": 1792253372.30145
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        },
+        {
+          "agent": 9,
+          "revision": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+          "merged_head": "98765450-7131-4e64-ba0b-1a29213aa4aa",
+          "attempts": 1,
+          "stale_head_retries": 0,
+          "merge_wall_ms": 49.261,
+          "calls": [
+            {
+              "kind": "merge",
+              "attempt": 1,
+              "expected": "0734a74c-ee6c-4143-bcfb-6db04c22fadc",
+              "wall_ms": 49.209,
+              "server": {
+                "start": 1792253372.314121,
+                "locked": 1792253372.315217,
+                "merged": 1792253372.354032,
+                "committed": 1792253372.356533
+              },
+              "sqlstate": "00000"
+            }
+          ]
+        }
+      ],
+      "writer_breakdown_sum_ms": {
+        "final_client_overhead": 67.433,
+        "final_lock_wait": 12.256,
+        "merge_sql": 433.176,
+        "commit": 25.236,
+        "retry_client_overhead": 0.0,
+        "retry_lock_wait": 0.0,
+        "retry_reread": 0.0,
+        "clock_step_unattributed": 0.0
+      },
+      "writer_breakdown_median_ms": {
+        "final_client_overhead": 0.587,
+        "final_lock_wait": 1.242,
+        "merge_sql": 41.862,
+        "commit": 2.367,
+        "retry_client_overhead": 0.0,
+        "retry_lock_wait": 0.0,
+        "retry_reread": 0.0,
+        "clock_step_unattributed": 0.0
+      },
+      "lock_timeline": {
+        "server_span_ms": 555.975,
+        "lock_held_by_winners_ms": 458.412,
+        "lock_free_ms": 97.563,
+        "lock_held_fraction": 0.8245,
+        "first_start_to_first_lock_ms": 1.146,
+        "handoff_gap_ms": {
+          "n": 9,
+          "median": 4.012,
+          "min": 3.362,
+          "max": 50.194
+        }
+      }
+    }
+  ],
+  "profile": [
+    {
+      "database": "agentdb_test_mergebench_bb4c8a05_prof_1",
+      "merge_phase_wall_ms": 476.704,
+      "verification": {
+        "final_head": "197c900f-fa6a-4d5f-8543-981333bfc7c1",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "merge_sql_ms": [
+        41.718,
+        44.962,
+        38.945,
+        43.36,
+        40.984,
+        44.405,
+        40.015,
+        46.702,
+        40.985,
+        39.458
+      ],
+      "function_stats": [
+        {
+          "function": "vc.merge",
+          "calls": 10,
+          "total_ms": 407.873,
+          "self_ms": 52.49
+        },
+        {
+          "function": "vc.rows_at",
+          "calls": 50,
+          "total_ms": 186.061,
+          "self_ms": 186.061
+        },
+        {
+          "function": "vc.diff_rows",
+          "calls": 20,
+          "total_ms": 182.239,
+          "self_ms": 54.926
+        },
+        {
+          "function": "vc._apply_main",
+          "calls": 100,
+          "total_ms": 51.04,
+          "self_ms": 29.359
+        },
+        {
+          "function": "vc.finish_change",
+          "calls": 10,
+          "total_ms": 24.788,
+          "self_ms": 24.675
+        },
+        {
+          "function": "vc._capture_main",
+          "calls": 100,
+          "total_ms": 21.678,
+          "self_ms": 5.902
+        },
+        {
+          "function": "vc.begin_change",
+          "calls": 10,
+          "total_ms": 12.511,
+          "self_ms": 12.511
+        },
+        {
+          "function": "vc._stage",
+          "calls": 100,
+          "total_ms": 10.574,
+          "self_ms": 10.036
+        },
+        {
+          "function": "vc._ancestors",
+          "calls": 30,
+          "total_ms": 10.129,
+          "self_ms": 10.129
+        },
+        {
+          "function": "vc.merge_base",
+          "calls": 10,
+          "total_ms": 10.009,
+          "self_ms": 5.505
+        },
+        {
+          "function": "vc._file_state",
+          "calls": 230,
+          "total_ms": 9.58,
+          "self_ms": 9.58
+        },
+        {
+          "function": "vc._pk",
+          "calls": 200,
+          "total_ms": 4.171,
+          "self_ms": 4.171
+        },
+        {
+          "function": "vc._context",
+          "calls": 220,
+          "total_ms": 2.468,
+          "self_ms": 2.468
+        },
+        {
+          "function": "vc._unfinished",
+          "calls": 10,
+          "total_ms": 2.205,
+          "self_ms": 2.205
+        },
+        {
+          "function": "vc.table_id",
+          "calls": 0,
+          "total_ms": 0.0,
+          "self_ms": 0.0
+        }
+      ],
+      "components_first_merge": {
+        "target_head": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+        "source": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+        "changed_rows": 10,
+        "distinct_paths": 11,
+        "source_in_target_ancestors": {
+          "n": 5,
+          "median": 0.813,
+          "min": 0.726,
+          "max": 0.912
+        },
+        "merge_base": {
+          "n": 5,
+          "median": 2.436,
+          "min": 2.296,
+          "max": 2.609
+        },
+        "diff_rows": {
+          "n": 5,
+          "median": 22.367,
+          "min": 18.678,
+          "max": 26.66
+        },
+        "rows_at_single_key": {
+          "n": 5,
+          "median": 6.489,
+          "min": 6.167,
+          "max": 6.919
+        },
+        "rows_at_batched_keys": {
+          "n": 5,
+          "median": 23.368,
+          "min": 19.883,
+          "max": 40.261
+        },
+        "file_state_loop": {
+          "n": 5,
+          "median": 2.646,
+          "min": 2.546,
+          "max": 3.087
+        }
+      },
+      "components_last_merge": {
+        "target_head": "782687b1-27fa-467b-b188-3dbb607768da",
+        "source": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+        "changed_rows": 10,
+        "distinct_paths": 11,
+        "source_in_target_ancestors": {
+          "n": 5,
+          "median": 0.811,
+          "min": 0.775,
+          "max": 1.01
+        },
+        "merge_base": {
+          "n": 5,
+          "median": 2.366,
+          "min": 2.267,
+          "max": 2.935
+        },
+        "diff_rows": {
+          "n": 5,
+          "median": 18.966,
+          "min": 16.615,
+          "max": 19.717
+        },
+        "rows_at_single_key": {
+          "n": 5,
+          "median": 8.652,
+          "min": 8.052,
+          "max": 11.75
+        },
+        "rows_at_batched_keys": {
+          "n": 5,
+          "median": 23.351,
+          "min": 21.567,
+          "max": 33.929
+        },
+        "file_state_loop": {
+          "n": 5,
+          "median": 2.941,
+          "min": 2.832,
+          "max": 2.952
+        }
+      },
+      "note": "function total_ms includes callees; self_ms excludes them. Component timings are EXPLAIN ANALYZE medians of the same queries vc.merge issues, run read-only outside it."
+    },
+    {
+      "database": "agentdb_test_mergebench_bb4c8a05_prof_2",
+      "merge_phase_wall_ms": 550.331,
+      "verification": {
+        "final_head": "e0f8080b-5dae-41e4-a8da-1a16de8805b3",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "merge_sql_ms": [
+        45.858,
+        50.724,
+        48.528,
+        40.585,
+        42.073,
+        48.328,
+        40.817,
+        46.793,
+        37.564,
+        41.016
+      ],
+      "function_stats": [
+        {
+          "function": "vc.merge",
+          "calls": 10,
+          "total_ms": 426.489,
+          "self_ms": 55.596
+        },
+        {
+          "function": "vc.rows_at",
+          "calls": 50,
+          "total_ms": 195.311,
+          "self_ms": 195.311
+        },
+        {
+          "function": "vc.diff_rows",
+          "calls": 20,
+          "total_ms": 191.523,
+          "self_ms": 53.925
+        },
+        {
+          "function": "vc._apply_main",
+          "calls": 100,
+          "total_ms": 52.108,
+          "self_ms": 30.648
+        },
+        {
+          "function": "vc.finish_change",
+          "calls": 10,
+          "total_ms": 26.268,
+          "self_ms": 26.136
+        },
+        {
+          "function": "vc._capture_main",
+          "calls": 100,
+          "total_ms": 21.455,
+          "self_ms": 5.424
+        },
+        {
+          "function": "vc.begin_change",
+          "calls": 10,
+          "total_ms": 14.569,
+          "self_ms": 14.569
+        },
+        {
+          "function": "vc._ancestors",
+          "calls": 30,
+          "total_ms": 11.79,
+          "self_ms": 11.79
+        },
+        {
+          "function": "vc._stage",
+          "calls": 100,
+          "total_ms": 10.757,
+          "self_ms": 10.187
+        },
+        {
+          "function": "vc._file_state",
+          "calls": 230,
+          "total_ms": 10.643,
+          "self_ms": 10.643
+        },
+        {
+          "function": "vc.merge_base",
+          "calls": 10,
+          "total_ms": 9.984,
+          "self_ms": 5.287
+        },
+        {
+          "function": "vc._pk",
+          "calls": 200,
+          "total_ms": 4.223,
+          "self_ms": 4.223
+        },
+        {
+          "function": "vc._context",
+          "calls": 220,
+          "total_ms": 2.691,
+          "self_ms": 2.691
+        },
+        {
+          "function": "vc._unfinished",
+          "calls": 10,
+          "total_ms": 1.536,
+          "self_ms": 1.536
+        },
+        {
+          "function": "vc.table_id",
+          "calls": 0,
+          "total_ms": 0.0,
+          "self_ms": 0.0
+        }
+      ],
+      "components_first_merge": {
+        "target_head": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+        "source": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+        "changed_rows": 10,
+        "distinct_paths": 11,
+        "source_in_target_ancestors": {
+          "n": 5,
+          "median": 0.868,
+          "min": 0.78,
+          "max": 1.088
+        },
+        "merge_base": {
+          "n": 5,
+          "median": 2.189,
+          "min": 1.975,
+          "max": 2.996
+        },
+        "diff_rows": {
+          "n": 5,
+          "median": 19.585,
+          "min": 16.905,
+          "max": 22.625
+        },
+        "rows_at_single_key": {
+          "n": 5,
+          "median": 7.119,
+          "min": 7.012,
+          "max": 12.57
+        },
+        "rows_at_batched_keys": {
+          "n": 5,
+          "median": 20.45,
+          "min": 20.038,
+          "max": 23.047
+        },
+        "file_state_loop": {
+          "n": 5,
+          "median": 2.513,
+          "min": 2.439,
+          "max": 4.727
+        }
+      },
+      "components_last_merge": {
+        "target_head": "3de30a68-3ac7-46b2-b805-4e1a4d2a1a2d",
+        "source": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+        "changed_rows": 10,
+        "distinct_paths": 11,
+        "source_in_target_ancestors": {
+          "n": 5,
+          "median": 0.872,
+          "min": 0.815,
+          "max": 1.114
+        },
+        "merge_base": {
+          "n": 5,
+          "median": 2.25,
+          "min": 2.124,
+          "max": 3.482
+        },
+        "diff_rows": {
+          "n": 5,
+          "median": 18.964,
+          "min": 18.07,
+          "max": 20.535
+        },
+        "rows_at_single_key": {
+          "n": 5,
+          "median": 8.587,
+          "min": 8.06,
+          "max": 9.214
+        },
+        "rows_at_batched_keys": {
+          "n": 5,
+          "median": 23.746,
+          "min": 22.638,
+          "max": 25.217
+        },
+        "file_state_loop": {
+          "n": 5,
+          "median": 2.883,
+          "min": 2.823,
+          "max": 3.022
+        }
+      },
+      "note": "function total_ms includes callees; self_ms excludes them. Component timings are EXPLAIN ANALYZE medians of the same queries vc.merge issues, run read-only outside it."
+    },
+    {
+      "database": "agentdb_test_mergebench_bb4c8a05_prof_3",
+      "merge_phase_wall_ms": 527.768,
+      "verification": {
+        "final_head": "0a3c3311-a023-4c82-b441-1c40fba1b3fb",
+        "rows": 4000,
+        "changed_ok": true,
+        "unchanged_ok": true,
+        "base_fixed": true,
+        "files_ok": true,
+        "sources_reachable": 10,
+        "unfinished": 0
+      },
+      "merge_sql_ms": [
+        39.878,
+        42.029,
+        39.401,
+        42.669,
+        59.054,
+        45.64,
+        43.661,
+        48.377,
+        47.117,
+        42.844
+      ],
+      "function_stats": [
+        {
+          "function": "vc.merge",
+          "calls": 10,
+          "total_ms": 436.134,
+          "self_ms": 58.432
+        },
+        {
+          "function": "vc.diff_rows",
+          "calls": 20,
+          "total_ms": 197.99,
+          "self_ms": 59.177
+        },
+        {
+          "function": "vc.rows_at",
+          "calls": 50,
+          "total_ms": 189.49,
+          "self_ms": 189.49
+        },
+        {
+          "function": "vc._apply_main",
+          "calls": 100,
+          "total_ms": 59.255,
+          "self_ms": 31.81
+        },
+        {
+          "function": "vc._capture_main",
+          "calls": 100,
+          "total_ms": 27.44,
+          "self_ms": 7.158
+        },
+        {
+          "function": "vc.finish_change",
+          "calls": 10,
+          "total_ms": 25.182,
+          "self_ms": 25.066
+        },
+        {
+          "function": "vc.begin_change",
+          "calls": 10,
+          "total_ms": 14.85,
+          "self_ms": 14.85
+        },
+        {
+          "function": "vc._stage",
+          "calls": 100,
+          "total_ms": 14.02,
+          "self_ms": 13.381
+        },
+        {
+          "function": "vc._ancestors",
+          "calls": 30,
+          "total_ms": 12.604,
+          "self_ms": 12.604
+        },
+        {
+          "function": "vc._file_state",
+          "calls": 230,
+          "total_ms": 11.086,
+          "self_ms": 11.086
+        },
+        {
+          "function": "vc.merge_base",
+          "calls": 10,
+          "total_ms": 10.001,
+          "self_ms": 5.149
+        },
+        {
+          "function": "vc._pk",
+          "calls": 200,
+          "total_ms": 4.874,
+          "self_ms": 4.874
+        },
+        {
+          "function": "vc._context",
+          "calls": 220,
+          "total_ms": 2.994,
+          "self_ms": 2.994
+        },
+        {
+          "function": "vc._unfinished",
+          "calls": 10,
+          "total_ms": 1.834,
+          "self_ms": 1.834
+        },
+        {
+          "function": "vc.table_id",
+          "calls": 0,
+          "total_ms": 0.0,
+          "self_ms": 0.0
+        }
+      ],
+      "components_first_merge": {
+        "target_head": "4799e7d9-18a9-47e3-831d-52b28a2e8a92",
+        "source": "c62218ac-373a-4423-a4d4-d8e0c311389a",
+        "changed_rows": 10,
+        "distinct_paths": 11,
+        "source_in_target_ancestors": {
+          "n": 5,
+          "median": 0.739,
+          "min": 0.667,
+          "max": 0.875
+        },
+        "merge_base": {
+          "n": 5,
+          "median": 2.142,
+          "min": 1.995,
+          "max": 4.592
+        },
+        "diff_rows": {
+          "n": 5,
+          "median": 19.387,
+          "min": 19.319,
+          "max": 19.677
+        },
+        "rows_at_single_key": {
+          "n": 5,
+          "median": 7.415,
+          "min": 6.981,
+          "max": 7.797
+        },
+        "rows_at_batched_keys": {
+          "n": 5,
+          "median": 23.384,
+          "min": 20.862,
+          "max": 27.573
+        },
+        "file_state_loop": {
+          "n": 5,
+          "median": 2.38,
+          "min": 2.243,
+          "max": 2.677
+        }
+      },
+      "components_last_merge": {
+        "target_head": "75ddc026-70ee-4651-8e0c-fec701f1fbb0",
+        "source": "7ea421ae-30a9-4b19-b8e6-c4fbc6249698",
+        "changed_rows": 10,
+        "distinct_paths": 11,
+        "source_in_target_ancestors": {
+          "n": 5,
+          "median": 0.78,
+          "min": 0.753,
+          "max": 1.141
+        },
+        "merge_base": {
+          "n": 5,
+          "median": 2.264,
+          "min": 2.132,
+          "max": 4.365
+        },
+        "diff_rows": {
+          "n": 5,
+          "median": 19.918,
+          "min": 19.134,
+          "max": 25.636
+        },
+        "rows_at_single_key": {
+          "n": 5,
+          "median": 9.34,
+          "min": 8.569,
+          "max": 11.995
+        },
+        "rows_at_batched_keys": {
+          "n": 5,
+          "median": 22.968,
+          "min": 21.065,
+          "max": 25.292
+        },
+        "file_state_loop": {
+          "n": 5,
+          "median": 3.054,
+          "min": 2.622,
+          "max": 3.331
+        }
+      },
+      "note": "function total_ms includes callees; self_ms excludes them. Component timings are EXPLAIN ANALYZE medians of the same queries vc.merge issues, run read-only outside it."
+    }
+  ],
+  "databases_retained": [
+    "agentdb_test_mergebench_bb4c8a05_tpl",
+    "agentdb_test_mergebench_bb4c8a05_persc_1",
+    "agentdb_test_mergebench_bb4c8a05_perss_1",
+    "agentdb_test_mergebench_bb4c8a05_persc_2",
+    "agentdb_test_mergebench_bb4c8a05_perss_2",
+    "agentdb_test_mergebench_bb4c8a05_persc_3",
+    "agentdb_test_mergebench_bb4c8a05_perss_3",
+    "agentdb_test_mergebench_bb4c8a05_prof_1",
+    "agentdb_test_mergebench_bb4c8a05_prof_2",
+    "agentdb_test_mergebench_bb4c8a05_prof_3"
+  ]
+}

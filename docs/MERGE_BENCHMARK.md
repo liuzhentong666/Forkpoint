@@ -1,6 +1,6 @@
 # 十个分支合入 main：耗时分解
 
-日期：2026-10-17。**仅为本机合成负载**：现有 Ubuntu WSL PostgreSQL 上 10 个脚本写入者，不是大模型 Agent，不代表生产容量，未访问任何云服务。`vc.merge` 与版本引擎未修改，本次也没有实现任何修复。
+日期：2026-10-17。**仅为本机合成负载**：现有 Ubuntu WSL PostgreSQL 上 10 个脚本写入者，不是大模型 Agent，不代表生产容量，未访问任何云服务。这次测量时，`vc.merge` 与版本引擎都没有修改，也没有实现任何修复；之后的实现与复测见“实现长连接后的复测”和“批量解析目标状态后的复测”两节。
 
 入口：[`benchmark_merge.py`](../benchmark_merge.py)。原始结果：[`merge-benchmark-results.json`](../merge-benchmark-results.json)，含每次调用的客户端耗时与服务端时间戳。用 `python benchmark_merge.py --reanalyze` 可在不连数据库的情况下，从原始调用重算派生字段。
 
@@ -77,6 +77,50 @@ EXPLAIN ANALYZE（模板状态和第 10 次合入前状态各测 5 次）：单�
 1. **先降低客户端进程开销**：每个 Agent 使用常驻连接或连接池，不再每次调用都起 `wsl.exe + psql`。这一项占写入者时间的 98.6 %，也是 main 锁 94 % 时间空闲的原因。只改这一点，不改调度，也不动 SQL，阶段耗时就从 14.7 s 降到 0.92 s（约 16 倍）。
 2. **然后在 `vc.merge` 里批量解析目标状态**：客户端开销去掉后，main 锁被持有 93–97 % 的时间，关键路径就是 SQL。其中一半以上是 10 次逐行 `rows_at`。估计阶段耗时可从约 0.9 s 降到约 0.45 s，且收益随表行数和改动行数增长。修改时必须保留冲突判定语义，并用原有 18 项断言和 merge-all 核验覆盖。
 3. **暂不需要合入队列或退避**：常驻会话下，理想队列只比 45 次重试快 2 %（0.89 s 对 0.92 s），重读合计 34 ms。锁已经 93 % 繁忙，退避只会增加空闲时间。在仍然每次起进程的客户端上，队列能把 14.7 s 降到 2.8 s，但只是替代价比较高的重试，没有解决根因，效果也不如常驻连接。写入者明显多于 10 个时重试次数按 N(N−1)/2 增长，届时再重新测量。
+
+## 实现长连接后的复测
+
+第 1 项建议已经实现，即 `db.Session`（见 [README](../README.md)）。`vc.merge` 与版本引擎仍未修改，第 2、3 项尚未实现。Session 每次调用都保持单次进程的语义：遇错即停、回滚未结束的事务、重置会话状态与 psql 变量。为此每次调用约多花 1 ms，探针中 `SELECT 1` 往返中位为 1.08 ms，而原型中的裸管道为 0.16 ms。`run_tests.py` 新增的检查逐项核对这些语义，并与单次进程的输出比较。
+
+`benchmark_merge.py` 的常驻会话模式改用 `db.Session` 后，在新模板 `agentdb_test_mergebench_05e9004d_tpl` 上复测（各 3 次，[原始结果](../merge-benchmark-session-results.json)）：
+
+| 模式 | 阶段耗时 | 40001 重试 | main 锁被持有的时间占比 | 交接间隔（中位） |
+|---|---:|---:|---:|---:|
+| spawn_concurrent（对照） | 15.33 s (14.15–15.49) | 45 | 7.1 % | 1,374 ms |
+| `db.Session`，同时开始 | 1.16 s (0.99–1.19) | 45（一次为 44） | 93 % | 7.7 ms |
+| `db.Session`，逐个合入 | 0.92 s (0.87–1.13) | 0 | 96 % | 4.1 ms |
+
+`review_local.py` 的写入者现在默认各用一个 Session，`--client spawn` 恢复原做法。一次完整运行（库 `agentdb_test_review_0fbedc9103`）中，十个分支全部合入，核验全部通过：建分支阶段 0.39 s（原 4.97 s），合入阶段 1.19 s（原 9.47 s），端到端 2.30 s（原 14.93 s），陈旧 head 重试仍为 45 次。打开 10 个会话另需 2.07 s，在计时开始之前完成。原纪录保存在 `local-review-results.2026-10-17-spawn.json`。
+
+`agent_lab.py` 每次工具调用都是一个新的 Python 进程，无法跨调用保持 Session。可选的常驻网关 `agent_lab_gateway.py` 替 Agent 持有 Session，默认关闭，尚未用于任何真实 GPT 实验，见 [agent_lab 常驻网关](AGENT_LAB_GATEWAY.md)。
+
+## 批量解析目标状态后的复测（2026-10-18）
+
+第 2 项建议已经实现。`vc.merge` 对每张已登记表只调用一次 `vc.rows_at(ctx.base, t.id)`，与 `diff_rows` 的结果左连接，得到全部改动行的目标状态；该表没有改动时，这次调用由一次性过滤条件跳过。循环按 `diff_rows` 的原输出顺序（WITH ORDINALITY）逐行处理，判定不变：与来源相同的行跳过，否则目标状态不等于共同祖先时报 P0001；写 main 仍逐行 `_apply_main`，写分支时仍以目标状态作为 before_row 暂存；文件冲突、父边与提交信息均未改动。新安装已包含（`sql/001_core.sql`）；旧安装执行 `python db.py install-merge-batch`，即 `sql/004_merge_batch.sql`，以相同定义 CREATE OR REPLACE，并保留所有者、授权与 search_path。
+
+核验（均为本机专用测试库）：
+
+- 改动前先跑基线：`run_tests.py` 18 项与 Session 检查、`review_local.py` 全部通过，用的是旧版 `vc.merge`。
+- `run_tests.py` 新增 `merge_resolves_target_state_per_changed_row`，共 13 个合入情形：与来源相同的行被跳过、两边插入相同行、合入分支时 before_row 取目标状态，以及修改/修改、删除/修改、修改/删除、插入/插入、合入分支时冲突、多行冲突时报告哪一行。原 18 项断言未改。
+- [`check_merge_migration.py`](../check_merge_migration.py) 用提交 8aeb3d7 的旧 `001_core.sql` 建库（`agentdb_test_mergemig_502ef6643a`），先跑 18 项断言和上述情形，并提交一次合入。迁移连续执行两次后：业务数据与历史表的哈希不变；函数所有者、SECURITY DEFINER、配置与 ACL 不变；13 个情形的规范化输出（行变更、父边、错误码与报错的键）与旧函数逐项相同；18 项断言再次通过；`agentdb_client` 仍可合入。脚本同时确认 001 与 004 中的函数体一致。结果见 [`merge-batch-migration-results.json`](../merge-batch-migration-results.json)：该文件为提交前复核时的重跑（库 `agentdb_test_mergemig_21ad82e33c`），结论与首次运行逐项相同，首次运行的结果文件已被覆盖。另在一个旧版测试库上通过命令行入口 `db.py install-merge-batch` 执行过迁移。
+- 改动后 `run_tests.py`（库 `agentdb_test_1ab8001efa3d`）与 `review_local.py`（库 `agentdb_test_review_16e28e9e61`）全部通过。在 `review_local.py` 中，十个分支合入阶段 0.49 s，端到端 1.79 s，陈旧 head 重试 45 次。同一天改动前用旧函数跑的基线为 1.29 s 和 2.65 s。
+
+`python benchmark_merge.py --runs 3 --modes persistent_concurrent persistent_serialized --output merge-benchmark-batched-results.json` 的结果见[原始结果](../merge-benchmark-batched-results.json)。模板库为 `agentdb_test_mergebench_bb4c8a05_tpl`，历史结构与前两次相同；所有运行和 profile 的核验均通过。下表中“改动前”取自上文：SQL 一列来自第一次 profile，其余各列来自 Session 复测。
+
+| 指标 | 改动前 | 批量解析后 |
+|---|---:|---:|
+| 每次合入的 `vc.merge` SQL（profile，30 次合入的中位数） | 约 87 ms（84–89） | **42.8 ms**（37.6–59.1） |
+| profile 中 `vc.rows_at` 调用 / 合计（每次运行 10 次合入） | 140 次 / 605–653 ms | 50 次 / 186–195 ms |
+| `db.Session` 同时开始：阶段耗时 | 1.16 s (0.99–1.19) | 0.84 s (0.83–0.88) |
+| 同上：写入者 `vc.merge` SQL 合计 | 986 ms | 508 ms |
+| 同上：main 锁被持有的时间占比 | 93 % | 77 % |
+| `db.Session` 逐个合入：阶段耗时 | 0.92 s (0.87–1.13) | 0.66 s (0.54–0.79) |
+| 同上：单次合入中位数 | — | 64 ms |
+| 40001 重试（同时开始） | 45 | 45 |
+
+每次合入的 SQL 降到约 43 ms，与先前约 40 ms 的估算相符。`rows_at` 每次合入调用 5 次：`diff_rows` 内部为 2 张表 × 2 次，再加 products 的目标状态 1 次；orders 表没有改动，所以跳过。剩下的 SQL 时间主要是 `diff_rows`（约 19 ms/次合入）与逐行 `_apply_main`（约 5 ms）。阶段耗时只降了约 28 %，没有减半：SQL 缩短后，客户端往返、COMMIT 和锁交接在关键路径上的占比上升，锁占用比也降到 77–83 %。再往下优化，就要让 `diff_rows` 少回放全表（例如合入时把基线与来源的 rows_at 合并成一次），或者减少每次合入的往返；这两项都未实现。
+
+本次结果来自另一个时段，WSL 上的时间波动较大（见下节）；看比例比看绝对值更可靠。负载与前两次相同：4,000 行，10 个分支，每个分支改 10 行、写 1 个文件。目标状态解析原先按“改动行数 × 表行数”增长，现在每张表只回放一次。行数更多或单次改动更多时，差距会更大，但这一点没有测量。
 
 ## 环境与注意事项
 

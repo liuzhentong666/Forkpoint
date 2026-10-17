@@ -1,0 +1,191 @@
+{
+  "database": "agentdb_test_review_2a02f90171",
+  "postgresql": {
+    "server_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "server_version_num": 160015,
+    "host": null,
+    "port": 5432,
+    "user": "postgres",
+    "database": "postgres",
+    "configured_host": "/var/run/postgresql",
+    "transport": "wsl",
+    "wsl_distribution": "Ubuntu"
+  },
+  "regression_tests": 18,
+  "manager": {
+    "effective_role": "agentdb_manager",
+    "attributes": {
+      "superuser": false,
+      "createdb": false,
+      "createrole": false,
+      "replication": false,
+      "bypassrls": false,
+      "login": false
+    },
+    "denied_sqlstate": "42501",
+    "denied_operations": [
+      "read_raw_history",
+      "rewrite_history",
+      "write_snapshot_table",
+      "write_business_table",
+      "create_version",
+      "create_function",
+      "create_role"
+    ]
+  },
+  "maintenance": {
+    "after_intent": {
+      "target": {
+        "revision": "565d3ec9-a721-4446-990c-1b6e67027570",
+        "table_id": "cf065d6f-a468-4325-a84c-ade0c0a40043"
+      },
+      "snapshot_before_resume": false,
+      "resumed": {
+        "task_id": "after_intent",
+        "verified": true,
+        "applied": true,
+        "version": 1
+      }
+    },
+    "after_apply": {
+      "target": {
+        "revision": "13d23de9-1150-45d0-bc72-b345c7bbbef4",
+        "table_id": "cf065d6f-a468-4325-a84c-ade0c0a40043"
+      },
+      "snapshot_before_resume": true,
+      "resumed": {
+        "task_id": "after_apply",
+        "verified": true,
+        "applied": false,
+        "version": 1
+      }
+    },
+    "zombie": {
+      "a_result": "conflict",
+      "b_result": {
+        "task_id": "zombie",
+        "verified": true,
+        "applied": false,
+        "version": 1
+      },
+      "final_version": 1,
+      "target": {
+        "revision": "6a117981-19d5-4878-b290-14d472b4e8a0",
+        "table_id": "cf065d6f-a468-4325-a84c-ade0c0a40043"
+      }
+    }
+  },
+  "merge_all": {
+    "agents": 10,
+    "actual_llm_agents": false,
+    "table_rows": 4000,
+    "changed_rows": 100,
+    "all_merged": 10,
+    "base": "82ab5f8f-426f-4ea5-9291-9dd6a5e985a7",
+    "final_head": "21410c9f-183a-415a-b2de-00847c126215",
+    "fork_copied_history_rows": 0,
+    "branch_phase_wall_ms": 4967.083,
+    "merge_phase_wall_ms": 9467.149,
+    "end_to_end_wall_ms": 14931.3,
+    "merge_median_ms": 6967.983,
+    "merge_max_ms": 9461.335,
+    "stale_head_retries": 45,
+    "results": [
+      {
+        "agent": 0,
+        "revision": "b66d5f11-04bb-4c5d-b0b8-c9d458fcbf04",
+        "branch_commit_wall_ms": 1499.713,
+        "merged_head": "a8fdfff6-a8c8-4b59-9d04-1183f0e9dd18",
+        "attempts": 1,
+        "stale_head_retries": 0,
+        "merge_wall_ms": 796.037
+      },
+      {
+        "agent": 1,
+        "revision": "63fa728d-9167-47b2-b0ca-d65903b5cc0b",
+        "branch_commit_wall_ms": 1780.64,
+        "merged_head": "b4a589a0-5e99-41cd-81cd-aa37f44d704b",
+        "attempts": 7,
+        "stale_head_retries": 6,
+        "merge_wall_ms": 7815.128
+      },
+      {
+        "agent": 2,
+        "revision": "b1216326-229e-4b15-9d2f-2daf07f955f7",
+        "branch_commit_wall_ms": 1748.089,
+        "merged_head": "499d720a-8fde-460f-93ee-3bbcbca73395",
+        "attempts": 9,
+        "stale_head_retries": 8,
+        "merge_wall_ms": 9052.486
+      },
+      {
+        "agent": 3,
+        "revision": "1da3fa39-0532-4179-ad69-f513b8a24c6e",
+        "branch_commit_wall_ms": 1892.532,
+        "merged_head": "1037d64e-b189-4466-b0ba-89ed1ed868b5",
+        "attempts": 6,
+        "stale_head_retries": 5,
+        "merge_wall_ms": 7306.067
+      },
+      {
+        "agent": 4,
+        "revision": "a00e8076-7a8a-48f9-bbfe-1243715863ca",
+        "branch_commit_wall_ms": 1395.15,
+        "merged_head": "50d3c7df-835d-4688-9d0b-011de85a5bad",
+        "attempts": 3,
+        "stale_head_retries": 2,
+        "merge_wall_ms": 4935.68
+      },
+      {
+        "agent": 5,
+        "revision": "0e815935-60d1-4579-b46f-cfc5fef84b74",
+        "branch_commit_wall_ms": 933.68,
+        "merged_head": "7bd0582c-dc0f-44f0-8644-a9bd12509c9e",
+        "attempts": 4,
+        "stale_head_retries": 3,
+        "merge_wall_ms": 5933.653
+      },
+      {
+        "agent": 6,
+        "revision": "dfcb149f-822c-4685-9d30-0f4e40cf5164",
+        "branch_commit_wall_ms": 1659.971,
+        "merged_head": "0b6b94a7-108d-44c5-a762-8bc842829333",
+        "attempts": 2,
+        "stale_head_retries": 1,
+        "merge_wall_ms": 3012.601
+      },
+      {
+        "agent": 7,
+        "revision": "16b935e3-d379-4e82-988c-cc660df7f694",
+        "branch_commit_wall_ms": 1953.16,
+        "merged_head": "21410c9f-183a-415a-b2de-00847c126215",
+        "attempts": 10,
+        "stale_head_retries": 9,
+        "merge_wall_ms": 9461.335
+      },
+      {
+        "agent": 8,
+        "revision": "b0bb4482-ebb3-48d9-89b7-b217631031c5",
+        "branch_commit_wall_ms": 1367.883,
+        "merged_head": "c0595fb9-f42c-4c75-80b7-c59ebbc1da4f",
+        "attempts": 5,
+        "stale_head_retries": 4,
+        "merge_wall_ms": 6629.899
+      },
+      {
+        "agent": 9,
+        "revision": "0a4c6810-63a6-4e77-82f4-5c317fc5c5e8",
+        "branch_commit_wall_ms": 1104.052,
+        "merged_head": "8c1724d0-605d-4768-8a89-40fb37b03b75",
+        "attempts": 8,
+        "stale_head_retries": 7,
+        "merge_wall_ms": 8393.459
+      }
+    ],
+    "verification": "100 changed rows, 3900 unchanged rows, 10 code files, 10 reachable source commits, fixed base, no unfinished transactions",
+    "timing_scope": "Client wall time includes psql/WSL startup, lock waits, retries and final COMMIT; not a production throughput claim"
+  },
+  "real_cloud_verified": false,
+  "state_backend": "MemoryStore-test-only",
+  "note": "Existing PostgreSQL service reused without replacement or restart; dedicated test database retained. No model used in synthetic merge benchmark."
+}

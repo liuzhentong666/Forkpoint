@@ -499,7 +499,7 @@ END $$;
 
 CREATE FUNCTION vc.merge(p_target text,p_source uuid,p_expected uuid,p_author text DEFAULT 'agent')
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
-DECLARE base_id uuid; ctx vc.work_tx; t record; d record; ours jsonb;
+DECLARE base_id uuid; ctx vc.work_tx; t record; d record;
         file_path text; old_file jsonb; source_file jsonb; target_file jsonb;
 BEGIN
   PERFORM vc.begin_change(p_target,p_expected,p_author,'merge '||p_source::text);
@@ -512,14 +512,21 @@ BEGIN
   base_id:=vc.merge_base(ctx.base,p_source);
   UPDATE vc.work_tx SET extra_parent=p_source WHERE tx=ctx.tx;
   FOR t IN SELECT id FROM vc.tracked_table LOOP
-    FOR d IN SELECT * FROM vc.diff_rows(base_id,p_source,t.id) LOOP
-      SELECT r.doc INTO ours FROM vc.rows_at(ctx.base,t.id) r WHERE r.pk=d.pk;
-      IF ours IS NOT DISTINCT FROM d.after_row THEN CONTINUE; END IF;
-      IF ours IS DISTINCT FROM d.before_row THEN
+    -- Resolve the target state of all changed rows with one rows_at() call, not one
+    -- per row; it is skipped when nothing changed, and rows keep diff_rows' order.
+    FOR d IN WITH diff AS MATERIALIZED (
+               SELECT x.pk,x.before_row,x.after_row,x.n
+               FROM vc.diff_rows(base_id,p_source,t.id) WITH ORDINALITY x(pk,before_row,after_row,n)
+             ), target AS MATERIALIZED (
+               SELECT r.pk,r.doc FROM vc.rows_at(ctx.base,t.id) r WHERE EXISTS(SELECT 1 FROM diff))
+             SELECT diff.pk,diff.before_row,diff.after_row,target.doc AS ours
+             FROM diff LEFT JOIN target ON target.pk=diff.pk ORDER BY diff.n LOOP
+      IF d.ours IS NOT DISTINCT FROM d.after_row THEN CONTINUE; END IF;
+      IF d.ours IS DISTINCT FROM d.before_row THEN
         RAISE EXCEPTION 'Row conflict: table %, key %',t.id,d.pk USING ERRCODE='P0001';
       END IF;
       IF p_target='main' THEN PERFORM vc._apply_main(t.id,d.pk,d.after_row);
-      ELSE PERFORM vc._stage(t.id,d.pk,ours,d.after_row); END IF;
+      ELSE PERFORM vc._stage(t.id,d.pk,d.ours,d.after_row); END IF;
     END LOOP;
   END LOOP;
   FOR file_path IN SELECT DISTINCT path FROM vc.path_change LOOP
