@@ -1,6 +1,6 @@
 # 本机虚拟机作为预发布 PostgreSQL（方案 B）
 
-2026-10-18。用户选择在这台 Windows 11 笔记本上用虚拟机承担 [S1](PRODUCTION_TEST_PLAN.md)：不产生云费用，不解除云端暂缓。虚拟机里的 PostgreSQL 与现有 WSL 开发库完全分开；客户端仍是 WSL 中的 psql，经虚拟网络、TLS `verify-full` 和专用角色 `agentdb_staging` 连接。连接规则见 [预发布接入](STAGING.md)。
+2026-10-18。用户选择在这台 Windows 11 笔记本上用虚拟机承担 [S1](PRODUCTION_TEST_PLAN.md)：不产生云费用，不解除云端暂缓。虚拟机里的 PostgreSQL 与现有 WSL 开发库完全分开；客户端是 Windows 原生 psql（本机 WSL 的 mirrored 网络看不到仅主机网卡，见第 2 节），经虚拟网络、TLS `verify-full` 和专用角色 `agentdb_staging` 连接。连接规则见 [预发布接入](STAGING.md)。
 
 限制：客户端和服务器共用一台机器的 CPU 与磁盘，S1 只用来证明正确性与接入方式，其计时不作为性能结论（S4 的计时也需注明这一点）。
 
@@ -57,6 +57,14 @@ wsl --distribution Ubuntu --exec bash deploy/staging/make_certs.sh --name agentd
 
 在项目根目录执行（WSL 会把当前 Windows 目录映射为 `/mnt/f/...`）。脚本拒绝覆盖已有目录，结束时用 `openssl verify` 检查证书链并打印 SAN。产物：`ca.pem`（客户端的 sslrootcert）、`ca.key`（只留在此目录）、`server.crt` 与 `server.key`（复制到虚拟机）。
 
+本机客户端是 Windows 原生 psql（见第 2 节），所以把 CA 证书（公开内容，不是私钥）复制一份到 Windows 侧：
+
+```console
+wsl --distribution Ubuntu --exec bash -c "mkdir -p /mnt/c/Users/lzt/.agentdb-staging && cp ~/.agentdb-staging/ca.pem /mnt/c/Users/lzt/.agentdb-staging/ca.pem"
+```
+
+私钥 `ca.key` 与 `server.key` 留在 WSL 的 ext4 文件系统中（权限 0600），不复制到 `/mnt/c`，那里不保留 Unix 权限。
+
 ## 4. 配置虚拟机中的 PostgreSQL
 
 把四个文件复制到虚拟机（在 WSL 中执行）：
@@ -77,10 +85,17 @@ shred -u server.key
 
 [configure_postgres.sh](../deploy/staging/configure_postgres.sh) 的改动：安装证书对（私钥 0600，属 postgres）；写入 `conf.d/agentdb-staging.conf`（`listen_addresses = 'localhost,192.168.56.10'`、`ssl = on`、TLS 1.2 起、scram-sha-256）；先备份再向 `pg_hba.conf` 追加一行 `hostssl all agentdb_staging 192.168.56.0/24 scram-sha-256`；ufw 启用时只放行该网段到 5432；重启集群并确认 `ssl` 为 on；执行角色脚本。它不设置口令。删除 `conf.d/agentdb-staging.conf` 和那一行 pg_hba 即可撤销，或直接回到快照。
 
-## 5. 客户端配置（WSL）
+## 5. 客户端配置（Windows 原生 psql）
 
-1. 口令写入默认 WSL 用户的 `~/.pgpass`（权限 0600）：`192.168.56.10:5432:*:agentdb_staging:<口令>`。或每次运行加 `--password`。
-2. 复制 [connection.staging.example.json](../connection.staging.example.json) 为 `connection.staging.local.json`（已忽略），改为：
+1. **只装 PostgreSQL 16 客户端**（用户在 Windows 终端执行；会弹出管理员确认）：
+
+   ```console
+   winget install --id PostgreSQL.PostgreSQL.16 -e --source winget --override "--mode unattended --unattendedmodeui minimal --disable-components server,pgAdmin,stackbuilder"
+   ```
+
+   winget 下载 EDB 官方安装包 `postgresql-16.15-5-windows-x64.exe`（`--override` 替换其默认参数），只保留命令行工具，安装到 `C:\Program Files\PostgreSQL\16`。不装服务器，因此不需要超级用户口令，也不会注册 Windows 服务或占用 5432。安装后应满足：`"C:\Program Files\PostgreSQL\16\bin\psql.exe" --version` 输出 16.x；`Get-Service postgresql*` 没有结果。
+2. **口令**：写入 `%APPDATA%\postgresql\pgpass.conf`（不存在就新建目录和文件），一行 `192.168.56.10:5432:*:agentdb_staging:<口令>`；或每次运行加 `--password` 隐藏输入。
+3. **连接配置** `connection.staging.local.json`（已被 `.gitignore` 忽略；本机已按下列内容建好）：
 
    ```json
    {
@@ -89,15 +104,15 @@ shred -u server.key
      "user": "agentdb_staging",
      "database": "agentdb_staging",
      "maintenance_database": "postgres",
-     "psql": "/usr/bin/psql",
-     "wsl_distribution": "Ubuntu",
+     "psql": "C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe",
+     "wsl_distribution": "",
      "wsl_user": "",
      "sslmode": "verify-full",
-     "sslrootcert": "/home/<wsl-user>/.agentdb-staging/ca.pem"
+     "sslrootcert": "C:\\Users\\lzt\\.agentdb-staging\\ca.pem"
    }
    ```
 
-   `wsl_user` 留空表示默认 WSL 用户，与 `~/.pgpass` 和 `ca.pem` 的所有者一致。
+   `wsl_distribution` 留空即使用 Windows 原生 psql，流量直接从 Windows 进入仅主机网卡；`db.py` 把 `sslmode`、`sslrootcert` 以 `PGSSLMODE`、`PGSSLROOTCERT` 交给 psql。开发用的 `connection.local.json`（WSL 传输、Unix socket）不变。
 
 ## 6. 运行 S1
 
