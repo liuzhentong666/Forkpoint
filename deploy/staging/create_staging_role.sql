@@ -26,4 +26,7 @@ END $$;
 -- SET ROLE only: the suites switch to these roles explicitly and must not
 -- silently inherit their privileges.
 GRANT agentdb_client, agentdb_manager TO agentdb_staging WITH INHERIT FALSE, SET TRUE;
+-- A vanished client's open transaction (and main's lock) ends after 60 s idle.
+-- Set on this role only, so admin sessions keep PostgreSQL's default (off).
+ALTER ROLE agentdb_staging SET idle_in_transaction_session_timeout = '60s';
 COMMIT;

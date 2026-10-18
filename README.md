@@ -16,7 +16,7 @@
 
 现有安装使用新版快照维护器前，先由数据库所有者执行 `python db.py install-manager`，新增 `vc.snapshot_status` 与 `agentdb_manager`，不改业务记录或版本历史。常规维护可加 `--role agentdb_manager`，只使用快照检查/物化权限；修改系统规则仍由原管理员身份承担。该 NOLOGIN 角色不自动分配给其他登录用户。
 
-`vc.merge` 现在每张表只调用一次 `vc.rows_at` 解析全部改动行的目标状态，冲突规则与历史不变（见 [合入耗时分解](docs/MERGE_BENCHMARK.md)）。新安装已包含；现有安装由数据库所有者执行 `python db.py install-merge-batch`（`sql/004_merge_batch.sql`，可重复执行，只替换函数，保留授权，不改业务记录或版本历史）。`python check_merge_migration.py` 在新建的旧版测试库上核验这一迁移。
+`vc.merge` 现在每张表只调用一次 `vc.rows_at` 解析全部改动行的目标状态，冲突规则与历史不变（见 [合入耗时分解](docs/MERGE_BENCHMARK.md)）。新安装已包含；现有安装由数据库所有者执行 `python db.py install-merge-batch`（`sql/004_merge_batch.sql`，可重复执行，只替换函数；已安装 005 的库会拒绝执行，以免还原 005 的 `vc.merge`，保留授权，不改业务记录或版本历史）。`python check_merge_migration.py` 在新建的旧版测试库上核验这一迁移。
 
 历史遍历不再随全部历史长度变慢（见 [历史增长](docs/HISTORY_GROWTH.md)）：父边逐步走索引，`vc._file_state` 找到路径即停，`vc.merge` 只遍历一次目标祖先并只检查可能不同的路径；结果、错误与授权不变。新增只读快照策略 `vc.snapshot_due`，由维护执行器 `SnapshotMaintenance.run_due` 按其结果物化快照。新安装已包含；现有安装由数据库所有者执行 `python db.py install-bounded-history`（`sql/005_bounded_history.sql`，可重复执行）。`check_history_migration.py` 在新建的旧版测试库上核验。
 

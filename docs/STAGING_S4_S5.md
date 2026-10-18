@@ -113,17 +113,18 @@
 .\.venv-cloud\Scripts\python.exe staging_drills.py netcut --config connection.staging.local.json --seconds 20 --expect-gone-within 75
 ```
 
-通过条件：`passed` 为 true，即在原有条件（清理后能取得 main 锁、head 未变、无遗留事务）之外，服务器在持锁会话最后一条语句之后 75 s 内自行结束该会话（`main_locked_for_s` ≤ 75），不需要所有者 `pg_terminate_backend`（`terminated_by_owner` 为 null）。75 s = 60 s 超时 + 最多约 1.5 s 的 1 s 轮询粒度 + 共用一台笔记本时的调度余量。
+通过条件：`passed` 为 true，即在原有条件（清理后能取得 main 锁、head 未变、无遗留事务）之外，服务器在持锁会话最后一条语句之后 75 s 内自行结束该会话（`main_locked_for_s` ≤ 75，按服务器时钟计算），不需要所有者 `pg_terminate_backend`（`terminated_by_owner` 为 null）。75 s = 60 s 超时 + 最多约 1.5 s 的 1 s 轮询粒度 + 共用一台笔记本时的调度余量。轮询从网络恢复时开始；若首次连上服务器时会话已不存在，`main_locked_for_s` 只是上限，此时若已超过 75 s，则 `bound_observable` 为 false、`bound_met` 为 null（无法判断，不算通过）。
 
 预期结果：
 
 | 字段 | 预期 |
 |---|---|
 | `server_settings` | `idle_in_transaction_session_timeout` 60000ms、`tcp_keepalives_idle` 60s、`tcp_keepalives_interval` 10s、`tcp_keepalives_count` 6、`tcp_user_timeout` 120000ms、`client_connection_check_interval` 10000ms、`lock_timeout` 0ms（服务器默认值不变，只有合入事务自己设置） |
-| `probe_while_lock_held`、`probe_right_after_link_restored` | 均为 `lock_timeout`（恢复网络时持锁会话才空闲约 25 s） |
+| `probe_while_lock_held` | `lock_timeout` |
+| `first_reachable_poll_after_s` | 网络恢复后首次连上服务器的时间（2026-10-18 复测约 37 s） |
 | `connect_during_cut` | 约 5 s 后 `timeout expired` |
 | `main_locked_for_s` | 约 60–62 s；`stale_session_gone_after_s` 约 35 s（从网络恢复起算） |
-| `terminated_by_owner` | null；`probe_after_cleanup` 为 `acquired`；`bound_met` 为 true |
+| `terminated_by_owner` | null；`probe_after_cleanup` 为 `acquired`；`bound_observable` 与 `bound_met` 为 true |
 
 断网 20 s 时，60 s 处 `idle_in_transaction_session_timeout` 到期，同时第一个 keepalive 探测也会因网络已恢复而收到 RST，两者几乎同时，结果文件不区分是哪一个结束了会话（虚拟机的 PostgreSQL 日志会记录 “terminating connection due to idle-in-transaction timeout”）。要单独验证断网期间也能释放，可再运行 `--seconds 90 --expect-gone-within 110`：这时 keepalive 收不到应答，只有空闲超时能在 60 s 处结束会话；`gone_at_first_poll` 为 true，`main_locked_for_s` 只是上限（断网 90 s 加持锁前后的约 4 s 和网络恢复后的连接检查，约 95–100 s）。`--expect-gone-within` 必须大于 `--seconds`，否则脚本拒绝运行，因为断网期间无法观察。不加该参数时，演练与原来一样只记录结果，`passed` 不检查上限。
 

@@ -26,7 +26,7 @@ import threading
 import time
 import uuid
 
-from db import FLAGS, Connection, add_connection_arguments
+from db import FLAGS, Connection, add_connection_arguments, sqlstate
 from review_local import seed
 
 ROOT = Path(__file__).resolve().parent
@@ -442,13 +442,14 @@ def hold_main_lock(owner, database):
     process = subprocess.Popen(owner.client_args(database, stop_on_error=False), stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=owner.env, creationflags=FLAGS)
     process.stdin.write(b"BEGIN;\nSELECT vc.begin_change('main', vc.head(), 'netcut-A', 'hold') AS d \\gset\n"
-                        b"SELECT 'LOCKED|'||pg_backend_pid();\n")
+                        b"SELECT 'LOCKED|'||pg_backend_pid()||'|'||extract(epoch FROM clock_timestamp());\n")
     process.stdin.flush()
     line = process.stdout.readline().decode().strip()
     if not line.startswith("LOCKED|"):
         process.kill()
         raise RuntimeError("could not take main's lock: " + line + process.stderr.read().decode())
-    return process, int(line.split("|")[1])
+    _, pid, locked_at = line.split("|")
+    return process, int(pid), float(locked_at)  # locked_at: server clock, as later polls use
 
 
 def try_main_lock(connection):
@@ -456,7 +457,9 @@ def try_main_lock(connection):
     result = connection.execute("SET lock_timeout = '3s';\nBEGIN;\n"
                                 "SELECT vc.begin_change('main', vc.head(), 'netcut-B', 'probe') AS d \\gset\nROLLBACK;",
                                 timeout=30)
-    return "acquired" if result.returncode == 0 else ("lock_timeout" if "55P03" in result.stderr else result.stderr.strip()[-160:])
+    if result.returncode == 0:
+        return "acquired"
+    return "lock_timeout" if sqlstate(result.stderr) == "55P03" else result.stderr.strip()[-160:]
 
 
 # Server settings that bound how long a vanished client's session survives
@@ -473,7 +476,7 @@ def run_netcut(args, owner):
     name, connection = new_database(args, owner, "netcut")
     head_before = connection.sql("SELECT vc.head();")
     settings = json.loads(connection.sql(VANISHED_CLIENT_SETTINGS))
-    holder, pid = hold_main_lock(owner, name)
+    holder, pid, locked_at = hold_main_lock(owner, name)
     locked = time.perf_counter()  # the holder's last statement has just returned
     contended = try_main_lock(connection)
     vbox("controlvm", args.vm, "setlinkstate2", "off")
@@ -487,19 +490,26 @@ def run_netcut(args, owner):
     time.sleep(max(0, args.seconds - (time.perf_counter() - cut)))
     vbox("controlvm", args.vm, "setlinkstate2", "on")
     restored = time.perf_counter()
-    while not server_ready(owner):
-        time.sleep(1)
-    first_probe = try_main_lock(connection)
     expect = args.expect_gone_within
     deadline = max(restored + args.wait, locked + expect + 15 if expect else 0)
-    stale_s, gone, polls, state = None, None, 0, None
+    # Poll from the moment the link is back; attempts fail until the server is reachable.
+    # Times come from the server clock, so client-side reconnect delays only matter
+    # when the session was already gone at the first reachable poll.
+    stale_s, gone_at, polls, state, first_reachable_s = None, None, 0, None, None
     while time.perf_counter() < deadline:
-        state = connection.sql(f"SELECT coalesce((SELECT state FROM pg_stat_activity WHERE pid={pid}),'gone');")
-        polls += 1
-        if state == "gone":
-            gone = time.perf_counter()
-            stale_s = round(gone - restored, 1)
-            break
+        try:
+            poll = connection.execute(f"SELECT coalesce((SELECT state FROM pg_stat_activity WHERE pid={pid}),'gone')"
+                                      "||'|'||extract(epoch FROM clock_timestamp());", timeout=30)
+        except subprocess.TimeoutExpired:
+            continue
+        if poll.returncode == 0:
+            polls += 1
+            if first_reachable_s is None:
+                first_reachable_s = round(time.perf_counter() - restored, 1)
+            state, server_now = poll.stdout.strip().rsplit("|", 1)
+            if state == "gone":
+                gone_at, stale_s = float(server_now), round(time.perf_counter() - restored, 1)
+                break
         time.sleep(1)
     terminated = None
     if stale_s is None:
@@ -507,13 +517,18 @@ def run_netcut(args, owner):
         time.sleep(1)
     final_probe = try_main_lock(connection)
     after = fingerprint(connection)
-    locked_for = round(gone - locked, 1) if gone else None
-    bound_met = None if expect is None else locked_for is not None and locked_for <= expect
+    locked_for = round(gone_at - locked_at, 1) if gone_at else None
+    gone_at_first_poll = polls == 1 and gone_at is not None
+    # Already gone at the first reachable poll: locked_for is only an upper bound. If that
+    # poll came after the bound, the server's release time was not observable.
+    observable = not (gone_at_first_poll and expect is not None and locked_for > expect)
+    bound_met = (None if expect is None or not observable
+                 else locked_for is not None and locked_for <= expect)
     write("netcut", dict(
         database=name, server_settings=settings, link_down_s=args.seconds, holder_pid=pid,
         probe_while_lock_held=contended, connect_during_cut=connect_during_cut,
-        probe_right_after_link_restored=first_probe, stale_session_gone_after_s=stale_s,
-        main_locked_for_s=locked_for, gone_at_first_poll=polls == 1 and gone is not None,
+        first_reachable_poll_after_s=first_reachable_s, stale_session_gone_after_s=stale_s,
+        main_locked_for_s=locked_for, gone_at_first_poll=gone_at_first_poll, bound_observable=observable,
         stale_state_at_deadline=None if stale_s else state, waited_s=round(deadline - restored, 1),
         expect_gone_within_s=expect, bound_met=bound_met,
         terminated_by_owner=terminated, probe_after_cleanup=final_probe, head_unchanged=after["head"] == head_before,
@@ -524,10 +539,12 @@ def run_netcut(args, owner):
               "unplugged and its client process died. The server ends such a session only through "
               "idle_in_transaction_session_timeout or when TCP declares the peer dead (server_settings: the values "
               "in effect for this TCP connection); with PostgreSQL's defaults that takes about 2 h 11 min. "
-              "stale_session_gone_after_s counts from the link coming back; main_locked_for_s from the holder's "
-              "last statement to the first 1 s poll that no longer finds the session, so it overstates the "
-              "server's time by up to one poll. With --expect-gone-within the drill passes only if the server "
-              "released main within that many seconds without the owner's pg_terminate_backend.")))
+              "Polling starts when the link is back. main_locked_for_s is server time from the holder's last "
+              "statement to the first poll that no longer finds the session (up to one 1 s poll late); if the "
+              "session was already gone at the first reachable poll it is an upper bound, and when that poll "
+              "came after the bound, bound_observable is false and bound_met is null. With --expect-gone-within "
+              "the drill passes only if the server released main within that many seconds without the owner's "
+              "pg_terminate_backend.")))
 
 
 # --- S5: terminated session mid-transaction ---------------------------------

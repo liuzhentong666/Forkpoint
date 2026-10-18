@@ -133,7 +133,9 @@ BEGIN
   -- that changeset has the same state on both sides and the first test below
   -- would skip it. Only the paths recorded above it are checked, in path order.
   a:=base_id; b:=p_source; ours:=ARRAY[a]; theirs:=ARRAY[b];
-  LOOP
+  -- The step walk tests membership in growing arrays, so it is capped; chains that
+  -- have not met by then are joined set-wise in one linear walk instead.
+  FOR step IN 1..256 LOOP
     meet:=CASE WHEN a=ANY(theirs) THEN a WHEN b=ANY(ours) THEN b END;
     EXIT WHEN meet IS NOT NULL OR (a IS NULL AND b IS NULL);
     IF a IS NOT NULL THEN
@@ -145,6 +147,23 @@ BEGIN
       IF b IS NOT NULL THEN theirs:=theirs||b; END IF;
     END IF;
   END LOOP;
+  meet:=coalesce(meet,CASE WHEN a=ANY(theirs) THEN a WHEN b=ANY(ours) THEN b END);
+  IF meet IS NULL AND (a IS NOT NULL OR b IS NOT NULL) THEN
+    -- Both chains in full; their first common changeset is the top of the shared
+    -- suffix. ours/theirs keep only the changesets above it (all, if none is shared).
+    WITH RECURSIVE ca(id,d) AS (
+      SELECT base_id,0 UNION ALL SELECT p.parent,ca.d+1 FROM ca CROSS JOIN LATERAL (
+        SELECT p.parent FROM vc.parent p WHERE p.child=ca.id AND p.ordinal=1 OFFSET 0) p
+    ), cb(id,d) AS (
+      SELECT p_source,0 UNION ALL SELECT p.parent,cb.d+1 FROM cb CROSS JOIN LATERAL (
+        SELECT p.parent FROM vc.parent p WHERE p.child=cb.id AND p.ordinal=1 OFFSET 0) p
+    ), m AS (
+      SELECT cb.id,ca.d AS da,cb.d AS db FROM cb JOIN ca USING (id) ORDER BY cb.d LIMIT 1
+    ) SELECT (SELECT id FROM m),
+             ARRAY(SELECT ca.id FROM ca WHERE ca.d<coalesce((SELECT da FROM m),2147483647) ORDER BY ca.d),
+             ARRAY(SELECT cb.id FROM cb WHERE cb.d<coalesce((SELECT db FROM m),2147483647) ORDER BY cb.d)
+      INTO meet,ours,theirs;
+  END IF;
   FOR file_path IN SELECT DISTINCT c.path FROM vc.path_change c
       WHERE c.changeset=ANY(ours[1:coalesce(array_position(ours,meet),cardinality(ours)+1)-1] ||
                             theirs[1:coalesce(array_position(theirs,meet),cardinality(theirs)+1)-1])

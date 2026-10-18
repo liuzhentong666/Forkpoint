@@ -2,8 +2,14 @@
 -- state of all changed rows of a table with one vc.rows_at() call instead of one
 -- per changed row. Same signature, conflict rules and history; must stay identical
 -- to vc.merge in 001_core.sql. Existing grants are kept by CREATE OR REPLACE.
--- Apply as the existing database owner.
+-- Apply as the existing database owner. Refuses to run after 005_bounded_history.sql,
+-- whose vc.merge it would replace with this older definition.
 BEGIN;
+DO $guard$ BEGIN
+  IF to_regprocedure('vc._merge_base(uuid[],uuid)') IS NOT NULL THEN
+    RAISE EXCEPTION '005_bounded_history.sql is installed; 004 would revert its vc.merge (run db.py install-bounded-history instead)';
+  END IF;
+END $guard$;
 CREATE OR REPLACE FUNCTION vc.merge(p_target text,p_source uuid,p_expected uuid,p_author text DEFAULT 'agent')
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
 DECLARE base_id uuid; ctx vc.work_tx; t record; d record;

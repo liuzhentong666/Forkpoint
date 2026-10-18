@@ -111,7 +111,7 @@ shred -u server.key
    sudo bash configure_postgres.sh --listen 192.168.56.10 --client-cidr 192.168.56.0/24 --role-sql create_staging_role.sql
    ```
 
-   最后一行应为 `Vanished clients: idle in transaction ends after 1min; TCP keepalive 60 s, then 6 probes 10 s apart.`；若某项设置未生效，脚本以 `settings in … not in effect` 报错退出。
+   最后一行应为 `Vanished clients: agentdb_staging idle_in_transaction_session_timeout=60s; TCP keepalive 60 s, then 6 probes 10 s apart.`（该超时只设在 `agentdb_staging` 角色上）；若某项设置未生效，脚本以 `settings in … not in effect` 报错退出。
 
 3. 在 Windows 中经 TLS 以 `agentdb_staging` 核对（keepalive 的值只在 TCP 连接上显示，虚拟机内经 Unix socket 查看时为 0；连接串中的路径用正斜杠，libpq 会把反斜杠当作转义）：
 

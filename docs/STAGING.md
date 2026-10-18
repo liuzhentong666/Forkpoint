@@ -38,10 +38,9 @@
    `agentdb_staging` 不是超级用户，不能建角色，只有 `CREATEDB`；对 `agentdb_client`、`agentdb_manager` 只有 SET 权限、不继承其权限。脚本会预先建立这两个 NOLOGIN 角色，因为 `install` 只在它们不存在时才建，而建角色需要 CREATEROLE。脚本可重复执行。
 4. **客户端口令**：写入客户端的 PostgreSQL 密码文件（Linux `~/.pgpass`，权限 0600；Windows 原生客户端 `%APPDATA%\postgresql\pgpass.conf`），或每次运行时加 `--password` 隐藏输入。不要写进 JSON、命令参数或聊天。
 5. **客户端配置**：复制 [connection.staging.example.json](../connection.staging.example.json) 为 `connection.staging.local.json`（已被 `.gitignore` 忽略），填写主机名与 CA 文件路径。
-6. **失联客户端的超时**（服务器）：PostgreSQL 默认要约 2 小时 11 分钟才发现事务中失联的客户端，期间它持有的锁（例如 main 的分支锁）一直有效。在 `postgresql.conf` 或其 `conf.d` 中设置：
+6. **失联客户端的超时**（服务器）：PostgreSQL 默认要约 2 小时 11 分钟才发现事务中失联的客户端，期间它持有的锁（例如 main 的分支锁）一直有效。为专用角色设置 `ALTER ROLE agentdb_staging SET idle_in_transaction_session_timeout = '60s'`（[角色脚本](../deploy/staging/create_staging_role.sql) 已包含；只作用于该角色，管理员会话保持默认），并在 `postgresql.conf` 或其 `conf.d` 中设置：
 
    ```text
-   idle_in_transaction_session_timeout = '60s'
    tcp_keepalives_idle = '60s'
    tcp_keepalives_interval = '10s'
    tcp_keepalives_count = 6

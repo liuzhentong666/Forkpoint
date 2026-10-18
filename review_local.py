@@ -231,8 +231,12 @@ def _merge_all(owner, worker, clients, client, session_open_ms, count, rows_per_
     def land(item):
         barrier.wait(timeout=30)
         began, expected, writer = time.perf_counter(), base, clients[item["agent"]]
-        retries = dict(stale_head=0, lock_timeout=0)
-        for attempt in range(1, 31):
+        retries, attempt = dict(stale_head=0, lock_timeout=0), 0
+        # Stale heads keep the old bound of 30 attempts. A lock timeout only means the
+        # writer is still queued behind main's lock, so it gets its own, larger bound
+        # (60 x MERGE_LOCK_TIMEOUT) instead of using up the stale-head attempts.
+        while attempt - retries["lock_timeout"] < 30 and retries["lock_timeout"] < 60:
+            attempt += 1
             merged, outcome = merge_once(writer, item["revision"], expected, f"synthetic-{item['agent']}")
             if merged:
                 return dict(**item, merged_head=merged, attempts=attempt, stale_head_retries=retries["stale_head"],

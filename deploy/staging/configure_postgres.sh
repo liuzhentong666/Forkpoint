@@ -73,9 +73,9 @@ password_encryption = 'scram-sha-256'
 # Bounded detection of vanished clients; values justified in docs/STAGING_S4_S5.md
 # section 4. Every client sends a versioned transaction as one script, so a live
 # client is idle inside it for about one round trip; the longest deliberate gap
-# (staging_drills.py netcut's lock holder) is about 4 s. A session idle for 60 s
-# inside a transaction is ended and its locks (e.g. main's branch row) released.
-idle_in_transaction_session_timeout = '60s'
+# (staging_drills.py netcut's lock holder) is about 4 s. The 60 s
+# idle_in_transaction_session_timeout is set on the agentdb_staging role by
+# create_staging_role.sql, so admin sessions and other roles keep the default.
 # A silent peer on an idle connection: first probe after 60 s, closed after 6 unanswered
 # probes 10 s apart (about 120 s); a host that is up but lost the socket answers the first
 # probe with a reset. tcp_user_timeout gives the same bound while sent data is unacknowledged.
@@ -116,7 +116,9 @@ rejected="$(sudo -u postgres psql -XAtc "SELECT string_agg(name || ': ' || coale
 sudo -u postgres psql -X -q -v ON_ERROR_STOP=1 -d postgres < "$rolesql"
 
 echo "PostgreSQL $version listens on localhost and $listen with TLS; agentdb_staging may connect from $cidr."
-echo "Vanished clients: idle in transaction ends after $(sudo -u postgres psql -XAtc \
-  'SHOW idle_in_transaction_session_timeout'); TCP keepalive 60 s, then 6 probes 10 s apart."
+echo "Vanished clients: agentdb_staging $(sudo -u postgres psql -XAtc \
+  "SELECT coalesce((SELECT array_to_string(setconfig, ',') FROM pg_db_role_setting
+     WHERE setrole = 'agentdb_staging'::regrole AND setdatabase = 0), 'has no role settings')"); \
+TCP keepalive 60 s, then 6 probes 10 s apart."
 echo "Set its password now (typed, not stored here):"
 echo "  sudo -u postgres psql -X -d postgres -c '\\password agentdb_staging'"
