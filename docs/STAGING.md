@@ -38,6 +38,20 @@
    `agentdb_staging` 不是超级用户，不能建角色，只有 `CREATEDB`；对 `agentdb_client`、`agentdb_manager` 只有 SET 权限、不继承其权限。脚本会预先建立这两个 NOLOGIN 角色，因为 `install` 只在它们不存在时才建，而建角色需要 CREATEROLE。脚本可重复执行。
 4. **客户端口令**：写入客户端的 PostgreSQL 密码文件（Linux `~/.pgpass`，权限 0600；Windows 原生客户端 `%APPDATA%\postgresql\pgpass.conf`），或每次运行时加 `--password` 隐藏输入。不要写进 JSON、命令参数或聊天。
 5. **客户端配置**：复制 [connection.staging.example.json](../connection.staging.example.json) 为 `connection.staging.local.json`（已被 `.gitignore` 忽略），填写主机名与 CA 文件路径。
+6. **失联客户端的超时**（服务器）：PostgreSQL 默认要约 2 小时 11 分钟才发现事务中失联的客户端，期间它持有的锁（例如 main 的分支锁）一直有效。在 `postgresql.conf` 或其 `conf.d` 中设置：
+
+   ```text
+   idle_in_transaction_session_timeout = '60s'
+   tcp_keepalives_idle = '60s'
+   tcp_keepalives_interval = '10s'
+   tcp_keepalives_count = 6
+   tcp_user_timeout = '120s'
+   client_connection_check_interval = '10s'
+   ```
+
+   这样事务内空闲的失联会话 60 s 内被结束，静默对端的连接约 120 s 内被关闭，执行中的语句在客户端离开后约 10 s 内（静默对端约 130 s 内）被取消。所有客户端都把一个版本事务作为一个脚本发送，事务内的合法空闲约为一次往返，最长的有意停顿（断网演练的持锁会话）约 4 s。取值依据见 [S4/S5 第 4 节](STAGING_S4_S5.md#4-风险失联客户端的会话长时间持有锁)；本机虚拟机由 [configure_postgres.sh](../deploy/staging/configure_postgres.sh) 写入，已配置的虚拟机按 [4a 节](STAGING_VM.md#4a-给已配置的虚拟机加上失联客户端设置用户操作) 补上。
+
+客户端一侧：`review_local.py` 的十写入者合入与 `agent_lab.py merge` 在合入事务内设置 `lock_timeout = '10s'`。等不到 main 锁时报告 `lock_timeout`（SQLSTATE 55P03），与 `stale_head`（40001）一样表示 main 未改变、同一提案可以重试，不当作 `merge_conflict`（P0001）。服务器的 `lock_timeout` 保持默认 0。
 
 ## S1 核验命令
 

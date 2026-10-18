@@ -30,6 +30,12 @@ SSLMODES = ("disable", "allow", "prefer", "require", "verify-ca", "verify-full")
 SSL_ENVIRONMENT = ("PGSSLMODE", "PGSSLROOTCERT", "PGREQUIRESSL", "PGSSLNEGOTIATION")
 
 
+def sqlstate(stderr):
+    """SQLSTATE of the first error psql reported (VERBOSITY=verbose), or None."""
+    match = re.search(r"ERROR:\s+([A-Z0-9]{5}):", stderr)
+    return match.group(1) if match else None
+
+
 def database_name(value):
     if not isinstance(value, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", value):
         raise ValueError("Use a database name of 1-63 lowercase letters, digits or underscores, starting with a letter.")

@@ -9,7 +9,8 @@ import threading
 import time
 import uuid
 
-from db import Connection, add_connection_arguments
+from agent_lab import MERGE_ERRORS, MERGE_LOCK_TIMEOUT
+from db import Connection, add_connection_arguments, sqlstate
 from agent_state.engine import Engine
 from agent_state.maintenance import SnapshotMaintenance
 from agent_state.runtime import Runtime
@@ -123,6 +124,65 @@ def maintenance_checks(owner, manager):
     return results
 
 
+def merge_once(writer, revision, expected, author, lock_timeout=MERGE_LOCK_TIMEOUT):
+    """One merge attempt into main: (new head, None), or (None, "stale_head" | "lock_timeout").
+
+    Both failures leave main unchanged and may be retried; anything else, a
+    merge_conflict included, is raised: never retry semantic/constraint conflicts blindly.
+    """
+    result = writer.execute(f"""
+      BEGIN;
+      SET LOCAL lock_timeout = '{lock_timeout}';
+      SELECT vc.merge('main','{revision}','{expected}','{author}') AS merged \gset
+      COMMIT;
+      SELECT :'merged';
+    """)
+    if result.returncode == 0:
+        return result.stdout.strip(), None
+    outcome = MERGE_ERRORS.get(sqlstate(result.stderr))
+    if outcome not in ("stale_head", "lock_timeout"):
+        raise AssertionError(result.stderr)
+    return None, outcome
+
+
+def lock_timeout_check(owner, worker):
+    """A merge queued behind main's lock fails as lock_timeout, not a conflict, then lands."""
+    base = worker.sql("SELECT vc.head();")
+    proposal = worker.sql(f"""
+      SELECT vc.fork('lock-timeout-check','{base}') AS forked \gset
+      BEGIN;
+      SELECT vc.begin_change('lock-timeout-check','{base}','review','merge behind a held lock') AS draft \gset
+      UPDATE agent.products SET stock=98 WHERE id=3999;
+      SELECT vc.finish_change() AS revision \gset
+      COMMIT;
+      SELECT :'revision';
+    """)
+    # Another session holds main's branch row, as a vanished client's open transaction would.
+    hold = "BEGIN;\nSELECT vc.begin_change('main',vc.head(),'review','hold main') AS draft \\gset\nSELECT pg_sleep(6);\nROLLBACK;"
+    holding = ("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() "
+               "AND state='active' AND query LIKE 'SELECT pg_sleep(6)%';")
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        holder = pool.submit(owner.execute, hold)
+        deadline = time.monotonic() + 20
+        while owner.sql(holding) != "1":
+            assert time.monotonic() < deadline and not holder.done(), "holder did not take main's lock"
+            time.sleep(0.1)
+        began = time.perf_counter()
+        merged, blocked = merge_once(worker, proposal, base, "review-lock", lock_timeout="1s")
+        failed_after_ms = round((time.perf_counter()-began)*1000, 3)
+        assert holder.result(timeout=30).returncode == 0
+    assert merged is None and blocked == "lock_timeout", (merged, blocked)
+    assert failed_after_ms >= 1000, failed_after_ms  # it waited out the timeout, then failed
+    assert worker.sql("SELECT vc.head();") == base
+    merged, outcome = merge_once(worker, proposal, base, "review-lock")
+    assert merged and outcome is None and worker.sql("SELECT vc.head();") == merged
+    assert owner.sql("SELECT stock FROM app.products WHERE id=3999;") == "98"
+    assert owner.sql("SELECT count(*) FROM vc.work_tx;") == "0"
+    return dict(outcome_while_main_held=blocked, sqlstate="55P03", lock_timeout="1s",
+                failed_after_ms=failed_after_ms, head_unchanged_by_failed_attempt=True,
+                same_proposal_merged_after_release=merged, merge_lock_timeout=MERGE_LOCK_TIMEOUT)
+
+
 def merge_all(owner, worker, client="session"):
     count, rows_per_agent = 10, 10
     clients, session_open_ms = [worker] * count, None
@@ -170,22 +230,17 @@ def _merge_all(owner, worker, clients, client, session_open_ms, count, rows_per_
     barrier = threading.Barrier(count)
     def land(item):
         barrier.wait(timeout=30)
-        began, expected, stale, writer = time.perf_counter(), base, 0, clients[item["agent"]]
+        began, expected, writer = time.perf_counter(), base, clients[item["agent"]]
+        retries = dict(stale_head=0, lock_timeout=0)
         for attempt in range(1, 31):
-            result = writer.execute(f"""
-              BEGIN;
-              SELECT vc.merge('main','{item['revision']}','{expected}','synthetic-{item['agent']}') AS merged \gset
-              COMMIT;
-              SELECT :'merged';
-            """)
-            if result.returncode == 0:
-                return dict(**item, merged_head=result.stdout.strip(), attempts=attempt, stale_head_retries=stale,
+            merged, outcome = merge_once(writer, item["revision"], expected, f"synthetic-{item['agent']}")
+            if merged:
+                return dict(**item, merged_head=merged, attempts=attempt, stale_head_retries=retries["stale_head"],
+                            lock_timeout_retries=retries["lock_timeout"],
                             merge_wall_ms=round((time.perf_counter()-began)*1000, 3))
-            if "40001" not in result.stderr:
-                raise AssertionError(result.stderr)  # Never retry semantic/constraint conflicts blindly.
-            stale += 1
+            retries[outcome] += 1
             expected = writer.sql("SELECT vc.head();")
-        raise AssertionError("Merge retry bound exhausted")
+        raise AssertionError(f"Merge retry bound exhausted: {retries}")
     merge_started = time.perf_counter()
     with ThreadPoolExecutor(max_workers=count) as pool:
         landed = list(pool.map(land, proposals))
@@ -208,7 +263,9 @@ def _merge_all(owner, worker, clients, client, session_open_ms, count, rows_per_
                 fork_copied_history_rows=0, branch_phase_wall_ms=round(branches_ms,3),
                 merge_phase_wall_ms=round(merge_ms,3), end_to_end_wall_ms=round(complete_ms,3),
                 merge_median_ms=round(statistics.median(latencies),3), merge_max_ms=max(latencies),
-                stale_head_retries=sum(item["stale_head_retries"] for item in landed), results=landed,
+                stale_head_retries=sum(item["stale_head_retries"] for item in landed),
+                merge_lock_timeout=MERGE_LOCK_TIMEOUT,
+                lock_timeout_retries=sum(item["lock_timeout_retries"] for item in landed), results=landed,
                 verification="100 changed rows, 3900 unchanged rows, 10 code files, 10 reachable source commits, fixed base, no unfinished transactions",
                 timing_scope=("Client wall time includes lock waits, retries and final COMMIT; " +
                               ("each writer reuses one long-lived psql session opened before timing (session_open_ms)"
@@ -238,8 +295,10 @@ def main():
     maintenance = maintenance_checks(owner, manager)
     print("PASS two crash windows and zombie conflict on real PostgreSQL", flush=True)
     merges = merge_all(owner, worker, args.client)
+    lock_timeout = lock_timeout_check(owner, worker)
+    print("PASS merge behind a held main lock reports lock_timeout, then lands", flush=True)
     output = dict(database=database, postgresql=details, regression_tests=len(regression),
-                  manager=permissions, maintenance=maintenance, merge_all=merges,
+                  manager=permissions, maintenance=maintenance, merge_all=merges, merge_lock_timeout=lock_timeout,
                   real_cloud_verified=False, state_backend="MemoryStore-test-only",
                   note="Existing PostgreSQL service reused without replacement or restart; dedicated test database retained. No model used in synthetic merge benchmark.")
     (ROOT / "local-review-results.json").write_text(json.dumps(output, indent=2)+"\n", encoding="utf-8")

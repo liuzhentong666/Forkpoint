@@ -14,7 +14,15 @@ import re
 import sys
 import uuid
 
-from db import Connection, add_connection_arguments
+from db import Connection, add_connection_arguments, sqlstate
+
+# A merge waits at most this long for main's branch lock, then fails with
+# lock_timeout instead of queueing behind a vanished client's open transaction
+# (docs/STAGING_S4_S5.md section 4).
+MERGE_LOCK_TIMEOUT = "10s"
+# Merge failures by SQLSTATE. Only merge_conflict is semantic; after stale_head
+# or lock_timeout main is unchanged and the same proposal may be tried again.
+MERGE_ERRORS = {"40001": "stale_head", "P0001": "merge_conflict", "55P03": "lock_timeout"}
 
 
 def connect(args, database, role=None):
@@ -160,14 +168,14 @@ def perform(args, worker):
     elif args.action == "merge":
         response = worker.execute(f"""
           BEGIN;
+          SET LOCAL lock_timeout = '{MERGE_LOCK_TIMEOUT}';
           SELECT vc.merge('main','{revision(args.revision)}','{revision(args.expected)}',{literal(args.actor)}) AS landed \gset
           COMMIT;
           SELECT :'landed';
         """)
         if response.returncode:
-            match = re.search(r"ERROR:\s+([A-Z0-9]{5}):", response.stderr)
-            state = match.group(1) if match else "unknown"
-            return json.dumps(dict(error="stale_head" if state == "40001" else "merge_conflict" if state == "P0001" else "database_error",
+            state = sqlstate(response.stderr) or "unknown"
+            return json.dumps(dict(error=MERGE_ERRORS.get(state, "database_error"),
                                    sqlstate=state, detail=response.stderr.strip())) + "\n", 2
         result = dict(merged=True, main=response.stdout.strip())
     else:
