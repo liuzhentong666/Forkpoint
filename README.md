@@ -76,13 +76,13 @@ Windows Python 通过 WSL 调用已经安装的 psql，并使用现有的本地�
 python db.py check
 ```
 
-`check` 连接维护库，输出真实版本和连接信息。当前 `agentdb` 项目库已安装；在另一套环境首次安装时执行：
+`check` 连接维护库，输出真实版本和连接信息。当前 `agentdb` 项目库已安装，并已由用户于 2026-10-18 依次执行 `install-merge-batch`、`install-bounded-history`、`install-history-health`，处于 001–006 的最新状态（业务数据仍为空）；在另一套环境首次安装时执行：
 
 ```console
 python db.py install
 ```
 
-安装命令先创建配置中的项目库（若尚不存在），再在一个事务中安装三个 SQL 文件（版本引擎、示例业务表、受限维护角色）。它会拒绝已有项目 schema 或用户表的目标库。项目库初始为空业务数据，不导入测试用的 4,000 条商品。
+安装命令先创建配置中的项目库（若尚不存在），再在一个事务中按顺序安装六个 SQL 文件（版本引擎、示例业务表、受限维护角色、批量合入、有界历史遍历与快照策略、只读历史健康检查）。已有安装按 004 → 005 → 006 的顺序用对应的 `db.py install-*` 命令升级；004 在已装 005 的库上会拒绝执行。它会拒绝已有项目 schema 或用户表的目标库。项目库初始为空业务数据，不导入测试用的 4,000 条商品。
 
 安装包含 `app.products`、`app.orders` 示例表和 `agentdb_client` NOLOGIN 角色。角色是整个 PostgreSQL 实例共享的；若已存在，只授予本项目的库内权限，不修改其角色属性。当前通过本机 postgres 管理账户安装和测试；Agent 的权限示例仍使用 `agentdb_client`。
 
