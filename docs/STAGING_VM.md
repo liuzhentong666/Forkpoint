@@ -113,10 +113,10 @@ shred -u server.key
 
    最后一行应为 `Vanished clients: agentdb_staging idle_in_transaction_session_timeout=60s; TCP keepalive 60 s, then 6 probes 10 s apart.`（该超时只设在 `agentdb_staging` 角色上）；若某项设置未生效，脚本以 `settings in … not in effect` 报错退出。
 
-3. 在 Windows 中经 TLS 以 `agentdb_staging` 核对（keepalive 的值只在 TCP 连接上显示，虚拟机内经 Unix socket 查看时为 0；连接串中的路径用正斜杠，libpq 会把反斜杠当作转义）：
+3. 在 Windows 中经 TLS 以 `agentdb_staging` 核对（Windows 版 psql 只认连接串之前的选项，所以 `-XAtc` 放在最前；keepalive 的值只在 TCP 连接上显示，虚拟机内经 Unix socket 查看时为 0；连接串中的路径用正斜杠，libpq 会把反斜杠当作转义）：
 
    ```console
-   & "C:\Program Files\PostgreSQL\16\bin\psql.exe" "host=192.168.56.10 user=agentdb_staging dbname=postgres sslmode=verify-full sslrootcert=C:/Users/lzt/.agentdb-staging/ca.pem" -XAtc "SELECT name, setting, unit FROM pg_settings WHERE name ~ '^(idle_in_transaction|tcp_|client_connection)' ORDER BY 1"
+   & "C:\Program Files\PostgreSQL\16\bin\psql.exe" -XAtc "SELECT name, setting, unit FROM pg_settings WHERE name ~ '^(idle_in_transaction|tcp_|client_connection)' ORDER BY 1" "host=192.168.56.10 user=agentdb_staging dbname=postgres sslmode=verify-full sslrootcert=C:/Users/lzt/.agentdb-staging/ca.pem"
    ```
 
    应看到 `client_connection_check_interval|10000|ms`、`idle_in_transaction_session_timeout|60000|ms`、`tcp_keepalives_count|6|`、`tcp_keepalives_idle|60|s`、`tcp_keepalives_interval|10|s`、`tcp_user_timeout|120000|ms`。
