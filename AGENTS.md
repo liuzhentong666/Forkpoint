@@ -1,6 +1,6 @@
 # AgentDB：Agent 开发与维护约定
 
-适用范围：本目录及子目录。更新日期：2026-10-17。
+适用范围：本目录及子目录。更新日期：2026-10-18。
 
 **当前云服务状态：未经真实验证，云端部署暂缓。** OSS、GCS、S3 均无真实联调结果，ECS 尚未部署。用户当前不安排云资源采购或部署；只继续本地开发与模拟测试，不自动采购、部署或运行会访问真实云服务的测试。不得将 SDK 测试替身、内存服务模型、本机 HTTP 或本机 PostgreSQL 的结果表述为云存储已验证。
 
@@ -76,6 +76,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `sql/003_manager_role.sql` | 可重入的受限管理角色与快照状态函数迁移；不回写历史 |
 | `sql/004_merge_batch.sql` | 可重入迁移：以 001 中相同定义替换 `vc.merge`（每表一次 `rows_at`）；两处须保持一致，旧安装用 `db.py install-merge-batch`，`check_merge_migration.py` 核验 |
 | `sql/005_bounded_history.sql` | 可重入迁移，新安装在 001–004 之后执行：以等价定义替换 `vc._ancestors`、`vc.rows_at`、`vc._file_state`、`vc.merge_base`、`vc.merge`（父边逐步走索引、`_file_state` 找到路径即停、合入只检查可能不同的路径），新增 `vc._merge_base` 与只读快照策略 `vc.snapshot_due`；001 中这些函数是旧定义，以 005 为准；旧安装用 `db.py install-bounded-history`，`check_history_migration.py` 核验（见 [历史增长](docs/HISTORY_GROWTH.md)） |
+| `sql/006_history_health.sql` | 可重入、只读的迁移，新安装在 005 之后执行：新增 STABLE 函数 `vc.history_health(branch)`，返回 head 可达的 changeset 数（合入遍历的规模）与其遍历耗时、第一父链深度、每表距最近快照的提交数；只授权给 `agentdb_manager`；旧安装用 `db.py install-history-health`，`check_history_health.py` 核验 |
 | `db.py` | 连接既有 PostgreSQL；不承担版本算法，不隐式启停数据库。`Session` 复用一个 psql 进程，每次调用的语义须与 `Connection.execute` 单次进程一致 |
 | `agent_state/storage.py` | 公共对象/错误契约、原有 GCS 适配与内存测试替身 |
 | `agent_state/heads.py`、`oss.py`、`s3.py` | 条件发布接口与提供商适配；不能以普通覆盖代替原子条件操作 |
@@ -85,7 +86,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `agent_state/runtime.py` | 有界缓存、通知失效与上下文预算 |
 | `agent_state/server.py` | HTTP、认证、启动装配与通知接入；不复制领域规则 |
 | `agent_state/client.py` | 本机维护执行器访问远程状态 API；无持久缓存，不隐式重试或改写命令 |
-| `agent_state/maintenance.py` | 通过状态接口和数据库连接执行可探测、可恢复的维护；`run_due` 按快照策略 `vc.snapshot_due` 逐个目标调用 `run` |
+| `agent_state/maintenance.py` | 通过状态接口和数据库连接执行可探测、可恢复的维护；`run_due` 按快照策略 `vc.snapshot_due` 逐个目标调用 `run`；`check_history` 读取 `vc.history_health`，按任务 policy_ref 中的阈值（默认 20,000 个可达 changeset、合入中位 500 ms）发布事实，越线时以 uncertainty 与 next_action 报告需要代数索引（见 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md#历史增长检查)） |
 | `deploy/` | ECS 打包、首次安装与 systemd；显式文件清单，排除本机连接及凭据配置 |
 | `deploy/staging/` | 预发布 PostgreSQL 的专用登录角色脚本（非超级用户，仅 CREATEDB，对两个 NOLOGIN 角色只有 SET 权限）；由服务器管理员执行，口令交互设置，不写入文件（见 [预发布接入](docs/STAGING.md)） |
 | `review_local.py`、`agent_lab.py` | 仅限现有本机 PostgreSQL 的专用测试库；分别记录脚本并发与真实 GPT 行为 |
@@ -134,6 +135,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | OSS 读取结构 | `.\.venv-cloud\Scripts\python.exe benchmark_oss_protocol.py`：使用内存 OSS 服务模型，不代表云端性能 |
 | 本机审查与全部合入 | `.\.venv-cloud\Scripts\python.exe review_local.py`：新建专用测试库；18 项原断言、受限角色、两个中断窗口和十个分支最终全部合入，以及 main 锁被占用时合入报告 `lock_timeout`；计时包含 COMMIT；写入者默认每人复用一个长连接，`--client spawn` 恢复为每次调用启动进程 |
 | 历史增长迁移 | `.\.venv-cloud\Scripts\python.exe check_history_migration.py`：新建旧版（0bf7309）测试库，迁移两次后逐项比较读取与合入结果、授权和新安装定义，并经 `SnapshotMaintenance.run_due`（MemoryStore）执行快照策略 |
+| 历史健康检查 | `.\.venv-cloud\Scripts\python.exe check_history_health.py`：新建 006 之前（d5c68b0）的测试库并写入分支、合入与快照历史，迁移两次后核对数据、读取与合入结果及已有函数不变，`vc.history_health` 为 STABLE、仅 `agentdb_manager` 可执行、与新安装一致，各分支数值与独立查询及 `vc.snapshot_due` 相符，再经 `SnapshotMaintenance.check_history`（MemoryStore）发布一次、重跑不发布；单元测试见 `tests/test_cloud_state.py` 的 `HistoryHealthTests` |
 | 预发布虚拟机 S4/S5 | `.\.venv-cloud\Scripts\python.exe staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`：只对 [预发布虚拟机](docs/STAGING_VM.md) 运行；restart/crash/netcut 会通过 VBoxManage 断电、重启或断网，切勿指向重要数据库；结果见 [S4/S5](docs/STAGING_S4_S5.md) |
 | 真实云端（未执行，当前暂缓） | `smoke_cloud.py` 仅保留为以后联调入口；当前不运行，不据此宣称任何提供商已通过验证 |
 

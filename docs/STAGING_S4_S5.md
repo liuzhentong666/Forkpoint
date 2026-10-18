@@ -150,6 +150,12 @@
 - 代价是存储：每个快照保存一份 4,000 行的整表，2,000 个提交时库大小约为不物化时的 1.8 倍。快照的保留与回收尚未设计（README 当前限制第 9 条“版本保留/回收”）。
 - 原始结果：[修复前](../staging-results/growth-before.json)、[仅修复](../staging-results/growth-after.json)、[修复 + 快照策略](../staging-results/growth-after-policy100.json)。
 
+#### 合入的祖先遍历与代数（generation numbers）
+
+快照策略之后，合入中仍随历史增长的是 `vc._ancestors` 与 `vc._merge_base` 对目标 head 全部可达 changeset 的两次遍历。在同一虚拟机上、main 可达 2,026 个 changeset 时，一次完整遍历约 6.8 ms，merge_base 约 16 ms，约占 181 ms 合入的 10%，每增加 1,000 个可达 changeset 约多 8 ms（该次测量由协调会话完成，原始记录未入库）。
+
+结论：现在不改用代数索引。约 20,000 个可达 changeset（按上述增长线性外推，两次遍历合计约 0.17 s）或合入中位耗时超过约 0.5 s 时再改。管理 Agent 通过 `SnapshotMaintenance.check_history`（只读的 `vc.history_health`，`sql/006_history_health.sql`）检查；越线时任务的 next_action 为 “merge history needs generation numbers (see docs/STAGING_S4_S5.md)”，见 [管理 Agent 协议](MANAGER_AGENT_PROTOCOL.md#历史增长检查)。改造将是单独的版本引擎变更，需按 [历史增长](HISTORY_GROWTH.md) 的方式迁移并核验。
+
 ### 断网
 
 用户在虚拟机上按 [STAGING_VM.md 4a 节](STAGING_VM.md) 重新执行 `configure_postgres.sh`（保留已安装证书）后，运行 `staging_drills.py netcut --seconds 20 --expect-gone-within 75`。[原始结果](../staging-results/netcut.json)

@@ -1,0 +1,149 @@
+{
+  "databases": {
+    "history": "agentdb_test_hhmig_905ef3f6b9",
+    "fresh": "agentdb_test_hhnew_905ef3f6b9"
+  },
+  "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "old_ref": "d5c68b0",
+  "migration": "sql/006_history_health.sql via Connection.install_history_health (db.py install-history-health)",
+  "migration_runs": 2,
+  "data_and_history_unchanged": true,
+  "existing_functions_unchanged": true,
+  "functions_equal_fresh_install": true,
+  "function": {
+    "acl": [
+      "postgres=X/postgres",
+      "agentdb_manager=X/postgres"
+    ],
+    "owner": "postgres",
+    "config": [
+      "search_path=pg_catalog, vc"
+    ],
+    "language": "plpgsql",
+    "source_md5": "afa7ec1c6dada8f06156a03b62e03344",
+    "volatility": "s",
+    "security_definer": true,
+    "client_can_execute": false,
+    "public_can_execute": false,
+    "manager_can_execute": true
+  },
+  "history_health": {
+    "h-a": {
+      "head": "038d64e7-6d6d-440a-a492-332d9d17baad",
+      "branch": "h-a",
+      "ancestor_walk_ms": 1.371,
+      "changesets_total": 41,
+      "first_parent_depth": 14,
+      "reachable_changesets": 15,
+      "commits_since_snapshot": {
+        "app.orders": 14,
+        "app.products": 13
+      },
+      "max_commits_since_snapshot": 14
+    },
+    "h-b": {
+      "head": "3682c064-59ae-4661-b180-6de991a631c4",
+      "branch": "h-b",
+      "ancestor_walk_ms": 0.982,
+      "changesets_total": 41,
+      "first_parent_depth": 10,
+      "reachable_changesets": 31,
+      "commits_since_snapshot": {
+        "app.orders": 10,
+        "app.products": 9
+      },
+      "max_commits_since_snapshot": 10
+    },
+    "h-c": {
+      "head": "7812042e-a32f-4e59-a26b-8df6b4aefd10",
+      "branch": "h-c",
+      "ancestor_walk_ms": 1.481,
+      "changesets_total": 41,
+      "first_parent_depth": 9,
+      "reachable_changesets": 29,
+      "commits_since_snapshot": {
+        "app.orders": 9,
+        "app.products": 8
+      },
+      "max_commits_since_snapshot": 9
+    },
+    "main": {
+      "head": "552e4693-4da4-4dd7-9322-d100e4942de0",
+      "branch": "main",
+      "ancestor_walk_ms": 1.402,
+      "changesets_total": 41,
+      "first_parent_depth": 28,
+      "reachable_changesets": 37,
+      "commits_since_snapshot": {
+        "app.orders": 11,
+        "app.products": 15
+      },
+      "max_commits_since_snapshot": 15
+    },
+    "x-1": {
+      "head": "780e69ef-599a-42a0-81f0-10d1c6cd98bb",
+      "branch": "x-1",
+      "ancestor_walk_ms": 0.955,
+      "changesets_total": 41,
+      "first_parent_depth": 30,
+      "reachable_changesets": 40,
+      "commits_since_snapshot": {
+        "app.orders": 13,
+        "app.products": 17
+      },
+      "max_commits_since_snapshot": 17
+    },
+    "x-2": {
+      "head": "0dfd6a24-9df3-41f7-8271-e85d255775f2",
+      "branch": "x-2",
+      "ancestor_walk_ms": 1.025,
+      "changesets_total": 41,
+      "first_parent_depth": 30,
+      "reachable_changesets": 40,
+      "commits_since_snapshot": {
+        "app.orders": 13,
+        "app.products": 17
+      },
+      "max_commits_since_snapshot": 17
+    }
+  },
+  "recorded_reads": 1991,
+  "file_merge_cases": 17,
+  "merge_outcomes_identical": true,
+  "maintenance": {
+    "first": {
+      "task_id": "history-health-main",
+      "crossed": [],
+      "facts": {
+        "operation": "history_health",
+        "branch": "main",
+        "thresholds": {
+          "max_reachable_changesets": 20000,
+          "max_median_merge_ms": 500
+        },
+        "thresholds_source": "default",
+        "median_merge_ms": null,
+        "merge_samples": 0,
+        "crossed": 0,
+        "head": "552e4693-4da4-4dd7-9322-d100e4942de0",
+        "ancestor_walk_ms": 1.251,
+        "changesets_total": 41,
+        "first_parent_depth": 28,
+        "reachable_changesets": 37,
+        "commits_since_snapshot": {
+          "app.orders": 11,
+          "app.products": 15
+        },
+        "max_commits_since_snapshot": 15
+      },
+      "published": true,
+      "version": 0
+    },
+    "rerun_published": false,
+    "low_threshold": [
+      "vc.merge walks 37 reachable changesets on main (threshold 10)"
+    ]
+  },
+  "real_cloud_verified": false,
+  "note": "Local dedicated test databases on the existing PostgreSQL server; the project database was not touched. check_history ran with MemoryStore (test-only state backend) and the agentdb_manager role."
+}

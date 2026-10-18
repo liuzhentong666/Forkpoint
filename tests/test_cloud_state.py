@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from agent_state.engine import Engine
-from agent_state.maintenance import SnapshotMaintenance
+from agent_state.maintenance import HISTORY_ACTION, SnapshotMaintenance
 from agent_state.objects import digest, encode
 from agent_state.runtime import Runtime
 from agent_state.server import make_server
@@ -327,6 +327,83 @@ class MaintenanceTests(unittest.TestCase):
         for branch, interval in [("main'; DROP TABLE x; --", 100), ("main", 0), ("main", True), ("main", "100")]:
             with self.assertRaises(Invalid):
                 runner.due(branch, interval)
+
+
+class HistoryConnection:
+    """Answers vc.history_health only; the ancestor walk time differs on every call."""
+    def __init__(self, reachable):
+        self.reachable, self.statements = reachable, []
+
+    def sql(self, statement):
+        self.statements.append(statement)
+        assert statement.startswith("SELECT vc.history_health('"), statement
+        return json.dumps(dict(branch="main", head="00000000-0000-0000-0000-000000000009",
+                               reachable_changesets=self.reachable, ancestor_walk_ms=6.8 + len(self.statements),
+                               changesets_total=self.reachable + 3, first_parent_depth=self.reachable // 2,
+                               commits_since_snapshot={"app.products": 40}, max_commits_since_snapshot=40))
+
+
+class HistoryHealthTests(unittest.TestCase):
+    def test_below_threshold_reports_facts_and_rerun_publishes_nothing(self):
+        store, connection = MemoryStore(), HistoryConnection(2026)
+        runner = SnapshotMaintenance(Runtime(Engine(store)), connection)
+        first = runner.check_history("manager", merge_ms=[181, 170, 190])
+        self.assertEqual((first["task_id"], first["published"], first["version"]), ("history-health-main", True, 0))
+        state = Engine(store).read("history-health-main")["state"]
+        self.assertEqual((state["status"], state["next_action"], state["uncertainties"]), ("completed", "", []))
+        facts = state["facts"]
+        self.assertEqual(facts["reachable_changesets"], 2026)
+        self.assertEqual(facts["thresholds"], dict(max_reachable_changesets=20000, max_median_merge_ms=500))
+        self.assertEqual((facts["thresholds_source"], facts["median_merge_ms"], facts["crossed"]), ("default", 181, 0))
+        self.assertEqual(facts["max_commits_since_snapshot"], 40)
+        again = SnapshotMaintenance(Runtime(Engine(store)), connection).check_history("manager", merge_ms=[181, 170, 190])
+        self.assertEqual((again["published"], again["version"]), (False, 0))  # only the walk time differed
+        connection.reachable = 2100
+        self.assertEqual(runner.check_history("manager")["version"], 1)
+        self.assertTrue(all(s.startswith("SELECT vc.history_health('main')") for s in connection.statements))
+
+    def test_crossed_thresholds_add_uncertainty_and_next_action(self):
+        store = MemoryStore()
+        engine = Engine(store)
+        runner = SnapshotMaintenance(Runtime(engine), HistoryConnection(20000))
+        result = runner.check_history("manager")
+        state = engine.read("history-health-main")["state"]
+        self.assertEqual((state["status"], state["next_action"]), ("running", HISTORY_ACTION))
+        self.assertEqual(state["uncertainties"], result["crossed"])
+        self.assertIn("20000 reachable changesets", state["uncertainties"][0])
+        # Thresholds from the task's fixed policy; later runs keep that policy.
+        policy = engine.objects.put_bytes(json.dumps(dict(history_health=dict(
+            max_reachable_changesets=1000, max_median_merge_ms=150))).encode())
+        runner = SnapshotMaintenance(Runtime(engine), HistoryConnection(999))
+        runner.check_history("manager", task_id="history-policy", policy_ref=policy)
+        self.assertEqual(engine.read("history-policy")["state"]["status"], "completed")
+        result = runner.check_history("manager", task_id="history-policy", merge_ms=[120, 160, 175])
+        state = engine.read("history-policy")["state"]
+        self.assertEqual((state["policy_ref"], state["facts"]["thresholds_source"]), (policy, "policy"))
+        self.assertEqual((state["next_action"], len(result["crossed"])), (HISTORY_ACTION, 1))
+        self.assertIn("Median merge time 160 ms", state["uncertainties"][0])
+        other = engine.objects.put_bytes(b"protocol text without thresholds")
+        with self.assertRaises(Conflict):
+            runner.check_history("manager", task_id="history-policy", policy_ref=other)
+        runner.check_history("manager", task_id="history-text", policy_ref=other)
+        self.assertEqual(engine.read("history-text")["state"]["facts"]["thresholds_source"], "default")
+
+    def test_invalid_policy_values_are_rejected_without_publishing(self):
+        store = MemoryStore()
+        engine = Engine(store)
+        runner = SnapshotMaintenance(Runtime(engine), HistoryConnection(2026))
+        for section in ([], dict(max_reachable_changesets=0), dict(max_reachable_changesets=True),
+                        dict(max_reachable_changesets="20000"), dict(max_reachable_changesets=1.5),
+                        dict(max_median_merge_ms=0), dict(max_median_merge_ms=None), dict(max_changesets=10)):
+            policy = engine.objects.put_bytes(json.dumps(dict(history_health=section)).encode())
+            with self.assertRaises(Invalid, msg=section):
+                runner.check_history("manager", task_id="history-bad", policy_ref=policy)
+        for kwargs in (dict(branch="main'; DROP TABLE x; --"), dict(merge_ms=[]), dict(merge_ms=[-1]),
+                       dict(merge_ms=[True]), dict(merge_ms="181")):
+            with self.assertRaises(Invalid, msg=kwargs):
+                runner.check_history("manager", task_id="history-bad", **kwargs)
+        with self.assertRaises(Missing):
+            engine.read("history-bad")
 
 
 class GCSContractTests(unittest.TestCase):
