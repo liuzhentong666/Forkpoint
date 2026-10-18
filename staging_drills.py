@@ -8,7 +8,8 @@ connection.staging.local.json) and writes staging-results/<command>.json.
   backup   S5: pg_dump / pg_restore a populated database and compare it
   restart  S5: graceful VM shutdown and start; committed state must be unchanged
   crash    S5: hard power-off of the VM during concurrent commits
-  netcut   S5: unplug the VM's host-only link while a session holds main's lock
+  netcut   S5: unplug the VM's host-only link while a session holds main's lock;
+           --expect-gone-within asserts how soon the server releases it
   kill     S5: terminate a session in the middle of a versioned transaction
 
 restart, crash and netcut drive the VirtualBox VM (--vm) through VBoxManage on
@@ -458,10 +459,22 @@ def try_main_lock(connection):
     return "acquired" if result.returncode == 0 else ("lock_timeout" if "55P03" in result.stderr else result.stderr.strip()[-160:])
 
 
+# Server settings that bound how long a vanished client's session survives
+# (deploy/staging/configure_postgres.sh). Read over TCP, so the keepalive values
+# are the ones in effect for the drill's own connections.
+VANISHED_CLIENT_SETTINGS = """
+  SELECT json_object_agg(name, setting || coalesce(unit, '') ORDER BY name) FROM pg_settings
+  WHERE name IN ('idle_in_transaction_session_timeout', 'tcp_keepalives_idle', 'tcp_keepalives_interval',
+                 'tcp_keepalives_count', 'tcp_user_timeout', 'client_connection_check_interval', 'lock_timeout');
+"""
+
+
 def run_netcut(args, owner):
     name, connection = new_database(args, owner, "netcut")
     head_before = connection.sql("SELECT vc.head();")
+    settings = json.loads(connection.sql(VANISHED_CLIENT_SETTINGS))
     holder, pid = hold_main_lock(owner, name)
+    locked = time.perf_counter()  # the holder's last statement has just returned
     contended = try_main_lock(connection)
     vbox("controlvm", args.vm, "setlinkstate2", "off")
     cut = time.perf_counter()
@@ -477,30 +490,44 @@ def run_netcut(args, owner):
     while not server_ready(owner):
         time.sleep(1)
     first_probe = try_main_lock(connection)
-    stale_s, state = None, None
-    while time.perf_counter() - restored < args.wait:
+    expect = args.expect_gone_within
+    deadline = max(restored + args.wait, locked + expect + 15 if expect else 0)
+    stale_s, gone, polls, state = None, None, 0, None
+    while time.perf_counter() < deadline:
         state = connection.sql(f"SELECT coalesce((SELECT state FROM pg_stat_activity WHERE pid={pid}),'gone');")
+        polls += 1
         if state == "gone":
-            stale_s = round(time.perf_counter() - restored, 1)
+            gone = time.perf_counter()
+            stale_s = round(gone - restored, 1)
             break
-        time.sleep(2)
+        time.sleep(1)
     terminated = None
     if stale_s is None:
         terminated = connection.sql(f"SELECT pg_terminate_backend({pid});") == "t"
         time.sleep(1)
     final_probe = try_main_lock(connection)
     after = fingerprint(connection)
+    locked_for = round(gone - locked, 1) if gone else None
+    bound_met = None if expect is None else locked_for is not None and locked_for <= expect
     write("netcut", dict(
-        database=name, link_down_s=args.seconds, holder_pid=pid, probe_while_lock_held=contended,
-        connect_during_cut=connect_during_cut, probe_right_after_link_restored=first_probe,
-        stale_session_gone_after_s=stale_s, stale_state_at_deadline=None if stale_s else state, waited_s=args.wait,
+        database=name, server_settings=settings, link_down_s=args.seconds, holder_pid=pid,
+        probe_while_lock_held=contended, connect_during_cut=connect_during_cut,
+        probe_right_after_link_restored=first_probe, stale_session_gone_after_s=stale_s,
+        main_locked_for_s=locked_for, gone_at_first_poll=polls == 1 and gone is not None,
+        stale_state_at_deadline=None if stale_s else state, waited_s=round(deadline - restored, 1),
+        expect_gone_within_s=expect, bound_met=bound_met,
         terminated_by_owner=terminated, probe_after_cleanup=final_probe, head_unchanged=after["head"] == head_before,
         unfinished_work_tx=after["unfinished_work_tx"],
-        passed=final_probe == "acquired" and after["head"] == head_before and after["unfinished_work_tx"] == 0,
+        passed=(final_probe == "acquired" and after["head"] == head_before and after["unfinished_work_tx"] == 0
+                and (expect is None or (bound_met and terminated is None))),
         note=("The holder kept an open versioned transaction (main's branch row locked) when the host-only link was "
-              "unplugged and its client process died. Without server-side keepalive or idle-in-transaction timeouts "
-              "the server only notices a dead client when TCP gives up; the drill records how long main stayed "
-              "locked and whether the owner role could recover with pg_terminate_backend.")))
+              "unplugged and its client process died. The server ends such a session only through "
+              "idle_in_transaction_session_timeout or when TCP declares the peer dead (server_settings: the values "
+              "in effect for this TCP connection); with PostgreSQL's defaults that takes about 2 h 11 min. "
+              "stale_session_gone_after_s counts from the link coming back; main_locked_for_s from the holder's "
+              "last statement to the first 1 s poll that no longer finds the session, so it overstates the "
+              "server's time by up to one poll. With --expect-gone-within the drill passes only if the server "
+              "released main within that many seconds without the owner's pg_terminate_backend.")))
 
 
 # --- S5: terminated session mid-transaction ---------------------------------
@@ -552,8 +579,15 @@ def main():
     parser.add_argument("--source", help="backup: database to dump (default: a new seeded one)")
     parser.add_argument("--writers", type=int, default=5, help="crash: main plus N-1 branch writers")
     parser.add_argument("--seconds", type=float, default=10, help="crash: commit time before the cut; netcut: link-down time")
-    parser.add_argument("--wait", type=float, default=120, help="netcut: how long to watch for the stale session")
+    parser.add_argument("--wait", type=float, default=120,
+                        help="netcut: how long to watch for the stale session after the link is back")
+    parser.add_argument("--expect-gone-within", type=float, metavar="SECONDS",
+                        help="netcut: pass only if the server ends the stale session (releasing main) within "
+                             "SECONDS of its last statement, with no manual termination; 75 for the staging "
+                             "settings (docs/STAGING_S4_S5.md section 4)")
     args = parser.parse_args()
+    if args.expect_gone_within is not None and args.seconds >= args.expect_gone_within:
+        parser.error("--expect-gone-within must exceed --seconds: the bound cannot be observed while the link is down")
     owner = connect(args)
     owner.check()
     globals()["run_" + args.command](args, owner)

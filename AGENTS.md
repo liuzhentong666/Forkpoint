@@ -132,7 +132,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | 恢复读取结构 | `.\.venv-cloud\Scripts\python.exe benchmark_cloud_state.py`：内存后端，检查历史增长时的读取量 |
 | 维护与 PG 接手 | `.\.venv-cloud\Scripts\python.exe integration_cloud_postgres.py --database agentdb_test_EXISTING`：替换为已安装示例的测试库 |
 | OSS 读取结构 | `.\.venv-cloud\Scripts\python.exe benchmark_oss_protocol.py`：使用内存 OSS 服务模型，不代表云端性能 |
-| 本机审查与全部合入 | `.\.venv-cloud\Scripts\python.exe review_local.py`：新建专用测试库；18 项原断言、受限角色、两个中断窗口和十个分支最终全部合入；计时包含 COMMIT；写入者默认每人复用一个长连接，`--client spawn` 恢复为每次调用启动进程 |
+| 本机审查与全部合入 | `.\.venv-cloud\Scripts\python.exe review_local.py`：新建专用测试库；18 项原断言、受限角色、两个中断窗口和十个分支最终全部合入，以及 main 锁被占用时合入报告 `lock_timeout`；计时包含 COMMIT；写入者默认每人复用一个长连接，`--client spawn` 恢复为每次调用启动进程 |
 | 历史增长迁移 | `.\.venv-cloud\Scripts\python.exe check_history_migration.py`：新建旧版（0bf7309）测试库，迁移两次后逐项比较读取与合入结果、授权和新安装定义，并经 `SnapshotMaintenance.run_due`（MemoryStore）执行快照策略 |
 | 预发布虚拟机 S4/S5 | `.\.venv-cloud\Scripts\python.exe staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`：只对 [预发布虚拟机](docs/STAGING_VM.md) 运行；restart/crash/netcut 会通过 VBoxManage 断电、重启或断网，切勿指向重要数据库；结果见 [S4/S5](docs/STAGING_S4_S5.md) |
 | 真实云端（未执行，当前暂缓） | `smoke_cloud.py` 仅保留为以后联调入口；当前不运行，不据此宣称任何提供商已通过验证 |

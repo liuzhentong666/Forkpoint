@@ -50,6 +50,8 @@ class FakeWorker:
         self.statements.append(statement)
         if self.merge == "stale":
             return subprocess.CompletedProcess("psql", 3, "", "ERROR:  40001: stale head\n")
+        if self.merge == "lock_timeout":
+            return subprocess.CompletedProcess("psql", 3, "", "ERROR:  55P03: canceling statement due to lock timeout\n")
         return subprocess.CompletedProcess("psql", 0, NEW + "\n", "")
 
 
@@ -76,6 +78,8 @@ SCENARIOS = {
     "diff": (["diff", *COMMON, "--base", BASE, "--revision", NEW], {}),
     "merge": (["merge", *COMMON, "--revision", NEW, "--expected", BASE, "--actor", "gpt-a"], {}),
     "merge_stale": (["merge", *COMMON, "--revision", NEW, "--expected", BASE, "--actor", "gpt-b"], {"merge": "stale"}),
+    "merge_lock_timeout": (["merge", *COMMON, "--revision", NEW, "--expected", BASE, "--actor", "gpt-a"],
+                           {"merge": "lock_timeout"}),
     "merge_no_actor": (["merge", *COMMON, "--revision", NEW, "--expected", BASE], {}),
     "verify": (["verify", *COMMON], {"product": {"id": 101, "price": 11, "stock": 95}}),
     "verify_fail": (["verify", *COMMON], {}),

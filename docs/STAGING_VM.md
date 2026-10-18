@@ -91,7 +91,37 @@ sudo -u postgres psql -X -d postgres -c '\password agentdb_staging'
 shred -u server.key
 ```
 
-[configure_postgres.sh](../deploy/staging/configure_postgres.sh) 的改动：安装证书对（私钥 0600，属 postgres）；写入 `conf.d/agentdb-staging.conf`（`listen_addresses = 'localhost,192.168.56.10'`、`ssl = on`、TLS 1.2 起、scram-sha-256）；先备份再向 `pg_hba.conf` 追加一行 `hostssl all agentdb_staging 192.168.56.0/24 scram-sha-256`；ufw 启用时只放行该网段到 5432；重启集群并确认 `ssl` 为 on；执行角色脚本。它不设置口令。删除 `conf.d/agentdb-staging.conf` 和那一行 pg_hba 即可撤销，或直接回到快照。
+[configure_postgres.sh](../deploy/staging/configure_postgres.sh) 的改动：安装证书对（私钥 0600，属 postgres）；写入 `conf.d/agentdb-staging.conf`（`listen_addresses = 'localhost,192.168.56.10'`、`ssl = on`、TLS 1.2 起、scram-sha-256，以及失联客户端的超时：`idle_in_transaction_session_timeout` 60 s、TCP keepalive 60 s / 10 s / 6 次、`tcp_user_timeout` 120 s、`client_connection_check_interval` 10 s，取值依据见 [S4/S5 第 4 节](STAGING_S4_S5.md#4-风险失联客户端的会话长时间持有锁)）；先备份再向 `pg_hba.conf` 追加一行 `hostssl all agentdb_staging 192.168.56.0/24 scram-sha-256`；ufw 启用时只放行该网段到 5432；重启集群，确认 `ssl` 为 on、`conf.d` 文件中的每一项都已生效（`pg_file_settings` 中没有报错或被后面的文件覆盖）；执行角色脚本。它不设置口令。删除 `conf.d/agentdb-staging.conf` 和那一行 pg_hba 即可撤销，或直接回到快照。
+
+## 4a. 给已配置的虚拟机加上失联客户端设置（用户操作）
+
+2026-10-18 之前配置的虚拟机（包括快照 `s1-configured`）的 `conf.d` 文件里还没有上述超时，失联客户端可以占住 main 锁约 2 小时 11 分钟（见 [S4/S5 第 4 节](STAGING_S4_S5.md#4-风险失联客户端的会话长时间持有锁)）。脚本可以重复执行，重新运行一次即可补上；不传 `--cert`/`--key` 时沿用已安装的证书对（第 4 节已 `shred` 掉家目录里的 `server.key`）。`pg_hba.conf` 中已有的那一行不会重复追加，ufw 规则已存在时 ufw 会跳过，角色脚本可重复执行，口令不变。
+
+1. 把新脚本复制到虚拟机（在 WSL 中执行）：
+
+   ```console
+   scp deploy/staging/configure_postgres.sh deploy/staging/create_staging_role.sql <vm-user>@192.168.56.10:~/
+   ```
+
+2. 在虚拟机中执行。**它会重启 PostgreSQL，断开所有连接，不要在演练进行中执行**：
+
+   ```console
+   sudo bash configure_postgres.sh --listen 192.168.56.10 --client-cidr 192.168.56.0/24 --role-sql create_staging_role.sql
+   ```
+
+   最后一行应为 `Vanished clients: idle in transaction ends after 1min; TCP keepalive 60 s, then 6 probes 10 s apart.`；若某项设置未生效，脚本以 `settings in … not in effect` 报错退出。
+
+3. 在 Windows 中经 TLS 以 `agentdb_staging` 核对（keepalive 的值只在 TCP 连接上显示，虚拟机内经 Unix socket 查看时为 0；连接串中的路径用正斜杠，libpq 会把反斜杠当作转义）：
+
+   ```console
+   & "C:\Program Files\PostgreSQL\16\bin\psql.exe" "host=192.168.56.10 user=agentdb_staging dbname=postgres sslmode=verify-full sslrootcert=C:/Users/lzt/.agentdb-staging/ca.pem" -XAtc "SELECT name, setting, unit FROM pg_settings WHERE name ~ '^(idle_in_transaction|tcp_|client_connection)' ORDER BY 1"
+   ```
+
+   应看到 `client_connection_check_interval|10000|ms`、`idle_in_transaction_session_timeout|60000|ms`、`tcp_keepalives_count|6|`、`tcp_keepalives_idle|60|s`、`tcp_keepalives_interval|10|s`、`tcp_user_timeout|120000|ms`。
+
+4. 运行断网演练，按 [S4/S5 第 4 节](STAGING_S4_S5.md#断网演练的通过条件) 的通过条件判断。
+
+撤销：删去 `conf.d/agentdb-staging.conf` 中 “Bounded detection of vanished clients” 以下各行后 `sudo systemctl restart postgresql@16-main`，或回到快照 `s1-configured`。设置生效后是否另拍一个关机状态的快照作为新的演练重置点，由用户决定。
 
 ## 5. 客户端配置（Windows 原生 psql）
 
