@@ -131,3 +131,5 @@ EXPLAIN ANALYZE（模板状态和第 10 次合入前状态各测 5 次）：单�
 - 常驻会话模式的阶段耗时从所有会话建立之后开始计时，不含建立会话：每个会话建立中位约 150–165 ms，10 个依次建立合计约 1.6 s（见结果 JSON 的 `session_open_ms`）。这对应连接建立一次、之后反复复用的连接池用法；若每个 Agent 只合入一次就断开，这笔开销不能省略。
 - `track_functions` 本身有开销：profile 阶段 0.92 s，同等的未开启运行为 0.89 s。组成查询的 EXPLAIN 是在 `vc.merge` 外部以只读方式执行的等价查询。
 - 保留的测试库前缀为 `agentdb_test_mergebench_758f297d_`（模板、15 次运行、3 次 profile），名单见结果 JSON 的 `databases_retained`。另外保留了一次冒烟运行的 `agentdb_test_mergebench_827453e5_*`，它不计入结果。
+
+历史长度对合入与提交的影响及其处理（`sql/005_bounded_history.sql`）见 [历史增长](HISTORY_GROWTH.md)。

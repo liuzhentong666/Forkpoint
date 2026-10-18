@@ -1,0 +1,203 @@
+{
+  "databases": {
+    "history": "agentdb_test_histmig_2b0e3f493e",
+    "regression": "agentdb_test_histreg_2b0e3f493e",
+    "fresh": "agentdb_test_histnew_2b0e3f493e"
+  },
+  "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "old_ref": "0bf7309",
+  "migration": "sql/005_bounded_history.sql via Connection.install_bounded_history (db.py install-bounded-history)",
+  "migration_runs": 2,
+  "regression_tests_before": 18,
+  "regression_tests_after": 18,
+  "data_and_history_unchanged": true,
+  "function_attributes_unchanged": true,
+  "functions_equal_fresh_install": true,
+  "client_merge_after_migration": true,
+  "functions": {
+    "vc._ancestors(uuid)": {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, vc"
+      ],
+      "language": "sql",
+      "source_md5": "921ea58b47b0d6f13c325894370fbb9c",
+      "volatility": "s",
+      "security_definer": true,
+      "client_can_execute": false,
+      "public_can_execute": false,
+      "manager_can_execute": false
+    },
+    "vc.rows_at(uuid,uuid)": {
+      "acl": [
+        "postgres=X/postgres",
+        "agentdb_client=X/postgres"
+      ],
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, vc"
+      ],
+      "language": "plpgsql",
+      "source_md5": "67be3f4795042a01f5cc2430d646befd",
+      "volatility": "s",
+      "security_definer": true,
+      "client_can_execute": true,
+      "public_can_execute": false,
+      "manager_can_execute": false
+    },
+    "vc.merge_base(uuid,uuid)": {
+      "acl": [
+        "postgres=X/postgres",
+        "agentdb_client=X/postgres"
+      ],
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, vc"
+      ],
+      "language": "plpgsql",
+      "source_md5": "3c812968f417907147f82a645a21b2ee",
+      "volatility": "s",
+      "security_definer": true,
+      "client_can_execute": true,
+      "public_can_execute": false,
+      "manager_can_execute": false
+    },
+    "vc._file_state(uuid,text)": {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, vc"
+      ],
+      "language": "sql",
+      "source_md5": "b2ea3ea12d0508481e01137d353beaac",
+      "volatility": "s",
+      "security_definer": true,
+      "client_can_execute": false,
+      "public_can_execute": false,
+      "manager_can_execute": false
+    },
+    "vc._merge_base(uuid[],uuid)": {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, vc"
+      ],
+      "language": "plpgsql",
+      "source_md5": "fd702416e882e592af0e2aec704b3032",
+      "volatility": "s",
+      "security_definer": true,
+      "client_can_execute": false,
+      "public_can_execute": false,
+      "manager_can_execute": false
+    },
+    "vc.merge(text,uuid,uuid,text)": {
+      "acl": [
+        "postgres=X/postgres",
+        "agentdb_client=X/postgres"
+      ],
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, vc"
+      ],
+      "language": "plpgsql",
+      "source_md5": "104041d6527370e808f937a90156a446",
+      "volatility": "v",
+      "security_definer": true,
+      "client_can_execute": true,
+      "public_can_execute": false,
+      "manager_can_execute": false
+    },
+    "vc.snapshot_due(text,integer)": {
+      "acl": [
+        "postgres=X/postgres",
+        "agentdb_manager=X/postgres"
+      ],
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, vc"
+      ],
+      "language": "plpgsql",
+      "source_md5": "f69c217f8a70a7d191bf716c5c37cc83",
+      "volatility": "s",
+      "security_definer": true,
+      "client_can_execute": false,
+      "public_can_execute": false,
+      "manager_can_execute": true
+    }
+  },
+  "before": {
+    "history": {
+      "counts": {
+        "changesets": 41,
+        "row_changes": 4037,
+        "merge_commits": 6
+      },
+      "orders": "855d3268902eb349f6bbfb584c09a877",
+      "parents": "ec192bfed3356910dffc4806ea507bd0",
+      "branches": "edf95e41e7bf1d625bd528047c531631",
+      "products": "87dabd1fa76e3c7fdad9949ba5ab8b80",
+      "changesets": "3cec2cc43e190b8ed95b65a60def3395",
+      "row_changes": "7c4148cb9130bfda71d26a0bb7970123",
+      "path_changes": "bc5dc3633913a8b2d625384552431cba",
+      "snapshot_rows": 8000
+    },
+    "regression": {
+      "counts": {
+        "changesets": 2,
+        "row_changes": 4000,
+        "merge_commits": 0
+      },
+      "orders": "d41d8cd98f00b204e9800998ecf8427e",
+      "parents": "99ed2607d4ea098b1f8a8755dc42204b",
+      "branches": "dcfe0d5ac379500dd02c2cb7c594eeef",
+      "products": "605f0ce8859b05763b76e6598ca0d641",
+      "changesets": "c9cf50502dc7a390b089b64dca25ded8",
+      "row_changes": "162b218d8c222d32b33c7a7d8d7c062a",
+      "path_changes": "4c0b7bf527f4dfbdd8353e312a5d47b4",
+      "snapshot_rows": 4000
+    }
+  },
+  "recorded_reads": 1991,
+  "reads_per_group": {
+    "rows_at": 82,
+    "ancestors": 41,
+    "read_file": 697,
+    "file_state": 697,
+    "merge_base": 287,
+    "diff_files_heads": 49,
+    "diff_rows_parent": 92,
+    "diff_files_parent": 46
+  },
+  "file_merge_cases": 17,
+  "row_merge_cases": 13,
+  "merge_outcomes_identical": true,
+  "several_file_conflicts_message": {
+    "old": "File conflict: hist/f0.txt",
+    "new": "File conflict: hist/f0.txt"
+  },
+  "snapshot_policy": {
+    "interval": 5,
+    "targets": [
+      {
+        "revision": "9ea00d78-aa91-42a6-99be-c646cf10fb11",
+        "table_id": "7e6ee27c-046d-4801-9922-4919162e06a8"
+      },
+      {
+        "revision": "9ea00d78-aa91-42a6-99be-c646cf10fb11",
+        "table_id": "ccdc0cbc-598b-4122-92b9-ece52e523277"
+      }
+    ],
+    "materialized": 2,
+    "snapshot_manifests_after": 5,
+    "outcomes_unchanged": true
+  },
+  "real_cloud_verified": false,
+  "note": "Local dedicated test databases on the existing PostgreSQL server; the project database was not touched. Snapshot policy ran through SnapshotMaintenance with MemoryStore (test-only state backend) and the agentdb_manager role."
+}
