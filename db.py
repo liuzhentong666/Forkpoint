@@ -232,7 +232,8 @@ class Connection:
             raise RuntimeError(f"Database {target} is not empty; installation stopped without overwriting its objects.")
         # All schema files install in one transaction, including the shared roles.
         statements = []
-        for filename in ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql"):
+        for filename in ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql",
+                         "005_bounded_history.sql"):
             source = (ROOT / "sql" / filename).read_text(encoding="utf-8")
             source = re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", source)
             statements.append(source)
@@ -248,6 +249,12 @@ class Connection:
         """Replace vc.merge in an existing installation with the batched version."""
         target = database_name(database or self.settings["database"])
         source = (ROOT / "sql/004_merge_batch.sql").read_text(encoding="utf-8")
+        self.sql(source, target)
+
+    def install_bounded_history(self, database=None):
+        """Replace the history walks of an existing installation (sql/005_bounded_history.sql)."""
+        target = database_name(database or self.settings["database"])
+        source = (ROOT / "sql/005_bounded_history.sql").read_text(encoding="utf-8")
         self.sql(source, target)
 
 
@@ -432,7 +439,8 @@ class Session:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("check", "install", "install-manager", "install-merge-batch"))
+    parser.add_argument("action", choices=("check", "install", "install-manager", "install-merge-batch",
+                                           "install-bounded-history"))
     add_connection_arguments(parser)
     args = parser.parse_args()
     try:
@@ -455,6 +463,9 @@ def main():
         elif args.action == "install-merge-batch":
             connection.install_merge_batch()
             details["merge_batch_installed_in"] = connection.settings["database"]
+        elif args.action == "install-bounded-history":
+            connection.install_bounded_history()
+            details["bounded_history_installed_in"] = connection.settings["database"]
         print(json.dumps(details, indent=2))
     except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"{error}\n")
