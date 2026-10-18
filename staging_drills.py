@@ -182,8 +182,13 @@ def postmaster_start(owner):
 
 # --- S4: history growth -----------------------------------------------------
 
-def grow(session, start, count, batch=10):
-    """Append count commits to main; each changes 10 rows and one of 50 files."""
+def grow(session, start, count, batch=10, snapshot_interval=0, policy=None):
+    """Append count commits to main; each changes 10 rows and one of 50 files.
+
+    With snapshot_interval, the snapshot policy runs after every batch: the
+    statement a maintenance executor runs for each target vc.snapshot_due names
+    (agent_state.maintenance.SnapshotMaintenance.run_due). Its time is appended
+    to policy, not to the commit times."""
     walls = []
     for first in range(start, start + count, batch):
         script = []
@@ -198,6 +203,12 @@ COMMIT;""")
         began = time.perf_counter()
         session.sql("\n".join(script))
         walls.append((time.perf_counter() - began) * 1000 / len(script))
+        if snapshot_interval:
+            began = time.perf_counter()
+            made = int(session.sql("SELECT count(vc.materialize(revision, table_id)) "
+                                   f"FROM vc.snapshot_due('main', {int(snapshot_interval)});"))
+            if made:
+                policy.append(round((time.perf_counter() - began) * 1000, 3))
     return walls
 
 
@@ -249,17 +260,25 @@ def run_growth(args, owner):
     result = dict(
         database=name, server=owner.check(), table_rows=4000,
         commit_shape="each growth commit: 10 rows of app.products and 1 of 50 files on main",
-        levels=levels, complete=False,
+        levels=levels, complete=False, snapshot_interval=args.snapshot_interval or None,
         note=("Reads are EXPLAIN ANALYZE server execution times (median of 5). merge_ms and commit times are client "
               "wall times over one long-lived session (TLS to the VM). The seed commit is materialized; reads at head "
               "replay every commit since it. Snapshot rows are measured inside a rolled-back transaction. Client and "
               "server share one laptop: reference values only."))
+    if args.snapshot_interval:
+        result["note"] += (" snapshot_interval: after every 10 growth commits the snapshot policy materializes "
+                           "what vc.snapshot_due names, so reads at head replay only the commits since the "
+                           "nearest policy snapshot; policy time is reported separately, not in commit times.")
     with connection.session() as session:
         for target in args.levels:
-            walls = grow(session, done, target - done) if target > done else []
+            policy = []
+            walls = (grow(session, done, target - done, snapshot_interval=args.snapshot_interval, policy=policy)
+                     if target > done else [])
             done = target
             level = measure_level(session, base, table, target)
             level["growth_commit_ms_per_commit"] = median(walls[-10:]) if walls else None
+            if args.snapshot_interval:
+                level["policy_snapshot_batches"], level["policy_snapshot_ms_median"] = len(policy), median(policy)
             levels.append(level)
             write("growth", result, quiet=True)  # keep finished levels if a later one fails
             print(f"level {target}: read head {level['read_full_head_ms']} ms, after snapshot "
@@ -527,6 +546,9 @@ def main():
     parser.add_argument("--vm", default="agent-db", help="VirtualBox VM that runs the staging server")
     parser.add_argument("--levels", type=int, nargs="+", default=[0, 100, 1000, 3000],
                         help="growth: total commits added to main at each measurement")
+    parser.add_argument("--snapshot-interval", type=int, default=0,
+                        help="growth: apply the snapshot policy (vc.snapshot_due) with this interval after "
+                             "every 10 commits; 0 (default) materializes nothing, as before")
     parser.add_argument("--source", help="backup: database to dump (default: a new seeded one)")
     parser.add_argument("--writers", type=int, default=5, help="crash: main plus N-1 branch writers")
     parser.add_argument("--seconds", type=float, default=10, help="crash: commit time before the cut; netcut: link-down time")

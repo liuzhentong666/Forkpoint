@@ -13,6 +13,9 @@
 -- * vc.merge walks the target's ancestors once for the already-merged test and
 --   the merge base, and checks only paths that can differ between the merge base
 --   and the source instead of every path ever recorded.
+-- * vc.snapshot_due names the (revision, table) snapshots a maintenance executor
+--   should materialize so that reading a branch head replays a bounded number of
+--   commits. Snapshots stay derived data (vc.materialize, unchanged).
 BEGIN;
 CREATE OR REPLACE FUNCTION vc._ancestors(p_start uuid) RETURNS TABLE(id uuid)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
@@ -157,5 +160,37 @@ BEGIN
     INSERT INTO vc.pending_path VALUES(ctx.tx,file_path,target_file,source_file);
   END LOOP;
   RETURN vc.finish_change();
+END $$;
+
+-- Snapshot policy, read-only: the head of p_branch, once per tracked table whose
+-- rows_at(head) would replay at least p_interval commits since its nearest
+-- snapshot (the walk looks at most p_interval commits back). A maintenance
+-- executor materializes each returned target with vc.materialize; with the
+-- policy applied every few commits a head read replays fewer than about
+-- p_interval commits plus the commits since the last check.
+CREATE OR REPLACE FUNCTION vc.snapshot_due(p_branch text DEFAULT 'main',p_interval integer DEFAULT 100)
+RETURNS TABLE(revision uuid,table_id uuid)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+DECLARE h uuid := vc.head(p_branch);
+BEGIN
+  IF p_interval IS NULL OR p_interval NOT BETWEEN 1 AND 100000 THEN
+    RAISE EXCEPTION 'Snapshot interval must be 1..100000';
+  END IF;
+  RETURN QUERY SELECT h,t.id FROM vc.tracked_table t WHERE (
+    WITH RECURSIVE lineage(id,depth) AS (
+      SELECT h,0
+      UNION ALL
+      SELECT p.parent,l.depth+1 FROM lineage l CROSS JOIN LATERAL (
+        SELECT p.parent FROM vc.parent p WHERE p.child=l.id AND p.ordinal=1 OFFSET 0) p
+      WHERE l.depth<p_interval AND NOT EXISTS(
+        SELECT 1 FROM vc.snapshot_manifest m WHERE m.changeset=l.id AND m.table_id=t.id)
+    ) SELECT max(l.depth) FROM lineage l) >= p_interval
+  ORDER BY t.id;
+END $$;
+REVOKE ALL ON FUNCTION vc.snapshot_due(text,integer) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='agentdb_manager') THEN
+    GRANT EXECUTE ON FUNCTION vc.snapshot_due(text,integer) TO agentdb_manager;
+  END IF;
 END $$;
 COMMIT;

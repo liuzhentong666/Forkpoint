@@ -5,6 +5,7 @@ for the actual snapshot. This executor does not claim cross-system transactions.
 """
 import copy
 import json
+import re
 import uuid
 from .storage import Conflict, Invalid, Missing
 
@@ -26,6 +27,23 @@ class SnapshotMaintenance:
         # or user-provided SQL are interpolated.
         return json.loads(self.connection.sql(
             f"SELECT vc.snapshot_status('{revision}','{table_id}');"))
+
+    def due(self, branch="main", interval=100):
+        """Targets that the snapshot policy (vc.snapshot_due) names for a branch head."""
+        if not isinstance(branch, str) or not re.fullmatch(r"[A-Za-z0-9._/-]{1,128}", branch):
+            raise Invalid("Branch name for the snapshot policy must match [A-Za-z0-9._/-]{1,128}")
+        if isinstance(interval, bool) or not isinstance(interval, int) or not 1 <= interval <= 100000:
+            raise Invalid("Snapshot interval must be an integer 1..100000")
+        rows = json.loads(self.connection.sql(
+            "SELECT coalesce(json_agg(json_build_object('revision',revision,'table_id',table_id)),'[]') "
+            f"FROM vc.snapshot_due('{branch}',{interval});"))
+        return [self.target(row["revision"], row["table_id"]) for row in rows]
+
+    def run_due(self, actor, branch="main", interval=100, policy_ref=None):
+        """Materialize every due target through run(); one task per revision/table, so reruns resume."""
+        return [self.run(f"snapshot-{target['revision']}-{target['table_id']}", actor,
+                         target["revision"], target["table_id"], policy_ref)
+                for target in self.due(branch, interval)]
 
     def run(self, task_id, actor, revision, table_id, policy_ref=None, after_apply=None, after_intent=None):
         target = self.target(revision, table_id)

@@ -304,6 +304,30 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(connection.applications, 1)
         self.assertEqual(Engine(store).read("maintenance")["state"]["status"], "completed")
 
+    def test_policy_materializes_each_due_target_once(self):
+        class PolicyConnection(FakeConnection):
+            statements = []
+            def sql(self, statement):
+                self.statements.append(statement)
+                if "vc.snapshot_due" in statement:
+                    due = [] if self.present else [dict(revision="00000000-0000-0000-0000-000000000001",
+                                                        table_id="00000000-0000-0000-0000-000000000002")]
+                    return json.dumps(due)
+                return super().sql(statement)
+        store, connection = MemoryStore(), PolicyConnection()
+        runner = SnapshotMaintenance(Runtime(Engine(store)), connection)
+        first = runner.run_due("agent-a", "main", 100)
+        self.assertEqual([r["applied"] for r in first], [True])
+        self.assertIn("vc.snapshot_due('main',100)", connection.statements[0])
+        task = "snapshot-00000000-0000-0000-0000-000000000001-00000000-0000-0000-0000-000000000002"
+        self.assertEqual(first[0]["task_id"], task)
+        self.assertEqual(Engine(store).read(task)["state"]["status"], "completed")
+        self.assertEqual(runner.run_due("agent-b"), [])  # nothing due after the snapshot
+        self.assertEqual(connection.applications, 1)
+        for branch, interval in [("main'; DROP TABLE x; --", 100), ("main", 0), ("main", True), ("main", "100")]:
+            with self.assertRaises(Invalid):
+                runner.due(branch, interval)
+
 
 class GCSContractTests(unittest.TestCase):
     def test_sdk_generation_preconditions_and_pinned_download(self):
