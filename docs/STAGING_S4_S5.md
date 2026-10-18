@@ -21,7 +21,7 @@
 
 每个增长提交在 main 上改 10 行商品并写 50 个文件之一；seed 提交已物化快照。读取为 `EXPLAIN ANALYZE` 服务器执行时间（5 次中位），合入与提交为长连接上的客户端墙钟。
 
-[原始结果](../staging-results/growth.json)（库 `agentdb_test_growth_c0d98c8c27`，11 分钟完成，计算机保持唤醒）
+[原始结果](../staging-results/growth-before.json)（库 `agentdb_test_growth_c0d98c8c27`，11 分钟完成，计算机保持唤醒）
 
 | main 上新增提交 | 全表读取（head） | 单行读取（head） | 物化快照后全表读取 | 物化快照 | 读取 seed 固定版本 | 历史一页（20 条） | 一次 10 行合入 | 一次提交 | 库大小 |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -128,6 +128,39 @@
 断网 20 s 时，60 s 处 `idle_in_transaction_session_timeout` 到期，同时第一个 keepalive 探测也会因网络已恢复而收到 RST，两者几乎同时，结果文件不区分是哪一个结束了会话（虚拟机的 PostgreSQL 日志会记录 “terminating connection due to idle-in-transaction timeout”）。要单独验证断网期间也能释放，可再运行 `--seconds 90 --expect-gone-within 110`：这时 keepalive 收不到应答，只有空闲超时能在 60 s 处结束会话；`gone_at_first_poll` 为 true，`main_locked_for_s` 只是上限（断网 90 s 加持锁前后的约 4 s 和网络恢复后的连接检查，约 95–100 s）。`--expect-gone-within` 必须大于 `--seconds`，否则脚本拒绝运行，因为断网期间无法观察。不加该参数时，演练与原来一样只记录结果，`passed` 不检查上限。
 
 新结果写入 `staging-results/netcut.json`；默认设置下的结果已改名为 [netcut-defaults.json](../staging-results/netcut-defaults.json)，不会被覆盖。演练逻辑已在本机用模拟的服务器和时钟检查过（60 s 释放时通过；默认设置并加 `--expect-gone-within` 时因需要手动终止而失败；不加参数时与原来一样通过），**尚未在虚拟机上运行**。
+
+## 7. 修复后在虚拟机上复测（2026-10-18）
+
+第 2 节与第 4 节的两个问题分别由 `sql/005_bounded_history.sql`（[历史增长修复](HISTORY_GROWTH.md)）和 `configure_postgres.sh` 中的失联客户端设置处理。两项合入 main 后，在同一台虚拟机上重跑：
+
+### 历史增长
+
+新建测试库安装 001–005，因此包含修复。同一命令 `staging_drills.py growth --levels 0 100 1000 2000`，第二组加 `--snapshot-interval 100`（每 10 次提交后按 `vc.snapshot_due` 物化到期快照）。每组约 1 分钟完成（修复前 11 分钟）。
+
+| main 上 2,000 个提交时 | 修复前 | 仅修复 | 修复 + 每 100 个提交物化快照 |
+|---|---:|---:|---:|
+| 一次 10 行合入 | 50.7 s | 639 ms | 181 ms |
+| 一次提交 | 499 ms | 18 ms | 20 ms |
+| head 全表读取 | 1,205 ms | 180 ms | 24 ms |
+| 库大小 | 26 MB | 29 MB | 53 MB |
+
+- 仅修复时提交成本不再随历史增长（各级约 20 ms），合入在 2,000 个提交时降到修复前的约 1/80；合入与读取仍随“距上一个快照的提交数”缓慢增长。
+- 加上快照策略后，合入（124–181 ms）、提交与 head 读取（15–24 ms）从 0 到 2,000 个提交基本持平；每次物化约 165 ms，约每 100 个提交一次。
+- 代价是存储：每个快照保存一份 4,000 行的整表，2,000 个提交时库大小约为不物化时的 1.8 倍。快照的保留与回收尚未设计（README 当前限制第 9 条“版本保留/回收”）。
+- 原始结果：[修复前](../staging-results/growth-before.json)、[仅修复](../staging-results/growth-after.json)、[修复 + 快照策略](../staging-results/growth-after-policy100.json)。
+
+### 断网
+
+用户在虚拟机上按 [STAGING_VM.md 4a 节](STAGING_VM.md) 重新执行 `configure_postgres.sh`（保留已安装证书）后，运行 `staging_drills.py netcut --seconds 20 --expect-gone-within 75`。[原始结果](../staging-results/netcut.json)
+
+| | 默认设置（[netcut-defaults.json](../staging-results/netcut-defaults.json)） | 新设置 |
+|---|---|---|
+| 演练记录的服务器设置 | keepalive 7200 s，各项超时为 0 | `idle_in_transaction_session_timeout` 60 s，keepalive 60 s 后 6 次、间隔 10 s，`tcp_user_timeout` 120 s，`client_connection_check_interval` 10 s |
+| 失联会话持有 main 锁 | 观察 120 s 仍在，按默认设置约 2 小时 11 分钟 | **60.7 s 后由服务器自行结束**（自持锁会话最后一条语句起算，含最多 1 s 轮询误差） |
+| 需要所有者手动 `pg_terminate_backend` | 是 | **否** |
+| 结果 | 通过（暴露风险） | **通过**：在 75 s 上限内释放；head 未变，无遗留事务，锁释放后其他会话立即取得 main 锁 |
+
+断网期间新连接仍在 5.1 s 后明确报 `timeout expired`。其余 S5 演练（备份恢复、会话终止、重启、断电）未受这两项修改影响，本次未重跑。
 
 ## 5. 环境问题与处理
 

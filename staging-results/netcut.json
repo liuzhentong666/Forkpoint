@@ -1,0 +1,34 @@
+{
+  "database": "agentdb_test_netcut_abd066a34c",
+  "server_settings": {
+    "client_connection_check_interval": "10000ms",
+    "idle_in_transaction_session_timeout": "60000ms",
+    "lock_timeout": "0ms",
+    "tcp_keepalives_count": "6",
+    "tcp_keepalives_idle": "60s",
+    "tcp_keepalives_interval": "10s",
+    "tcp_user_timeout": "120000ms"
+  },
+  "link_down_s": 20.0,
+  "holder_pid": 1947,
+  "probe_while_lock_held": "lock_timeout",
+  "connect_during_cut": {
+    "returncode": 2,
+    "seconds": 5.1,
+    "error": "psql: error: connection to server at \"192.168.56.10\", port 5432 failed: timeout expired"
+  },
+  "probe_right_after_link_restored": "acquired",
+  "stale_session_gone_after_s": 37.2,
+  "main_locked_for_s": 60.7,
+  "gone_at_first_poll": true,
+  "stale_state_at_deadline": null,
+  "waited_s": 120.0,
+  "expect_gone_within_s": 75.0,
+  "bound_met": true,
+  "terminated_by_owner": null,
+  "probe_after_cleanup": "acquired",
+  "head_unchanged": true,
+  "unfinished_work_tx": 0,
+  "passed": true,
+  "note": "The holder kept an open versioned transaction (main's branch row locked) when the host-only link was unplugged and its client process died. The server ends such a session only through idle_in_transaction_session_timeout or when TCP declares the peer dead (server_settings: the values in effect for this TCP connection); with PostgreSQL's defaults that takes about 2 h 11 min. stale_session_gone_after_s counts from the link coming back; main_locked_for_s from the holder's last statement to the first 1 s poll that no longer finds the session, so it overstates the server's time by up to one poll. With --expect-gone-within the drill passes only if the server released main within that many seconds without the owner's pg_terminate_backend."
+}

@@ -1,0 +1,90 @@
+{
+  "database": "agentdb_test_growth_9abb948fe6",
+  "server": {
+    "server_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "server_version_num": 160015,
+    "host": "192.168.56.10",
+    "port": 5432,
+    "user": "agentdb_staging",
+    "database": "postgres",
+    "ssl": true,
+    "ssl_version": "TLSv1.3",
+    "sslmode": "verify-full",
+    "configured_host": "192.168.56.10",
+    "transport": "native"
+  },
+  "table_rows": 4000,
+  "commit_shape": "each growth commit: 10 rows of app.products and 1 of 50 files on main",
+  "levels": [
+    {
+      "commits_added": 0,
+      "head": "ea38bae2-a7ea-4137-8b93-d772582d8a56",
+      "read_full_head_ms": 16.805,
+      "read_point_head_ms": 15.465,
+      "read_full_seed_ms": 16.155,
+      "history_page_ms": 0.933,
+      "database_mb": 12.8,
+      "materialize_ms": 2.428,
+      "read_full_after_snapshot_ms": 15.344,
+      "merge_ms": 119.396,
+      "growth_commit_ms_per_commit": null
+    },
+    {
+      "commits_added": 100,
+      "head": "abd8199e-3cca-49ff-8c23-030fa5ea4ead",
+      "read_full_head_ms": 19.762,
+      "read_point_head_ms": 24.874,
+      "read_full_seed_ms": 8.721,
+      "history_page_ms": 0.991,
+      "database_mb": 12.7,
+      "materialize_ms": 194.835,
+      "read_full_after_snapshot_ms": 6.911,
+      "merge_ms": 143.631,
+      "growth_commit_ms_per_commit": 22.609
+    },
+    {
+      "commits_added": 1000,
+      "head": "037aa4f8-e61c-4548-941f-7c187923dc3c",
+      "read_full_head_ms": 97.21,
+      "read_point_head_ms": 101.273,
+      "read_full_seed_ms": 8.956,
+      "history_page_ms": 1.249,
+      "database_mb": 20.8,
+      "materialize_ms": 128.75,
+      "read_full_after_snapshot_ms": 11.726,
+      "merge_ms": 355.267,
+      "growth_commit_ms_per_commit": 19.811
+    },
+    {
+      "commits_added": 2000,
+      "head": "7cea4b40-a0f4-4afd-9baf-ee2b918b7e5d",
+      "read_full_head_ms": 179.536,
+      "read_point_head_ms": 184.078,
+      "read_full_seed_ms": 7.704,
+      "history_page_ms": 1.367,
+      "database_mb": 29.1,
+      "materialize_ms": 221.898,
+      "read_full_after_snapshot_ms": 9.5,
+      "merge_ms": 638.908,
+      "growth_commit_ms_per_commit": 18.048
+    }
+  ],
+  "complete": true,
+  "snapshot_interval": null,
+  "note": "Reads are EXPLAIN ANALYZE server execution times (median of 5). merge_ms and commit times are client wall times over one long-lived session (TLS to the VM). The seed commit is materialized; reads at head replay every commit since it. Snapshot rows are measured inside a rolled-back transaction. Client and server share one laptop: reference values only.",
+  "final": {
+    "head": "ef818a77-2aea-4fa6-ae45-6f371b047125",
+    "changesets": 2026,
+    "parents": 2037,
+    "row_changes": 24240,
+    "path_changes": 2001,
+    "blobs": 2001,
+    "snapshots": 1,
+    "unfinished_work_tx": 0,
+    "branches_md5": "38e232a0f5979054ccbaf8429724e9d5",
+    "row_change_md5": "656b2ecc40a72453fd5fb2ae350fb95a",
+    "products_md5": "02fcaf0b39a4f5877cb4f2a17ea78a81",
+    "vc_functions": 31,
+    "client_may_merge": true
+  }
+}

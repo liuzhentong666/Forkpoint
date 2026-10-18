@@ -97,11 +97,13 @@ shred -u server.key
 
 2026-10-18 之前配置的虚拟机（包括快照 `s1-configured`）的 `conf.d` 文件里还没有上述超时，失联客户端可以占住 main 锁约 2 小时 11 分钟（见 [S4/S5 第 4 节](STAGING_S4_S5.md#4-风险失联客户端的会话长时间持有锁)）。脚本可以重复执行，重新运行一次即可补上；不传 `--cert`/`--key` 时沿用已安装的证书对（第 4 节已 `shred` 掉家目录里的 `server.key`）。`pg_hba.conf` 中已有的那一行不会重复追加，ufw 规则已存在时 ufw 会跳过，角色脚本可重复执行，口令不变。
 
-1. 把新脚本复制到虚拟机（在 WSL 中执行）：
+1. 把新脚本复制到虚拟机。本机 WSL 到达不了仅主机网络（第 2 节），所以在 Windows PowerShell 中执行：
 
    ```console
-   scp deploy/staging/configure_postgres.sh deploy/staging/create_staging_role.sql <vm-user>@192.168.56.10:~/
+   scp F:6-10-14\https-www-anthropic-com-engineering-redesigninggentdb-postgres\deploy\staging\configure_postgres.sh F:6-10-14\https-www-anthropic-com-engineering-redesigninggentdb-postgres\deploy\staging\create_staging_role.sql <vm-user>@192.168.56.10:~/
    ```
+
+   使用 WSL 客户端、且 WSL 能到达虚拟机的环境，可改为在 WSL 中执行 `scp deploy/staging/configure_postgres.sh deploy/staging/create_staging_role.sql <vm-user>@192.168.56.10:~/`。
 
 2. 在虚拟机中执行。**它会重启 PostgreSQL，断开所有连接，不要在演练进行中执行**：
 
