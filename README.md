@@ -10,6 +10,26 @@
 
 它是构建面向 Agent 的数据库系统的第一阶段：先验证版本、隔离、事务与合入语义。PostgreSQL 负责事务、恢复和原生约束；本项目实现代码与数据的版本模型。当前仍是单节点实现，不声称已经替代分布式 Spanner。
 
+## 项目亮点
+
+AgentDB 让多个 AI Agent 像使用 Git 一样使用数据库：在各自隔离的分支上同时修改代码和业务数据，一次提交、按固定版本读取，再安全地合入主线。
+
+| 优势 | 做法 | 依据 |
+|---|---|---|
+| **代码与数据一起提交** | 代码文件、changeset 和业务行的变更在同一个 PostgreSQL 事务中发布；任何一步失败都整体回滚 | `run_tests.py` 的 `code_and_native_data_publish_atomically` |
+| **分支几乎零成本** | 建分支不复制业务行或代码（实测新增行历史 0 条）；分支读取固定版本，不受 main 后续变化影响 | [本机验证](VALIDATION.md) |
+| **并发安全，冲突可区分** | 基于旧 head 的合入被明确拒绝（`40001` stale_head），内容冲突单独报告（`P0001` merge_conflict），等锁超时报告为 `lock_timeout`（`55P03`）；Agent 能分清“重读后重试”和“需要重新提案” | 10 个连接竞争同一旧 head：1 个成功、9 个被明确拒绝 |
+| **由真实约束把关** | 合入 main 时由 PostgreSQL 原生 UNIQUE、外键、CHECK 校验，违反即整次回滚 | `run_tests.py` 的三项约束违规用例 |
+| **历史变长后依然快** | 父边走索引、文件状态找到即停、按策略物化快照：main 上 2,000 个提交时，一次 10 行合入 181 ms、一次提交约 20 ms（修复前为 50.7 s 和 499 ms） | [S4/S5 第 7 节](docs/STAGING_S4_S5.md)（预发布虚拟机） |
+| **经过故障演练** | 断电时 201 个已确认提交全部保留，没有半个提交；备份恢复 13 项指纹完全一致；正常重启、会话被终止、断网均通过；失联客户端持有的锁约 60 s 内由服务器自动释放 | [S4/S5 结果](docs/STAGING_S4_S5.md) |
+| **为 Agent 设计** | 结构化错误、固定版本读取与按版本读代码；受限维护角色；可恢复的维护协议（两个中断窗口均经测试）；管理 Agent 自动监测历史增长并在越线时报告 | [本机审查](docs/LOCAL_REVIEW_RESULTS.md)、[管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md) |
+| **用真实模型检验** | 两个 GPT Agent 处理同一商品的预登记十轮实验：完成的 8 轮全部达成目标，覆盖对方已发布内容 0 次；另 2 轮因模型服务额度中断，计入失败 | [十轮实验](docs/GPT_REPEAT_EXPERIMENT.md) |
+| **安全接入与证据可复查** | 远程连接只接受 TLS `verify-full`，测试以非超级用户运行；每项结论都有原始结果文件和可重跑的脚本 | [S1 结果](docs/STAGING_S1_RESULTS.md)、`staging-results/` |
+
+**当前定位**：单节点 PostgreSQL，第一阶段目标为单表约 4,000 行、10 个 Agent 并发；以上数字来自本机与本机虚拟机上的合成负载，不是生产容量承诺；云端对象存储状态服务尚未经真实验证；冲突按整行判断，schema 固定。详见下文“当前限制”。
+
+**开发方式**：本项目在 AI 编程助手的协助下开发，其中包括 Anthropic 的 Claude Code。由 Claude 参与的提交在提交信息中带有 `Co-Authored-By: Claude` 行，因此 Claude 会出现在 GitHub 的贡献者列表中；项目方向、审查与取舍由作者决定。
+
 技术博客：[让 Agent 的工作可以提交、分支和接手：AgentDB 的第一阶段实现](docs/TECHNICAL_BLOG.md)，介绍当前架构、关键实现、验证结果与下一阶段问题。
 
 本机审查补充：[维护恢复、受限角色与多 Agent 实验](docs/LOCAL_REVIEW_RESULTS.md)。包括旧维护者的发布冲突、两个中断窗口、非默认前缀配置路径，以及十个分支全部合入。所有云存储仍未经真实验证。
@@ -208,6 +228,26 @@ Target scale: for the first phase, a single business table of about **4,000 rows
 This direction follows the PostgreSQL plan you provided: code objects, changesets and the history of business records are kept in the same PostgreSQL database, and ordinary main tables coexist with branch views. The core logic is implemented in SQL / PL/pgSQL, with no SQLite dependency.
 
 It is the first phase of building an Agent-oriented database system: first validate the semantics of versions, isolation, transactions and merging. PostgreSQL is responsible for transactions, recovery and native constraints; this project implements the version model for code and data. It is still a single-node implementation and does not claim to have replaced a distributed Spanner.
+
+## Highlights
+
+AgentDB lets several AI Agents use a database the way developers use Git: each works on its own isolated branch, changes code and business data together, commits once, reads pinned versions, and merges safely into the main line.
+
+| Advantage | How | Evidence |
+|---|---|---|
+| **Code and data commit together** | Code files, changesets and business-row changes are published in one PostgreSQL transaction; if any step fails, everything rolls back | `code_and_native_data_publish_atomically` in `run_tests.py` |
+| **Branches cost almost nothing** | Creating a branch copies no business rows or code (0 new row-history entries measured); branches read a pinned version that later changes on main do not affect | [Local validation](VALIDATION.md) |
+| **Safe concurrency, distinguishable conflicts** | A merge based on a stale head is rejected explicitly (`40001` stale_head), content conflicts are reported separately (`P0001` merge_conflict), and waiting too long for the lock is reported as `lock_timeout` (`55P03`), so an Agent can tell "re-read and retry" from "re-propose" | 10 connections racing on the same stale head: 1 succeeded, 9 were rejected explicitly |
+| **Real constraints guard main** | Merging into main runs PostgreSQL's native UNIQUE, foreign-key and CHECK constraints; a violation rolls back the whole merge | The three constraint-violation cases in `run_tests.py` |
+| **Stays fast as history grows** | Index-probed parent walks, file lookups that stop at the nearest change, and policy-driven snapshots: at 2,000 commits on main a 10-row merge takes 181 ms and a commit about 20 ms (50.7 s and 499 ms before the fix) | [S4/S5 section 7](docs/STAGING_S4_S5.md) (staging VM) |
+| **Failure-drilled** | A power cut kept all 201 acknowledged commits with no partial commit; backup and restore matched on all 13 fingerprint fields; graceful restart, a killed session and a network cut all passed; a vanished client's lock is released by the server within about 60 s | [S4/S5 results](docs/STAGING_S4_S5.md) |
+| **Built for Agents** | Structured errors, pinned-version reads and reading code at a revision; a restricted maintenance role; a recoverable maintenance protocol (both interruption windows tested); a manager Agent that watches history growth and reports when a threshold is crossed | [Local review](docs/LOCAL_REVIEW_RESULTS.md), [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md) |
+| **Tested with real models** | A pre-registered ten-round experiment with two GPT Agents editing the same product: all 8 completed rounds reached the goal, with 0 overwrites of the other Agent's published work; the other 2 rounds were interrupted by the model service's usage limit and count as failures | [Ten-round experiment](docs/GPT_REPEAT_EXPERIMENT.md) |
+| **Secure access, reviewable evidence** | Remote connections accept only TLS `verify-full`, and tests run as a non-superuser; every claim has raw result files and scripts you can rerun | [S1 results](docs/STAGING_S1_RESULTS.md), `staging-results/` |
+
+**Current scope**: single-node PostgreSQL; the first-phase target is a table of about 4,000 rows with 10 concurrent Agents. The numbers above come from synthetic load on the local machine and a local VM, not a production capacity promise. The cloud object-storage state service is not yet verified against real cloud services; conflicts are detected per whole row, and the schema is fixed. See "Current limitations" below.
+
+**How it was built**: this project was developed with the help of AI coding assistants, including Anthropic's Claude Code. Commits that Claude contributed to carry a `Co-Authored-By: Claude` line in their message, which is why Claude appears in the GitHub contributors list; the project's direction, review and decisions are the author's.
 
 Technical blog: [Making Agent work committable, branchable and hand-off-able: the first-phase implementation of AgentDB](docs/TECHNICAL_BLOG.md), covering the current architecture, key implementation points, validation results and the questions for the next phase.
 
