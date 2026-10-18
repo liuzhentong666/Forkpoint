@@ -1,3 +1,5 @@
+[English](AGENTS.en.md) | 中文
+
 # AgentDB：Agent 开发与维护约定
 
 适用范围：本目录及子目录。更新日期：2026-10-18。

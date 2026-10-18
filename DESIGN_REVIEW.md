@@ -1,3 +1,5 @@
+[English](DESIGN_REVIEW.en.md) | 中文
+
 # PostgreSQL 方案评审与第一阶段设计
 
 日期：2026-10-15。目标规模：单表 4,000 行、10 个并发 Agent。

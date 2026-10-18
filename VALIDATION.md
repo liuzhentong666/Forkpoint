@@ -1,3 +1,5 @@
+[English](VALIDATION.en.md) | 中文
+
 # 本机验证记录
 
 验证日期：2026-10-15（Asia/Shanghai）。运行时：**Ubuntu WSL 中已有的 PostgreSQL 16.15**，集群 `16/main`，端口 `5432`。通过 `/usr/bin/psql` 与 Unix socket `/var/run/postgresql` 连接。
