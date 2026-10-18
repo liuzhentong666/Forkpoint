@@ -161,7 +161,9 @@
 | 需要所有者手动 `pg_terminate_backend` | 是 | **否** |
 | 结果 | 通过（暴露风险） | **通过**：在 75 s 上限内释放；head 未变，无遗留事务，锁释放后其他会话立即取得 main 锁 |
 
-断网期间新连接仍在 5.1 s 后明确报 `timeout expired`。其余 S5 演练（备份恢复、会话终止、重启、断电）未受这两项修改影响，本次未重跑。
+断网期间新连接仍在 5.1 s 后明确报 `timeout expired`。
+
+代码审查后，`idle_in_transaction_session_timeout` 从集群级 `conf.d` 改为只设在 `agentdb_staging` 角色上（[角色脚本](../deploy/staging/create_staging_role.sql)），管理员会话恢复默认值 0。用户在虚拟机上重新执行 `configure_postgres.sh` 后核对：`postgres` 会话为 `0`，`agentdb_staging` 会话为 `1min`。同一演练复测通过：服务器在 60.5 s 后自行结束失联会话并释放 main 锁（服务器时钟计算；网络恢复 36.8 s 后首次连上服务器，此时会话已不存在，60.5 s 为上限，仍在 75 s 内），无需手动终止，head 未变，无遗留事务。[原始结果](../staging-results/netcut-role-timeout.json)其余 S5 演练（备份恢复、会话终止、重启、断电）未受这两项修改影响，本次未重跑。
 
 ## 5. 环境问题与处理
 
