@@ -1,6 +1,6 @@
 {
   "provider": "oss",
-  "bucket": "agentdb-dev-goudan",
+  "bucket": "your-oss-bucket",
   "region": "cn-hangzhou",
   "endpoint": "https://oss-cn-hangzhou-internal.aliyuncs.com",
   "prefix": "agentdb-state",

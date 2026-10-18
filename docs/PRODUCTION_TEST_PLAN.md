@@ -43,7 +43,7 @@
 ## 5. 需要用户决定的事项
 
 1. **预发布 PostgreSQL 放在哪里**（已定，2026-10-18）：S1 使用本机 VirtualBox 虚拟机（方案 B），不产生云费用。客户端与服务器共用一台机器，S1/S4 的计时只作参考。生产环境最终用自管云主机还是托管数据库，留到解除云端暂缓时再定，届时在所选环境上简短重跑 S1。
-2. **是否解除云端暂缓**（待定）：仅限 S2/S3，使用已报告的杭州 OSS 桶 `agentdb-dev-goudan` 还是新桶，以及可接受的费用上限。
+2. **是否解除云端暂缓**（待定）：仅限 S2/S3，使用已报告的杭州 OSS 桶 `<your-oss-bucket>` 还是新桶，以及可接受的费用上限。
 3. **生产环境最终是否接触真实业务数据**（待定）：若是，需要先补齐备份恢复演练、独立登录身份与审计，再单独制定数据迁移方案。
 4. **负载目标是否改变**（待定）：维持 4,000 行 / 10 Agent，还是给出新的行数、Agent 数和历史长度。
 5. **谁可以访问预发布环境**（待定）：决定登录角色的数量与 `pg_hba.conf` 的来源网段。
@@ -99,7 +99,7 @@ Each phase starts only after the previous phase passes; if any item fails, stop 
 ## 5. Items for the user to decide
 
 1. **Where to put the staging PostgreSQL** (decided, 2026-10-18): S1 uses a local VirtualBox VM (option B), with no cloud costs. The client and server share one machine, so S1/S4 timings are for reference only. Whether production finally uses a self-managed cloud host or a managed database is left until the cloud hold is lifted, at which point S1 is briefly rerun in the chosen environment.
-2. **Whether to lift the cloud hold** (to be decided): only for S2/S3; whether to use the reported Hangzhou OSS bucket `agentdb-dev-goudan` or a new bucket, and the acceptable cost ceiling.
+2. **Whether to lift the cloud hold** (to be decided): only for S2/S3; whether to use the reported Hangzhou OSS bucket `<your-oss-bucket>` or a new bucket, and the acceptable cost ceiling.
 3. **Whether production eventually touches real business data** (to be decided): if so, backup-restore drills, a separate login identity and auditing must be completed first, and a data migration plan drawn up separately.
 4. **Whether the load target changes** (to be decided): keep 4,000 rows / 10 Agents, or give new numbers of rows, Agents and history length.
 5. **Who can access the staging environment** (to be decided): decide the number of login roles and the source network ranges in `pg_hba.conf`.

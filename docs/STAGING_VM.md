@@ -70,7 +70,7 @@ wsl --distribution Ubuntu --exec bash deploy/staging/make_certs.sh --name agentd
 本机客户端是 Windows 原生 psql（见第 2 节），所以把 CA 证书（公开内容，不是私钥）复制一份到 Windows 侧：
 
 ```console
-wsl --distribution Ubuntu --exec bash -c "mkdir -p /mnt/c/Users/lzt/.agentdb-staging && cp ~/.agentdb-staging/ca.pem /mnt/c/Users/lzt/.agentdb-staging/ca.pem"
+wsl --distribution Ubuntu --exec bash -c "mkdir -p /mnt/c/Users/<windows-user>/.agentdb-staging && cp ~/.agentdb-staging/ca.pem /mnt/c/Users/<windows-user>/.agentdb-staging/ca.pem"
 ```
 
 私钥 `ca.key` 与 `server.key` 留在 WSL 的 ext4 文件系统中（权限 0600），不复制到 `/mnt/c`，那里不保留 Unix 权限。
@@ -99,10 +99,10 @@ shred -u server.key
 
 2026-10-18 之前配置的虚拟机（包括快照 `s1-configured`）的 `conf.d` 文件里还没有上述超时，失联客户端可以占住 main 锁约 2 小时 11 分钟（见 [S4/S5 第 4 节](STAGING_S4_S5.md#4-风险失联客户端的会话长时间持有锁)）。脚本可以重复执行，重新运行一次即可补上；不传 `--cert`/`--key` 时沿用已安装的证书对（第 4 节已 `shred` 掉家目录里的 `server.key`）。`pg_hba.conf` 中已有的那一行不会重复追加，ufw 规则已存在时 ufw 会跳过，角色脚本可重复执行，口令不变。
 
-1. 把新脚本复制到虚拟机。本机 WSL 到达不了仅主机网络（第 2 节），所以在 Windows PowerShell 中执行：
+1. 把新脚本复制到虚拟机。本机 WSL 到达不了仅主机网络（第 2 节），所以在 Windows PowerShell 中、于项目根目录执行：
 
    ```console
-   scp F:6-10-14\https-www-anthropic-com-engineering-redesigninggentdb-postgres\deploy\staging\configure_postgres.sh F:6-10-14\https-www-anthropic-com-engineering-redesigninggentdb-postgres\deploy\staging\create_staging_role.sql <vm-user>@192.168.56.10:~/
+   scp .\deploy\staging\configure_postgres.sh .\deploy\staging\create_staging_role.sql <vm-user>@192.168.56.10:~/
    ```
 
    使用 WSL 客户端、且 WSL 能到达虚拟机的环境，可改为在 WSL 中执行 `scp deploy/staging/configure_postgres.sh deploy/staging/create_staging_role.sql <vm-user>@192.168.56.10:~/`。
@@ -118,7 +118,7 @@ shred -u server.key
 3. 在 Windows 中经 TLS 以 `agentdb_staging` 核对（Windows 版 psql 只认连接串之前的选项，所以 `-XAtc` 放在最前；keepalive 的值只在 TCP 连接上显示，虚拟机内经 Unix socket 查看时为 0；连接串中的路径用正斜杠，libpq 会把反斜杠当作转义）：
 
    ```console
-   & "C:\Program Files\PostgreSQL\16\bin\psql.exe" -XAtc "SELECT name, setting, unit FROM pg_settings WHERE name ~ '^(idle_in_transaction|tcp_|client_connection)' ORDER BY 1" "host=192.168.56.10 user=agentdb_staging dbname=postgres sslmode=verify-full sslrootcert=C:/Users/lzt/.agentdb-staging/ca.pem"
+   & "C:\Program Files\PostgreSQL\16\bin\psql.exe" -XAtc "SELECT name, setting, unit FROM pg_settings WHERE name ~ '^(idle_in_transaction|tcp_|client_connection)' ORDER BY 1" "host=192.168.56.10 user=agentdb_staging dbname=postgres sslmode=verify-full sslrootcert=C:/Users/<windows-user>/.agentdb-staging/ca.pem"
    ```
 
    应看到 `client_connection_check_interval|10000|ms`、`idle_in_transaction_session_timeout|60000|ms`、`tcp_keepalives_count|6|`、`tcp_keepalives_idle|60|s`、`tcp_keepalives_interval|10|s`、`tcp_user_timeout|120000|ms`。
@@ -150,7 +150,7 @@ shred -u server.key
      "wsl_distribution": "",
      "wsl_user": "",
      "sslmode": "verify-full",
-     "sslrootcert": "C:\\Users\\lzt\\.agentdb-staging\\ca.pem"
+     "sslrootcert": "C:\\Users\\<windows-user>\\.agentdb-staging\\ca.pem"
    }
    ```
 
@@ -238,7 +238,7 @@ Run it in the project root (WSL maps the current Windows directory to `/mnt/f/..
 The local client is the native Windows psql (see section 2), so copy the CA certificate (public content, not the private key) to the Windows side:
 
 ```console
-wsl --distribution Ubuntu --exec bash -c "mkdir -p /mnt/c/Users/lzt/.agentdb-staging && cp ~/.agentdb-staging/ca.pem /mnt/c/Users/lzt/.agentdb-staging/ca.pem"
+wsl --distribution Ubuntu --exec bash -c "mkdir -p /mnt/c/Users/<windows-user>/.agentdb-staging && cp ~/.agentdb-staging/ca.pem /mnt/c/Users/<windows-user>/.agentdb-staging/ca.pem"
 ```
 
 The private keys `ca.key` and `server.key` stay in WSL's ext4 file system (permissions 0600) and are not copied to `/mnt/c`, which does not keep Unix permissions.
@@ -267,13 +267,12 @@ What [configure_postgres.sh](../deploy/staging/configure_postgres.sh) changes: i
 
 VMs configured before 2026-10-18 (including the snapshot `s1-configured`) do not yet have the timeouts above in their `conf.d` file, so a vanished client can hold the main lock for about 2 hours 11 minutes (see [S4/S5 section 4](STAGING_S4_S5.md#4-risk-sessions-of-vanished-clients-hold-locks-for-a-long-time)). The script can be run repeatedly, and running it once more adds them; without `--cert`/`--key` it keeps the already installed certificate pair (section 4 already `shred`ded the `server.key` in the home directory). The existing line in `pg_hba.conf` is not appended again, ufw skips rules that already exist, the role script can be run repeatedly, and the password does not change.
 
-1. Copy the new scripts to the VM. The local WSL cannot reach the host-only network (section 2), so run this in Windows PowerShell:
+1. Copy the new scripts to the VM. The local WSL cannot reach the host-only network (section 2), so run this in Windows PowerShell from the project root:
 
    ```console
-   scp F:6-10-14\https-www-anthropic-com-engineering-redesigninggentdb-postgres\deploy\staging\configure_postgres.sh F:6-10-14\https-www-anthropic-com-engineering-redesigninggentdb-postgres\deploy\staging\create_staging_role.sql <vm-user>@192.168.56.10:~/
+   scp .\deploy\staging\configure_postgres.sh .\deploy\staging\create_staging_role.sql <vm-user>@192.168.56.10:~/
    ```
 
-   (Translator's note: in the original Chinese document this command contains corrupted characters where the path segments `\2026` and `\agentdb` should be; the intended paths are `F:\2026-10-14\https-www-anthropic-com-engineering-redesigning\agentdb-postgres\deploy\staging\configure_postgres.sh` and `...\deploy\staging\create_staging_role.sql`. The command is reproduced here exactly as in the original.)
 
    In an environment using the WSL client where WSL can reach the VM, you can instead run `scp deploy/staging/configure_postgres.sh deploy/staging/create_staging_role.sql <vm-user>@192.168.56.10:~/` in WSL.
 
@@ -288,7 +287,7 @@ VMs configured before 2026-10-18 (including the snapshot `s1-configured`) do not
 3. On Windows, check over TLS as `agentdb_staging` (the Windows psql only recognizes options placed before the connection string, so `-XAtc` goes first; keepalive values are shown only on TCP connections and are 0 when viewed inside the VM over the Unix socket; paths in the connection string use forward slashes, because libpq treats backslashes as escapes):
 
    ```console
-   & "C:\Program Files\PostgreSQL\16\bin\psql.exe" -XAtc "SELECT name, setting, unit FROM pg_settings WHERE name ~ '^(idle_in_transaction|tcp_|client_connection)' ORDER BY 1" "host=192.168.56.10 user=agentdb_staging dbname=postgres sslmode=verify-full sslrootcert=C:/Users/lzt/.agentdb-staging/ca.pem"
+   & "C:\Program Files\PostgreSQL\16\bin\psql.exe" -XAtc "SELECT name, setting, unit FROM pg_settings WHERE name ~ '^(idle_in_transaction|tcp_|client_connection)' ORDER BY 1" "host=192.168.56.10 user=agentdb_staging dbname=postgres sslmode=verify-full sslrootcert=C:/Users/<windows-user>/.agentdb-staging/ca.pem"
    ```
 
    You should see `client_connection_check_interval|10000|ms`, `idle_in_transaction_session_timeout|60000|ms`, `tcp_keepalives_count|6|`, `tcp_keepalives_idle|60|s`, `tcp_keepalives_interval|10|s`, `tcp_user_timeout|120000|ms`.
@@ -320,7 +319,7 @@ To undo: delete the lines from "Bounded detection of vanished clients" downwards
      "wsl_distribution": "",
      "wsl_user": "",
      "sslmode": "verify-full",
-     "sslrootcert": "C:\\Users\\lzt\\.agentdb-staging\\ca.pem"
+     "sslrootcert": "C:\\Users\\<windows-user>\\.agentdb-staging\\ca.pem"
    }
    ```
 

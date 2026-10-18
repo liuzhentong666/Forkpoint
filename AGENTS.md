@@ -25,7 +25,7 @@
 - 第一阶段负载为单表约 4,000 行、10 个并发 Agent。目标是检验 Agent 的分支、固定版本、联合提交、维护与恢复流程；不能因数据库曾面向人类开发者，就推断 PostgreSQL 或 Spanner 已无法承载需求。
 - 代码及业务数据版本由现有 Ubuntu WSL PostgreSQL 管理。使用 `connection.local.json` 和 `db.py`；不要替换为 SQLite、临时 PostgreSQL 实例或旧 `.runtime` 中的服务。
 - 管理任务的正式持久状态设计为使用满足项目协议的云端对象存储；GCS、阿里云 OSS 和 S3 是候选适配器，尚未完成真实云端接入；运行时使用有界内存缓存。不要因云端工作暂缓而改为 PostgreSQL `ops` schema、本地恢复文件或磁盘状态库。源码、配置和本地测试报告仍可保存在项目目录。
-- GCS、OSS、S3 适配代码、ECS 配置及 HTTP 维护客户端已编写。用户报告已创建杭州 OSS 桶 `agentdb-dev-goudan`，但未核验其配置、权限或真实读写，且尚无 ECS。MemoryStore 仅用于测试。部署文档只是 [暂缓执行的草案](docs/ALIYUN_ECS_DEPLOYMENT.md)，不是已完成能力的证明。
+- GCS、OSS、S3 适配代码、ECS 配置及 HTTP 维护客户端已编写。用户报告已创建杭州 OSS 桶 `<your-oss-bucket>`，但未核验其配置、权限或真实读写，且尚无 ECS。MemoryStore 仅用于测试。部署文档只是 [暂缓执行的草案](docs/ALIYUN_ECS_DEPLOYMENT.md)，不是已完成能力的证明。
 - 当前版本引擎仍是单节点 PostgreSQL，分支头发布使用锁；多区域缓存、数据分片、虚拟文件系统和统一版本服务 RPC 均不是已完成能力。新增这些能力必须有负载依据和明确迁移方案。
 
 ## 必须保持的设计约束
@@ -178,7 +178,7 @@ These are design directions. Scion's scale, performance data and internal implem
 - The first-phase load is a single table of about 4,000 rows with 10 concurrent Agents. The goal is to test the Agent workflows for branching, pinned versions, joint commits, maintenance and recovery; do not infer that PostgreSQL or Spanner can no longer meet the needs just because the databases were once aimed at human developers.
 - Code and business data versions are managed by the existing Ubuntu WSL PostgreSQL. Use `connection.local.json` and `db.py`; do not replace it with SQLite, a temporary PostgreSQL instance, or the service in the old `.runtime`.
 - The formal persistent state of management tasks is designed to use cloud object storage that satisfies the project protocol; GCS, Alibaba Cloud OSS and S3 are candidate adapters and have not completed real cloud integration; at runtime a bounded in-memory cache is used. Do not switch to a PostgreSQL `ops` schema, local recovery files or an on-disk state store because cloud work is on hold. Source code, configuration and local test reports can still be kept in the project directory.
-- The GCS, OSS and S3 adapter code, the ECS configuration and the HTTP maintenance client have been written. The user reports having created the Hangzhou OSS bucket `agentdb-dev-goudan`, but its configuration, permissions or real reads/writes have not been verified, and there is no ECS yet. MemoryStore is for tests only. The deployment document is only a [draft on hold](docs/ALIYUN_ECS_DEPLOYMENT.md), not proof of a completed capability.
+- The GCS, OSS and S3 adapter code, the ECS configuration and the HTTP maintenance client have been written. The user reports having created the Hangzhou OSS bucket `<your-oss-bucket>`, but its configuration, permissions or real reads/writes have not been verified, and there is no ECS yet. MemoryStore is for tests only. The deployment document is only a [draft on hold](docs/ALIYUN_ECS_DEPLOYMENT.md), not proof of a completed capability.
 - The current version engine is still single-node PostgreSQL, and branch head publishing uses locks; multi-region caching, data sharding, a virtual file system and a unified version-service RPC are not completed capabilities. Adding these capabilities requires a load-based justification and a clear migration plan.
 
 ## Design constraints that must be kept

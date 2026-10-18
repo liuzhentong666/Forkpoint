@@ -2,7 +2,7 @@
 
 # 阿里云 ECS 状态服务部署草案（暂缓）
 
-状态更新：2026-10-17。**云服务未经真实验证，当前暂缓云资源采购、联调和部署。** 用户报告已创建杭州 OSS 桶 `agentdb-dev-goudan`，但未核验其权限、配置或真实读写；没有 ECS，也没有已运行的云端状态服务。下文保留为未来参考，不是当前执行计划或已完成部署的记录。
+状态更新：2026-10-17。**云服务未经真实验证，当前暂缓云资源采购、联调和部署。** 用户报告已创建杭州 OSS 桶 `<your-oss-bucket>`，但未核验其权限、配置或真实读写；没有 ECS，也没有已运行的云端状态服务。下文保留为未来参考，不是当前执行计划或已完成部署的记录。
 
 ## 部署设计与验收
 
@@ -10,7 +10,7 @@
 本机 Agent / maintain_snapshot.py ──SSH 隧道──> ECS 127.0.0.1:8844
           │                                   │
           v                                   v
-现有 WSL PostgreSQL                 杭州 OSS 内网端点 → agentdb-dev-goudan
+现有 WSL PostgreSQL                 杭州 OSS 内网端点 → <your-oss-bucket>
 代码与业务数据版本                  管理任务状态、历史、规则、证据
 ```
 
@@ -138,7 +138,7 @@ Invoke-RestMethod http://127.0.0.1:18844/health
 
 # Alibaba Cloud ECS State Service Deployment Draft (On Hold)
 
-Status update: 2026-10-17. **Cloud services are not verified against real cloud services; cloud resource purchasing, integration testing and deployment are currently on hold.** The user reports having created the Hangzhou OSS bucket `agentdb-dev-goudan`, but its permissions, configuration or real reads/writes have not been verified; there is no ECS, and no cloud state service has run. The text below is kept for future reference and is not a current execution plan or a record of a completed deployment.
+Status update: 2026-10-17. **Cloud services are not verified against real cloud services; cloud resource purchasing, integration testing and deployment are currently on hold.** The user reports having created the Hangzhou OSS bucket `<your-oss-bucket>`, but its permissions, configuration or real reads/writes have not been verified; there is no ECS, and no cloud state service has run. The text below is kept for future reference and is not a current execution plan or a record of a completed deployment.
 
 ## Deployment design and acceptance
 
@@ -146,11 +146,11 @@ Status update: 2026-10-17. **Cloud services are not verified against real cloud 
 本机 Agent / maintain_snapshot.py ──SSH 隧道──> ECS 127.0.0.1:8844
           │                                   │
           v                                   v
-现有 WSL PostgreSQL                 杭州 OSS 内网端点 → agentdb-dev-goudan
+现有 WSL PostgreSQL                 杭州 OSS 内网端点 → <your-oss-bucket>
 代码与业务数据版本                  管理任务状态、历史、规则、证据
 ```
 
-(The diagram reads: local Agent / `maintain_snapshot.py` ── SSH tunnel ──> ECS 127.0.0.1:8844; the local side goes to the existing WSL PostgreSQL, holding code and business data versions; the ECS side goes to the Hangzhou OSS internal endpoint → `agentdb-dev-goudan`, holding management task state, history, rules and evidence.)
+(The diagram reads: local Agent / `maintain_snapshot.py` ── SSH tunnel ──> ECS 127.0.0.1:8844; the local side goes to the existing WSL PostgreSQL, holding code and business data versions; the ECS side goes to the Hangzhou OSS internal endpoint → `<your-oss-bucket>`, holding management task state, history, rules and evidence.)
 
 In the proposed plan, ECS runs only the state service, obtains temporary credentials through the instance RAM role, and no AccessKey is saved in the configuration; all connected Agents use the same state API capabilities. Formal state is planned to be kept in OSS, the process uses only a bounded in-memory cache, and the system disk holds only the program, dependencies and configuration. These cloud behaviors and credential renewal have not been tested on a real ECS.
 

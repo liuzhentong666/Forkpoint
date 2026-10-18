@@ -38,7 +38,7 @@
       "acked_present": 34,
       "acked_reachable": 34,
       "head_state": "last_acked",
-      "writer_error": "TimeoutExpired: Command 'C:/Users/lzt/AppData/Local/Temp/agentdb-session-1alucbq2.sql' timed out after 0 seconds"
+      "writer_error": "TimeoutExpired: Command 'C:/Users/<windows-user>/AppData/Local/Temp/agentdb-session-1alucbq2.sql' timed out after 0 seconds"
     },
     {
       "branch": "crash_w4",
@@ -46,7 +46,7 @@
       "acked_present": 35,
       "acked_reachable": 35,
       "head_state": "last_acked",
-      "writer_error": "TimeoutExpired: Command 'C:/Users/lzt/AppData/Local/Temp/agentdb-session-678gnb1h.sql' timed out after 0 seconds"
+      "writer_error": "TimeoutExpired: Command 'C:/Users/<windows-user>/AppData/Local/Temp/agentdb-session-678gnb1h.sql' timed out after 0 seconds"
     }
   ],
   "projection_mismatches_before": 0,

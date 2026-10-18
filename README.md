@@ -33,7 +33,7 @@
 - [多后端本地测试](docs/STORAGE_BACKENDS_VALIDATION.md)：内存服务模型和 SDK 测试替身的结果，不包含真实云存储。
 - [ECS 部署草案（暂缓）](docs/ALIYUN_ECS_DEPLOYMENT.md)：保留配置与脚本供以后参考；[部署脚本本地检查](docs/ALIYUN_ECS_VALIDATION.md)不代表已部署或已完成云端验证。
 
-用户已报告创建杭州 OSS 桶 `agentdb-dev-goudan`，但本项目未核验该桶的配置、权限和真实读写；也没有 ECS。当前不安排云资源采购、云端联调或部署。保留的部署草案不绑定自定义域名。OSS 适配器代码设置每任务 524,288 次发布的上限，达到后需显式建立后继任务；这不是实测云端容量，且尚无透明日志轮转。PostgreSQL 继续负责代码与业务数据版本，管理状态不写入 ops schema。各后端依赖文件与 ECS 配置保留供后续开发使用。
+用户已报告创建杭州 OSS 桶 `<your-oss-bucket>`，但本项目未核验该桶的配置、权限和真实读写；也没有 ECS。当前不安排云资源采购、云端联调或部署。保留的部署草案不绑定自定义域名。OSS 适配器代码设置每任务 524,288 次发布的上限，达到后需显式建立后继任务；这不是实测云端容量，且尚无透明日志轮转。PostgreSQL 继续负责代码与业务数据版本，管理状态不写入 ops schema。各后端依赖文件与 ECS 配置保留供后续开发使用。
 
 ## 当前工作流程
 
@@ -232,7 +232,7 @@ The design goal is to save the latest state, events, rule versions and evidence 
 - [Multi-backend local tests](docs/STORAGE_BACKENDS_VALIDATION.md): results from the in-memory service model and SDK test doubles, not including real cloud storage.
 - [ECS deployment draft (on hold)](docs/ALIYUN_ECS_DEPLOYMENT.md): configuration and scripts kept for future reference; the [local check of the deployment scripts](docs/ALIYUN_ECS_VALIDATION.md) does not mean anything has been deployed or that cloud verification has been completed.
 
-The user has reported creating the Hangzhou OSS bucket `agentdb-dev-goudan`, but this project has not verified that bucket's configuration, permissions or real reads/writes; there is also no ECS. No cloud resource purchasing, cloud integration testing or deployment is currently scheduled. The retained deployment draft does not bind a custom domain. The OSS adapter code sets a limit of 524,288 publishes per task, after which a successor task must be created explicitly; this is not a measured cloud capacity, and there is no transparent log rotation yet. PostgreSQL continues to be responsible for versioning code and business data, and management state is not written to the ops schema. Each backend's dependency files and the ECS configuration are kept for later development.
+The user has reported creating the Hangzhou OSS bucket `<your-oss-bucket>`, but this project has not verified that bucket's configuration, permissions or real reads/writes; there is also no ECS. No cloud resource purchasing, cloud integration testing or deployment is currently scheduled. The retained deployment draft does not bind a custom domain. The OSS adapter code sets a limit of 524,288 publishes per task, after which a successor task must be created explicitly; this is not a measured cloud capacity, and there is no transparent log rotation yet. PostgreSQL continues to be responsible for versioning code and business data, and management state is not written to the ops schema. Each backend's dependency files and the ECS configuration are kept for later development.
 
 ## Current workflow
 

@@ -181,7 +181,7 @@
 
 ## 6. 保留与清理
 
-虚拟机上保留了各演练的测试库（名称见各结果文件）与两个快照：`clean-postgres`（配置前）和 `s1-configured`（S1 完成并正常关机后，S4/S5 的重置点）。`E:\agent-db\Snapshots` 中有一个 2 MB 的孤立差分盘 `{81d5f3fc-…}.vdi`，来自被回滚的在线快照。是否清理由用户决定。
+虚拟机上保留了各演练的测试库（名称见各结果文件）与两个快照：`clean-postgres`（配置前）和 `s1-configured`（S1 完成并正常关机后，S4/S5 的重置点）。`<VM folder>\Snapshots` 中有一个 2 MB 的孤立差分盘 `{81d5f3fc-…}.vdi`，来自被回滚的在线快照。是否清理由用户决定。
 
 ---
 
@@ -368,4 +368,4 @@ After code review, `idle_in_transaction_session_timeout` was moved from the clus
 
 ## 6. What is kept and cleanup
 
-The VM keeps the test databases of each drill (names in each result file) and two snapshots: `clean-postgres` (before configuration) and `s1-configured` (after S1 was completed and the VM shut down normally; the reset point for S4/S5). `E:\agent-db\Snapshots` contains a 2 MB orphaned differencing disk `{81d5f3fc-…}.vdi`, from the rolled-back live snapshot. Whether to clean up is up to the user.
+The VM keeps the test databases of each drill (names in each result file) and two snapshots: `clean-postgres` (before configuration) and `s1-configured` (after S1 was completed and the VM shut down normally; the reset point for S4/S5). `<VM folder>\Snapshots` contains a 2 MB orphaned differencing disk `{81d5f3fc-…}.vdi`, from the rolled-back live snapshot. Whether to clean up is up to the user.

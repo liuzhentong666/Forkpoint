@@ -4,12 +4,12 @@
     {
       "Effect": "Allow",
       "Action": ["oss:GetBucketVersioning", "oss:GetBucketWorm", "oss:GetBucketObjectWormConfiguration"],
-      "Resource": ["acs:oss:*:*:agentdb-dev-goudan"]
+      "Resource": ["acs:oss:*:*:your-oss-bucket"]
     },
     {
       "Effect": "Allow",
       "Action": ["oss:GetObject", "oss:PutObject"],
-      "Resource": ["acs:oss:*:*:agentdb-dev-goudan/agentdb-state/*"]
+      "Resource": ["acs:oss:*:*:your-oss-bucket/agentdb-state/*"]
     }
   ]
 }
