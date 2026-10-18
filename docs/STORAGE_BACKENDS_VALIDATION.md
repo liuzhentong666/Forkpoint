@@ -1,4 +1,4 @@
-[English](STORAGE_BACKENDS_VALIDATION.en.md) | 中文
+中文 | [English](#english-version)
 
 # 存储适配器本地测试范围（非云端验证）
 
@@ -21,3 +21,29 @@
 真实 OSS / S3 / GCS 的读写、条件发布、旧命令重试、网络故障恢复、实际权限、保留策略、性能和成本均未验证。用户报告已有杭州 OSS 桶，但本项目未核验该桶；ECS 也未创建或部署。
 
 适配代码及 `smoke_cloud.py` 保留，当前不执行真实云测试。接口和存储布局见 [多后端设计](STORAGE_BACKENDS.md)；不要把设计约束或模拟计数当作实测云端能力。
+
+---
+
+<a id="english-version"></a>
+
+# Scope of the Storage Adapters' Local Tests (Not Cloud Verification)
+
+Last updated: 2026-10-17. **Cloud services are not verified against real cloud services, and cloud deployment is on hold.** No real integration testing of OSS, S3 or GCS has been run; there are no results that could be claimed as cloud storage having been verified.
+
+## Which environments the existing records belong to
+
+| Record | Actual execution environment | Evidence not included |
+|---|---|---|
+| [storage-backend-test-results.json](../storage-backend-test-results.json) | Local in-memory model, official SDK types, captured transport layer and boto3/botocore Stubber | Real cloud service responses, IAM and bucket configuration |
+| [oss-protocol-benchmark.json](../oss-protocol-benchmark.json) | In-memory OSS protocol model | Real OSS download volume, latency, throughput, capacity and cost |
+| [cloud-postgres-oss-protocol.json](../cloud-postgres-oss-protocol.json) | Existing WSL PostgreSQL and the in-memory OSS protocol model | Cross-system recovery between PostgreSQL and a real OSS |
+
+The local suite checks client conditional parameters, the concurrency model, simulated response loss, error mapping, caching and configuration compatibility. The SDK being able to construct a request does not mean the real provider has accepted it; the model behaving as expected also does not prove the consistency or availability of real storage.
+
+`resumed.verified` in the database hand-off record refers only to the local PostgreSQL snapshot, and `applied=false` means no re-materialization happened during the hand-off; it is not an OSS verification marker. The raw data is kept as local development evidence and must not be rewritten into a cloud success report.
+
+## Not completed and currently on hold
+
+Real OSS / S3 / GCS reads/writes, conditional publishing, retries of old commands, network failure recovery, actual permissions, retention policies, performance and cost are all not verified. The user reports having a Hangzhou OSS bucket, but this project has not verified that bucket; no ECS has been created or deployed either.
+
+The adapter code and `smoke_cloud.py` are kept, and no real cloud tests are currently run. For the interfaces and storage layout see [Multi-backend design](STORAGE_BACKENDS.md); do not take design constraints or simulated counts as measured cloud capability.
