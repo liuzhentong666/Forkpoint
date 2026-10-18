@@ -10,6 +10,9 @@
 -- * vc._file_state stops at the nearest first-parent ancestor that recorded the
 --   path (it used to walk to genesis and then pick the nearest), and skips the
 --   walk entirely for a path that no changeset ever recorded.
+-- * vc.merge walks the target's ancestors once for the already-merged test and
+--   the merge base, and checks only paths that can differ between the merge base
+--   and the source instead of every path ever recorded.
 BEGIN;
 CREATE OR REPLACE FUNCTION vc._ancestors(p_start uuid) RETURNS TABLE(id uuid)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
@@ -63,4 +66,96 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
     FROM lineage l JOIN vc.path_change c ON c.changeset=l.id AND c.path=p_path
     WHERE l.found
 $$;
+
+-- vc.merge_base given the ancestors of its first argument, so that vc.merge can
+-- reuse the walk it already made.
+CREATE OR REPLACE FUNCTION vc._merge_base(p_a_ancestors uuid[],p_b uuid) RETURNS uuid
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+DECLARE candidates uuid[];
+BEGIN
+  WITH common AS (SELECT unnest(p_a_ancestors) AS id INTERSECT SELECT id FROM vc._ancestors(p_b))
+  SELECT array_agg(c.id) INTO candidates FROM common c WHERE NOT EXISTS(
+    SELECT 1 FROM vc.parent p JOIN common child ON child.id=p.child WHERE p.parent=c.id);
+  IF coalesce(cardinality(candidates),0)<>1 THEN
+    RAISE EXCEPTION 'A unique merge base is required';
+  END IF;
+  RETURN candidates[1];
+END $$;
+REVOKE ALL ON FUNCTION vc._merge_base(uuid[],uuid) FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION vc.merge_base(p_a uuid,p_b uuid) RETURNS uuid
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+BEGIN
+  RETURN vc._merge_base(ARRAY(SELECT id FROM vc._ancestors(p_a)),p_b);
+END $$;
+
+CREATE OR REPLACE FUNCTION vc.merge(p_target text,p_source uuid,p_expected uuid,p_author text DEFAULT 'agent')
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+DECLARE base_id uuid; ctx vc.work_tx; t record; d record;
+        file_path text; old_file jsonb; source_file jsonb; target_file jsonb;
+        target_ancestors uuid[]; ours uuid[]; theirs uuid[]; a uuid; b uuid; meet uuid;
+BEGIN
+  PERFORM vc.begin_change(p_target,p_expected,p_author,'merge '||p_source::text);
+  ctx:=vc._context();
+  IF NOT EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_source) THEN RAISE EXCEPTION 'Unknown source'; END IF;
+  -- One walk of the target's ancestors serves the already-merged test and the merge base.
+  target_ancestors:=ARRAY(SELECT id FROM vc._ancestors(ctx.base));
+  IF p_source=ANY(target_ancestors) THEN
+    DELETE FROM vc.work_tx WHERE tx=ctx.tx;
+    RETURN ctx.base;
+  END IF;
+  base_id:=vc._merge_base(target_ancestors,p_source);
+  UPDATE vc.work_tx SET extra_parent=p_source WHERE tx=ctx.tx;
+  FOR t IN SELECT id FROM vc.tracked_table LOOP
+    -- Resolve the target state of all changed rows with one rows_at() call, not one
+    -- per row; it is skipped when nothing changed, and rows keep diff_rows' order.
+    FOR d IN WITH diff AS MATERIALIZED (
+               SELECT x.pk,x.before_row,x.after_row,x.n
+               FROM vc.diff_rows(base_id,p_source,t.id) WITH ORDINALITY x(pk,before_row,after_row,n)
+             ), target AS MATERIALIZED (
+               SELECT r.pk,r.doc FROM vc.rows_at(ctx.base,t.id) r WHERE EXISTS(SELECT 1 FROM diff))
+             SELECT diff.pk,diff.before_row,diff.after_row,target.doc AS ours
+             FROM diff LEFT JOIN target ON target.pk=diff.pk ORDER BY diff.n LOOP
+      IF d.ours IS NOT DISTINCT FROM d.after_row THEN CONTINUE; END IF;
+      IF d.ours IS DISTINCT FROM d.before_row THEN
+        RAISE EXCEPTION 'Row conflict: table %, key %',t.id,d.pk USING ERRCODE='P0001';
+      END IF;
+      IF p_target='main' THEN PERFORM vc._apply_main(t.id,d.pk,d.after_row);
+      ELSE PERFORM vc._stage(t.id,d.pk,d.ours,d.after_row); END IF;
+    END LOOP;
+  END LOOP;
+  -- File states follow first-parent chains. Walk the chains of the merge base and
+  -- the source in step until one reaches a changeset the other has visited; from
+  -- there down the chains are the same, so a path recorded on neither chain above
+  -- that changeset has the same state on both sides and the first test below
+  -- would skip it. Only the paths recorded above it are checked, in path order.
+  a:=base_id; b:=p_source; ours:=ARRAY[a]; theirs:=ARRAY[b];
+  LOOP
+    meet:=CASE WHEN a=ANY(theirs) THEN a WHEN b=ANY(ours) THEN b END;
+    EXIT WHEN meet IS NOT NULL OR (a IS NULL AND b IS NULL);
+    IF a IS NOT NULL THEN
+      a:=(SELECT p.parent FROM vc.parent p WHERE p.child=a AND p.ordinal=1);
+      IF a IS NOT NULL THEN ours:=ours||a; END IF;
+    END IF;
+    IF b IS NOT NULL THEN
+      b:=(SELECT p.parent FROM vc.parent p WHERE p.child=b AND p.ordinal=1);
+      IF b IS NOT NULL THEN theirs:=theirs||b; END IF;
+    END IF;
+  END LOOP;
+  FOR file_path IN SELECT DISTINCT c.path FROM vc.path_change c
+      WHERE c.changeset=ANY(ours[1:coalesce(array_position(ours,meet),cardinality(ours)+1)-1] ||
+                            theirs[1:coalesce(array_position(theirs,meet),cardinality(theirs)+1)-1])
+      ORDER BY c.path LOOP
+    old_file:=vc._file_state(base_id,file_path);
+    source_file:=vc._file_state(p_source,file_path);
+    IF old_file IS NOT DISTINCT FROM source_file THEN CONTINUE; END IF;
+    target_file:=vc._file_state(ctx.base,file_path);
+    IF target_file IS NOT DISTINCT FROM source_file THEN CONTINUE; END IF;
+    IF target_file IS DISTINCT FROM old_file THEN
+      RAISE EXCEPTION 'File conflict: %',file_path USING ERRCODE='P0001';
+    END IF;
+    INSERT INTO vc.pending_path VALUES(ctx.tx,file_path,target_file,source_file);
+  END LOOP;
+  RETURN vc.finish_change();
+END $$;
 COMMIT;
