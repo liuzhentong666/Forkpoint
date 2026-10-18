@@ -11,7 +11,7 @@
 ## 来源与采用方式
 
 - [Anthropic：Redesigning source control at Anthropic](https://www.anthropic.com/engineering/redesigning-source-control)：2026-10-16 重新读取，页面标注 2026-10-15 更新。采用其架构原则，按本项目的数据库和管理状态场景落实。
-- [模块重构框架](F:/模块重构原则/模块重构框架.md)：采用分阶段、行为保持、可验证和可回退的重构流程。
+- 模块重构框架（作者的本地文档，不在本仓库中）：采用分阶段、行为保持、可验证和可回退的重构流程。
 - 当前实现与用户已确定的约束见 [README](README.md)、[版本引擎设计](DESIGN_REVIEW.md)、[云端状态设计](docs/CLOUD_STATE_DESIGN.md) 和 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md)。以下具体接口、容量与事务要求来自本项目。
 
 ## Scion 原则的提炼
@@ -164,7 +164,7 @@ This file is the task entry point and the architectural constraints, not a compl
 ## Sources and how they are adopted
 
 - [Anthropic: Redesigning source control at Anthropic](https://www.anthropic.com/engineering/redesigning-source-control): re-read on 2026-10-16; the page is marked as updated on 2026-10-15. Its architectural principles are adopted and applied to this project's database and management-state scenarios.
-- [Module refactoring framework](F:/模块重构原则/模块重构框架.md): its staged, behavior-preserving, verifiable and reversible refactoring process is adopted.
+- Module refactoring framework (the author's local document, not in this repository): its staged, behavior-preserving, verifiable and reversible refactoring process is adopted.
 - The current implementation and the constraints the user has settled are in [README](README.md), [Version engine design](DESIGN_REVIEW.md), [Cloud state design](docs/CLOUD_STATE_DESIGN.md) and [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md). The specific interface, capacity and transaction requirements below come from this project.
 
 ## Distilled Scion principles
