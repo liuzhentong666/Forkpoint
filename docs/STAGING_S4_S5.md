@@ -1,3 +1,5 @@
+[English](STAGING_S4_S5.en.md) | 中文
+
 # S4 负载与增长、S5 故障演练（本机虚拟机）
 
 2026-10-18。[生产环境测试计划](PRODUCTION_TEST_PLAN.md) 的 S4、S5 阶段，在 [S1](STAGING_S1_RESULTS.md) 所用的 VirtualBox 虚拟机 `agent-db`（Ubuntu 24.04.5、PostgreSQL 16.15）上进行，客户端为 Windows 原生 psql，经 TLS `verify-full` 以非超级用户 `agentdb_staging` 连接。**未使用任何云服务**；对象存储（S2）仍未经真实验证。

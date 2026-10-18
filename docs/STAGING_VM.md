@@ -1,3 +1,5 @@
+[English](STAGING_VM.en.md) | 中文
+
 # 本机虚拟机作为预发布 PostgreSQL（方案 B）
 
 2026-10-18。用户选择在这台 Windows 11 笔记本上用虚拟机承担 [S1](PRODUCTION_TEST_PLAN.md)：不产生云费用，不解除云端暂缓。虚拟机里的 PostgreSQL 与现有 WSL 开发库完全分开；客户端是 Windows 原生 psql（本机 WSL 的 mirrored 网络看不到仅主机网卡，见第 2 节），经虚拟网络、TLS `verify-full` 和专用角色 `agentdb_staging` 连接。连接规则见 [预发布接入](STAGING.md)。

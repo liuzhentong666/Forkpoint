@@ -1,3 +1,5 @@
+[English](STAGING_S1_RESULTS.en.md) | 中文
+
 # S1 结果：预发布 PostgreSQL（本机虚拟机）
 
 2026-10-18。[生产环境测试计划](PRODUCTION_TEST_PLAN.md) S1 阶段的记录。**S1 通过。** 云服务仍未经真实验证，本阶段不涉及对象存储；以下是本机虚拟机上的结果，不是生产或云端结论。

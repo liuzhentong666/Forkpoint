@@ -1,3 +1,5 @@
+[English](HISTORY_GROWTH.en.md) | 中文
+
 # 历史增长：有界的历史遍历与快照策略
 
 2026-10-18。处理 [S4/S5](STAGING_S4_S5.md) 第 2 节测出的随历史长度增长的成本。预发布虚拟机上 main 有 2,000 个提交时，一次 10 行合入耗时 50.7 s，提交 499 ms，head 读取 1.2 s。改动在分支 `perf/history-bounded-costs`，迁移为 [`sql/005_bounded_history.sql`](../sql/005_bounded_history.sql)。所有数字来自本机现有的 Ubuntu WSL PostgreSQL 16.15，客户端与服务器在同一台笔记本上，只作前后对比。**预发布虚拟机上尚未重跑；未使用任何云服务。**

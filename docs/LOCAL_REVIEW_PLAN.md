@@ -1,3 +1,5 @@
+[English](LOCAL_REVIEW_PLAN.en.md) | 中文
+
 # 本机维护与 Agent 实验计划
 
 2026-10-17。用户要求五项本机检查，第五项明确改用 GPT Agent。云存储仍未经真实验证，不采购或连接云存储，不运行 Claude。

@@ -1,3 +1,5 @@
+[English](CLOUD_STATE_RUNBOOK.en.md) | 中文
+
 # 云端状态服务：多后端运行与接入
 
 **状态更新（2026-10-17）：云服务未经真实验证，云端部署暂缓。** GCS、阿里云 OSS、S3 的适配代码仅有本地测试记录；用户报告已建 OSS 桶，但尚未真实联调，也未部署常驻服务。下文云端命令仅供未来参考，当前不执行。完整约束见 [多后端设计](STORAGE_BACKENDS.md)，本地范围见 [本地测试记录](STORAGE_BACKENDS_VALIDATION.md)。

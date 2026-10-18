@@ -1,3 +1,5 @@
+[English](AGENT_LAB_GATEWAY.en.md) | 中文
+
 # agent_lab 常驻网关：设计与本机结果
 
 2026-10-18。代码为 [agent_lab_gateway.py](../agent_lab_gateway.py)，默认关闭。只连接现有 WSL PostgreSQL 中的 `agentdb_test_gpt_*` 专用库，不启停数据库，也不访问任何云服务。目前没有任何真实 GPT 实验通过网关运行；[十轮实验](GPT_REPEAT_EXPERIMENT.md) 使用的仍是逐次起进程的路径。

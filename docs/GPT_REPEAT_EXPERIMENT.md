@@ -1,3 +1,5 @@
+[English](GPT_REPEAT_EXPERIMENT.en.md) | 中文
+
 # 十轮真实 GPT 实验：结果与原始调用记录
 
 2026-10-17。独立测试库位于已有 WSL PostgreSQL；未运行 Claude，未访问真实云存储。

@@ -1,3 +1,5 @@
+[English](LOCAL_REVIEW_RESULTS.en.md) | 中文
+
 # 本机维护恢复、权限与 Agent 实验记录
 
 日期：2026-10-17。使用现有 Ubuntu WSL PostgreSQL 16.15，不启停或替换服务。自动化实验使用专用测试数据库；现有 `agentdb` 仅应用新增函数和授权的迁移，业务数据与版本历史不变。
