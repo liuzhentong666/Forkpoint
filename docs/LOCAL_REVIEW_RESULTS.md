@@ -39,7 +39,7 @@
 
 角色测试使用可信管理员连接上的 `SET ROLE`。它验证数据库授权，**不代表持有管理员凭据的 Agent 已被隔离**；真正部署需独立受限登录身份。本次未创建登录密码。可修改系统规则的管理员仍保留，常规维护角色不取代它。
 
-迁移在旧结构测试库 `agentdb_test_7a1b14ad0135` 和现有项目库 `agentdb` 各执行两次，确认可重复应用。前后商品、订单、分支摘要一致，changeset、行历史、文件历史、快照数量一致。原始记录见 [迁移结果](../manager-migration-results.json)。
+迁移在旧结构测试库 `agentdb_test_7a1b14ad0135` 和现有项目库 `agentdb` 各执行两次，确认可重复应用。前后商品、订单、分支摘要一致，changeset、行历史、文件历史、快照数量一致。原始记录见 [迁移结果](../results/manager-migration-results.json)。
 
 ### 全部合入实验
 
@@ -79,7 +79,7 @@
 
 实验发现并修正了一个客户端接口缺口：库存 Agent 只能通过 `info/diff` 看到文件哈希，无法在合入前核对代码正文。因此新增 `read-code --revision UUID --path ...`，允许按固定版本读取两种实验规则文件；已有库存提案与恢复提案均经此入口检查。最终核验检查 `PRICE = 11.0`、`STOCK = 95` 和真实行数据，不执行政策代码。
 
-这是一项有明确目标、有限工具和协调者安排阶段的两 Agent 实验，不是自由探索盲测，也不代表十个模型并发或长期自主运行能力。数据库操作由 GPT 发起，数据库结果由协调者独立读取核对；中断前的部分操作通过数据库状态确认。结构化记录包含实际 Agent 报告的整理和独立数据库核验，不冒充完整原始工具轨迹。见 [GPT 实验记录](../gpt-agent-experiment.json)。
+这是一项有明确目标、有限工具和协调者安排阶段的两 Agent 实验，不是自由探索盲测，也不代表十个模型并发或长期自主运行能力。数据库操作由 GPT 发起，数据库结果由协调者独立读取核对；中断前的部分操作通过数据库状态确认。结构化记录包含实际 Agent 报告的整理和独立数据库核验，不冒充完整原始工具轨迹。见 [GPT 实验记录](../results/gpt-agent-experiment.json)。
 
 本次行为说明：客户端应同时提供固定版本、结构化冲突和按需读取代码的接口。只有“失败，请重试”不足以区分陈旧指针和需要重新表达意图的冲突；数据库端仍必须拒绝错误合入，不能依靠 Agent 自觉保持正确。
 
@@ -141,7 +141,7 @@ The real PostgreSQL verified the allowed maintenance operations, and rejected se
 
 The role test uses `SET ROLE` on a trusted administrator connection. It verifies database authorization, **and does not mean an Agent holding administrator credentials has been isolated**; a real deployment needs a separate restricted login identity. No login password was created this time. The administrator who can change system rules is kept, and the routine maintenance role does not replace it.
 
-The migration was run twice each on the old-structure test database `agentdb_test_7a1b14ad0135` and the existing project database `agentdb`, confirming that it can be applied repeatedly. Products, orders and branch summaries are the same before and after, and the counts of changesets, row history, file history and snapshots are the same. The raw record is in [migration results](../manager-migration-results.json).
+The migration was run twice each on the old-structure test database `agentdb_test_7a1b14ad0135` and the existing project database `agentdb`, confirming that it can be applied repeatedly. Products, orders and branch summaries are the same before and after, and the counts of changesets, row history, file history and snapshots are the same. The raw record is in [migration results](../results/manager-migration-results.json).
 
 ### Merge-everything experiment
 
@@ -181,7 +181,7 @@ The whole-row state of the original stock proposal contains price 10, so updatin
 
 The experiment found and fixed a gap in the client interface: the stock Agent could only see file hashes through `info/diff` and could not check the code text before merging. So `read-code --revision UUID --path ...` was added, allowing the two experiment rule files to be read at a pinned version; both the existing stock proposal and the recovery proposal were checked through this entry point. The final verification checks `PRICE = 11.0`, `STOCK = 95` and the real row data, without executing the policy code.
 
-This is a two-Agent experiment with a clear goal, limited tools and phases arranged by a coordinator; it is not a blind test of free exploration, and does not represent the ability of ten models running concurrently or long-term autonomous operation. Database operations were initiated by GPT, and the database results were read and checked independently by the coordinator; some operations before the interruption were confirmed through the database state. The structured record contains an organized version of the actual Agent reports and the independent database verification, and does not pass itself off as the complete raw tool trace. See [GPT experiment record](../gpt-agent-experiment.json).
+This is a two-Agent experiment with a clear goal, limited tools and phases arranged by a coordinator; it is not a blind test of free exploration, and does not represent the ability of ten models running concurrently or long-term autonomous operation. Database operations were initiated by GPT, and the database results were read and checked independently by the coordinator; some operations before the interruption were confirmed through the database state. The structured record contains an organized version of the actual Agent reports and the independent database verification, and does not pass itself off as the complete raw tool trace. See [GPT experiment record](../results/gpt-agent-experiment.json).
 
 What this run's behavior shows: the client should provide interfaces for pinned versions, structured conflicts and on-demand code reading together. A bare "failed, please retry" is not enough to distinguish a stale pointer from a conflict that requires re-expressing the intent; the database side must still reject wrong merges, and cannot rely on Agents voluntarily staying correct.
 

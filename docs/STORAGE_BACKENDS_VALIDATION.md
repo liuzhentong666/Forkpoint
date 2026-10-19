@@ -8,9 +8,9 @@
 
 | 记录 | 实际执行环境 | 不包含的证据 |
 |---|---|---|
-| [storage-backend-test-results.json](../storage-backend-test-results.json) | 本机内存模型、官方 SDK 类型、捕获传输层及 boto3/botocore Stubber | 真实云服务响应、IAM 和桶配置 |
-| [oss-protocol-benchmark.json](../oss-protocol-benchmark.json) | 内存 OSS 协议模型 | 真实 OSS 下载量、时延、吞吐、容量和费用 |
-| [cloud-postgres-oss-protocol.json](../cloud-postgres-oss-protocol.json) | 现有 WSL PostgreSQL 与内存 OSS 协议模型 | PostgreSQL 与真实 OSS 的跨系统恢复 |
+| [storage-backend-test-results.json](../results/storage-backend-test-results.json) | 本机内存模型、官方 SDK 类型、捕获传输层及 boto3/botocore Stubber | 真实云服务响应、IAM 和桶配置 |
+| [oss-protocol-benchmark.json](../results/oss-protocol-benchmark.json) | 内存 OSS 协议模型 | 真实 OSS 下载量、时延、吞吐、容量和费用 |
+| [cloud-postgres-oss-protocol.json](../results/cloud-postgres-oss-protocol.json) | 现有 WSL PostgreSQL 与内存 OSS 协议模型 | PostgreSQL 与真实 OSS 的跨系统恢复 |
 
 本地套件检查客户端条件参数、并发模型、响应丢失模拟、错误映射、缓存和配置兼容。SDK 能构造请求不代表真实提供商已接受请求；模型符合预期也不证明真实存储的一致性或可用性。
 
@@ -34,9 +34,9 @@ Last updated: 2026-10-17. **Cloud services are not verified against real cloud s
 
 | Record | Actual execution environment | Evidence not included |
 |---|---|---|
-| [storage-backend-test-results.json](../storage-backend-test-results.json) | Local in-memory model, official SDK types, captured transport layer and boto3/botocore Stubber | Real cloud service responses, IAM and bucket configuration |
-| [oss-protocol-benchmark.json](../oss-protocol-benchmark.json) | In-memory OSS protocol model | Real OSS download volume, latency, throughput, capacity and cost |
-| [cloud-postgres-oss-protocol.json](../cloud-postgres-oss-protocol.json) | Existing WSL PostgreSQL and the in-memory OSS protocol model | Cross-system recovery between PostgreSQL and a real OSS |
+| [storage-backend-test-results.json](../results/storage-backend-test-results.json) | Local in-memory model, official SDK types, captured transport layer and boto3/botocore Stubber | Real cloud service responses, IAM and bucket configuration |
+| [oss-protocol-benchmark.json](../results/oss-protocol-benchmark.json) | In-memory OSS protocol model | Real OSS download volume, latency, throughput, capacity and cost |
+| [cloud-postgres-oss-protocol.json](../results/cloud-postgres-oss-protocol.json) | Existing WSL PostgreSQL and the in-memory OSS protocol model | Cross-system recovery between PostgreSQL and a real OSS |
 
 The local suite checks client conditional parameters, the concurrency model, simulated response loss, error mapping, caching and configuration compatibility. The SDK being able to construct a request does not mean the real provider has accepted it; the model behaving as expected also does not prove the consistency or availability of real storage.
 

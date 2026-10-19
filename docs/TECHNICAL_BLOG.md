@@ -48,7 +48,7 @@ AgentDB 的第一阶段围绕这些问题展开：在 PostgreSQL 中实现代码
 
 这次接手表明，任务说明与可定位的版本引用能成为恢复的具体入口。原库存提案仍由旧分支保留，修正后的提案另行提交；最终检查没有发现遗留工作事务。这里使用的是 PostgreSQL 中已有的版本记录，没有验证云端管理检查点的恢复。
 
-这是一项有明确任务、有限工具和分阶段协调的两 Agent 实验。协调者安排了合入顺序，并提示区分两类冲突及从新版本重新提案；GPT 负责实际读取、判断、提交和核验。代码只检查语法与常量，未执行。结论限于这次受控流程，长期自主运行和更多模型并发仍待测试。详细过程及独立数据库核验见[本机实验报告](LOCAL_REVIEW_RESULTS.md)与[结构化 GPT 记录](../gpt-agent-experiment.json)。
+这是一项有明确任务、有限工具和分阶段协调的两 Agent 实验。协调者安排了合入顺序，并提示区分两类冲突及从新版本重新提案；GPT 负责实际读取、判断、提交和核验。代码只检查语法与常量，未执行。结论限于这次受控流程，长期自主运行和更多模型并发仍待测试。详细过程及独立数据库核验见[本机实验报告](LOCAL_REVIEW_RESULTS.md)与[结构化 GPT 记录](../results/gpt-agent-experiment.json)。
 
 ## 从一次观察到十轮重复实验
 
@@ -281,7 +281,7 @@ OSS 的 `PutObject` 不支持 `If-Match` / `If-None-Match` 这组条件参数，
 4. 重建运行时，由 Agent B 读取任务检查点并核对 PostgreSQL。
 5. Agent B 发现快照已经存在，发布核验结果，无需再次物化。
 
-接手结果中的 `verified=true` 只表示本机 PostgreSQL 快照已核验，`applied=false` 表示本次接手没有再次执行物化；二者都不表示云存储验证成功。[本地接手实验记录](../cloud-postgres-oss-protocol.json)
+接手结果中的 `verified=true` 只表示本机 PostgreSQL 快照已核验，`applied=false` 表示本次接手没有再次执行物化；二者都不表示云存储验证成功。[本地接手实验记录](../results/cloud-postgres-oss-protocol.json)
 
 这套机制的适用条件很具体：执行器必须能够幂等执行，或者可靠探测既有结果。任务状态的条件发布不会自动保证任意外部动作只执行一次。新的 DDL、部署或服务重启执行器，都需要各自定义核验、排他与恢复方法；当前项目尚未提供一个通用的自主运维执行器。
 
@@ -295,9 +295,9 @@ OSS 的 `PutObject` 不支持 `If-Match` / `If-None-Match` 这组条件参数，
 | 4,000 行、10 并发连接 | 独立分支 10 个成功；同一旧 main head 竞争时 1 成功、9 个陈旧版本错误 | 合成并发连接模拟 Agent 写入，不包含模型推理 |
 | 数据库接手 | 中断后成功核验，未重复物化 | 真实 PostgreSQL 加内存 OSS 协议模型 |
 
-数据库结果见 [本机验证记录](VALIDATION.md) 与 [原始测试报告](../test-results-local.json)。状态适配器的本地环境及范围见 [本地测试说明](STORAGE_BACKENDS_VALIDATION.md)，其中不包含云端成功记录。
+数据库结果见 [本机验证记录](VALIDATION.md) 与 [原始测试报告](../results/test-results-local.json)。状态适配器的本地环境及范围见 [本地测试说明](STORAGE_BACKENDS_VALIDATION.md)，其中不包含云端成功记录。
 
-历史增长实验也只运行于内存 OSS 模型；其读取计数不属于真实 OSS 流量或性能测量。这里不列作云存储验证结果，原始本地数据保留在 [模型实验记录](../oss-protocol-benchmark.json)。真实一致性、持久性、延迟、吞吐、容量和费用均未经验证。
+历史增长实验也只运行于内存 OSS 模型；其读取计数不属于真实 OSS 流量或性能测量。这里不列作云存储验证结果，原始本地数据保留在 [模型实验记录](../results/oss-protocol-benchmark.json)。真实一致性、持久性、延迟、吞吐、容量和费用均未经验证。
 
 上表早期 PostgreSQL 并发实验只用于当前功能结论，其内部计时不包含最终 COMMIT，不能拿来宣传持久化提交延迟；本项目没有与 Spanner 或其他版本数据库做同条件性能对照。
 
@@ -371,7 +371,7 @@ The first attempt was interrupted by the model account's quota limit. At that po
 
 This hand-off shows that the task description and locatable version references can serve as a concrete entry point for recovery. The original stock proposal is still kept by the old branch, and the corrected proposal was committed separately; the final check found no leftover work transactions. What was used here is the version records already in PostgreSQL; recovery from cloud management checkpoints was not verified.
 
-This is a two-Agent experiment with a clear task, limited tools and phased coordination. The coordinator arranged the merge order and hinted to distinguish the two kinds of conflict and to re-propose from the new version; GPT did the actual reading, judging, committing and verifying. The code was only checked for syntax and constants, not executed. The conclusions are limited to this controlled flow; long-term autonomous operation and more models running concurrently remain to be tested. For the detailed process and independent database verification see the [local experiment report](LOCAL_REVIEW_RESULTS.md) and the [structured GPT record](../gpt-agent-experiment.json).
+This is a two-Agent experiment with a clear task, limited tools and phased coordination. The coordinator arranged the merge order and hinted to distinguish the two kinds of conflict and to re-propose from the new version; GPT did the actual reading, judging, committing and verifying. The code was only checked for syntax and constants, not executed. The conclusions are limited to this controlled flow; long-term autonomous operation and more models running concurrently remain to be tested. For the detailed process and independent database verification see the [local experiment report](LOCAL_REVIEW_RESULTS.md) and the [structured GPT record](../results/gpt-agent-experiment.json).
 
 ## From one observation to a ten-round repeat experiment
 
@@ -610,7 +610,7 @@ The local experiment checked the following failure window with the real WSL Post
 4. The runtime is rebuilt, and Agent B reads the task checkpoint and checks PostgreSQL.
 5. Agent B finds that the snapshot already exists and publishes the verification result, without materializing again.
 
-`verified=true` in the hand-off result only means the local PostgreSQL snapshot has been verified, and `applied=false` means this hand-off did not perform materialization again; neither means cloud storage verification succeeded. [Local hand-off experiment record](../cloud-postgres-oss-protocol.json)
+`verified=true` in the hand-off result only means the local PostgreSQL snapshot has been verified, and `applied=false` means this hand-off did not perform materialization again; neither means cloud storage verification succeeded. [Local hand-off experiment record](../results/cloud-postgres-oss-protocol.json)
 
 The conditions under which this mechanism applies are very specific: the executor must be able to execute idempotently, or reliably probe for an existing result. Conditional publishing of task state does not automatically guarantee that an arbitrary external action is executed only once. New executors for DDL, deployments or service restarts each need to define their own verification, exclusivity and recovery methods; the current project does not yet provide a general autonomous operations executor.
 
@@ -624,9 +624,9 @@ The existing results come from the local PostgreSQL, in-memory service models, S
 | 4,000 rows, 10 concurrent connections | 10 separate branches succeeded; competing on the same old main head, 1 succeeded and 9 got stale-version errors | Synthetic concurrent connections simulating Agent writes, not including model reasoning |
 | Database hand-off | Verified successfully after the interruption, without repeated materialization | Real PostgreSQL plus the in-memory OSS protocol model |
 
-The database results are in the [local validation record](VALIDATION.md) and the [raw test report](../test-results-local.json). The local environment and scope of the state adapters are in the [local test notes](STORAGE_BACKENDS_VALIDATION.md), which contain no records of cloud success.
+The database results are in the [local validation record](VALIDATION.md) and the [raw test report](../results/test-results-local.json). The local environment and scope of the state adapters are in the [local test notes](STORAGE_BACKENDS_VALIDATION.md), which contain no records of cloud success.
 
-The history growth experiment also ran only on the in-memory OSS model; its read counts are not real OSS traffic or performance measurements. It is not listed here as a cloud storage verification result, and the raw local data is kept in the [model experiment record](../oss-protocol-benchmark.json). Real consistency, durability, latency, throughput, capacity and cost are all not verified.
+The history growth experiment also ran only on the in-memory OSS model; its read counts are not real OSS traffic or performance measurements. It is not listed here as a cloud storage verification result, and the raw local data is kept in the [model experiment record](../results/oss-protocol-benchmark.json). Real consistency, durability, latency, throughput, capacity and cost are all not verified.
 
 The early PostgreSQL concurrency experiment in the table above is used only for current functional conclusions; its internal timing does not include the final COMMIT and cannot be used to advertise durable commit latency; this project has not done a same-conditions performance comparison with Spanner or other versioned databases.
 

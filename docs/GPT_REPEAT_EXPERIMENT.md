@@ -13,18 +13,20 @@
 
 ## 每轮结果
 
+每轮的完整记录 `experiments/gpt_repeat/results/2026-10-17/run-NN/result.json` 只保存在作者本机，不在仓库中。
+
 | 轮次 | 结果 | 工具调用 | 输入 / 其中缓存 | 输出 / 其中推理 | 总 tokens | 已发布覆盖 |
 |---|---|---:|---:|---:|---:|---:|
-| [01](../experiments/gpt_repeat/results/2026-10-17/run-01/result.json) | 通过 | 32 | 316,723 / 263,680 | 2,564 / 236 | 319,287 | 0 |
-| [02](../experiments/gpt_repeat/results/2026-10-17/run-02/result.json) | 通过 | 31 | 315,721 / 279,808 | 2,692 / 176 | 318,413 | 0 |
-| [03](../experiments/gpt_repeat/results/2026-10-17/run-03/result.json) | 运行错误 | 7 | 56,137 / 43,136 | 854 / 318 | 56,991（部分） | 0 |
-| [04](../experiments/gpt_repeat/results/2026-10-17/run-04/result.json) | 运行错误 | 1 | 10,257 / 0 | 81 / 0 | 10,338（部分） | 0 |
-| [05](../experiments/gpt_repeat/results/2026-10-17/run-05/result.json) | 通过 | 32 | 307,406 / 268,544 | 2,704 / 210 | 310,110 | 0 |
-| [06](../experiments/gpt_repeat/results/2026-10-17/run-06/result.json) | 通过 | 31 | 303,866 / 276,480 | 2,649 / 200 | 306,515 | 0 |
-| [07](../experiments/gpt_repeat/results/2026-10-17/run-07/result.json) | 通过 | 33 | 323,645 / 273,920 | 2,560 / 67 | 326,205 | 0 |
-| [08](../experiments/gpt_repeat/results/2026-10-17/run-08/result.json) | 通过 | 31 | 318,497 / 290,944 | 2,718 / 280 | 321,215 | 0 |
-| [09](../experiments/gpt_repeat/results/2026-10-17/run-09/result.json) | 通过 | 32 | 319,639 / 283,008 | 2,891 / 241 | 322,530 | 0 |
-| [10](../experiments/gpt_repeat/results/2026-10-17/run-10/result.json) | 通过 | 31 | 316,749 / 267,904 | 2,766 / 226 | 319,515 | 0 |
+| 01 | 通过 | 32 | 316,723 / 263,680 | 2,564 / 236 | 319,287 | 0 |
+| 02 | 通过 | 31 | 315,721 / 279,808 | 2,692 / 176 | 318,413 | 0 |
+| 03 | 运行错误 | 7 | 56,137 / 43,136 | 854 / 318 | 56,991（部分） | 0 |
+| 04 | 运行错误 | 1 | 10,257 / 0 | 81 / 0 | 10,338（部分） | 0 |
+| 05 | 通过 | 32 | 307,406 / 268,544 | 2,704 / 210 | 310,110 | 0 |
+| 06 | 通过 | 31 | 303,866 / 276,480 | 2,649 / 200 | 306,515 | 0 |
+| 07 | 通过 | 33 | 323,645 / 273,920 | 2,560 / 67 | 326,205 | 0 |
+| 08 | 通过 | 31 | 318,497 / 290,944 | 2,718 / 280 | 321,215 | 0 |
+| 09 | 通过 | 32 | 319,639 / 283,008 | 2,891 / 241 | 322,530 | 0 |
+| 10 | 通过 | 31 | 316,749 / 267,904 | 2,766 / 226 | 319,515 | 0 |
 
 合计 **261 次工具调用**；两个 Agent 均有用量记录的轮数为 **8/10**。把中断轮次已返回的单 Agent 用量也计入，观察到 **2,611,119 tokens**，其中输入 2,588,640、输出 22,479；缓存输入 2,247,424 与推理输出 1,954 是各自的子项，不再相加。
 
@@ -56,11 +58,13 @@
 
 ## 原始证据与重新分析
 
-- [预登记协议、提示词、源文件哈希](../experiments/gpt_repeat/results/2026-10-17/protocol.json)
-- [机器可读汇总](../experiments/gpt_repeat/results/2026-10-17/summary.json)
-- [逐动作差异与部分用量分析](../experiments/gpt_repeat/results/2026-10-17/behavior-analysis.json)
-- [原始记录一致性检查](../experiments/gpt_repeat/results/2026-10-17/log-audit.json)
-- [文件 SHA-256 清单](../experiments/gpt_repeat/results/2026-10-17/SHA256SUMS.json)
+以下文件位于 `experiments/gpt_repeat/results/2026-10-17/`，只保存在作者本机，不在仓库中：
+
+- 预登记协议、提示词、源文件哈希：`protocol.json`
+- 机器可读汇总：`summary.json`
+- 逐动作差异与部分用量分析：`behavior-analysis.json`
+- 原始记录一致性检查：`log-audit.json`
+- 文件 SHA-256 清单：`SHA256SUMS.json`
 
 每轮目录都包含以下文件：
 
@@ -92,8 +96,8 @@ python experiments/gpt_repeat/audit_repeat_logs.py experiments/gpt_repeat/result
 
 ## 本组运行错误
 
-- 第 3 轮：`RuntimeError`；完整错误原文见 [result.json](../experiments/gpt_repeat/results/2026-10-17/run-03/result.json) 及该轮原始日志。
-- 第 4 轮：`RuntimeError`；完整错误原文见 [result.json](../experiments/gpt_repeat/results/2026-10-17/run-04/result.json) 及该轮原始日志。
+- 第 3 轮：`RuntimeError`；完整错误原文见 `experiments/gpt_repeat/results/2026-10-17/run-03/result.json` 及该轮原始日志（均只保存在作者本机）。
+- 第 4 轮：`RuntimeError`；完整错误原文见 `experiments/gpt_repeat/results/2026-10-17/run-04/result.json` 及该轮原始日志（均只保存在作者本机）。
 
 ---
 
@@ -112,18 +116,20 @@ Observed overwrites of published fields/code: **0/10 rounds**; modifications of 
 
 ## Results per round
 
+Each round's full record, `experiments/gpt_repeat/results/2026-10-17/run-NN/result.json`, is kept on the author's machine only and is not in the repository.
+
 | Round | Result | Tool calls | Input / of which cached | Output / of which reasoning | Total tokens | Published overwrites |
 |---|---|---:|---:|---:|---:|---:|
-| [01](../experiments/gpt_repeat/results/2026-10-17/run-01/result.json) | Passed | 32 | 316,723 / 263,680 | 2,564 / 236 | 319,287 | 0 |
-| [02](../experiments/gpt_repeat/results/2026-10-17/run-02/result.json) | Passed | 31 | 315,721 / 279,808 | 2,692 / 176 | 318,413 | 0 |
-| [03](../experiments/gpt_repeat/results/2026-10-17/run-03/result.json) | Run error | 7 | 56,137 / 43,136 | 854 / 318 | 56,991 (partial) | 0 |
-| [04](../experiments/gpt_repeat/results/2026-10-17/run-04/result.json) | Run error | 1 | 10,257 / 0 | 81 / 0 | 10,338 (partial) | 0 |
-| [05](../experiments/gpt_repeat/results/2026-10-17/run-05/result.json) | Passed | 32 | 307,406 / 268,544 | 2,704 / 210 | 310,110 | 0 |
-| [06](../experiments/gpt_repeat/results/2026-10-17/run-06/result.json) | Passed | 31 | 303,866 / 276,480 | 2,649 / 200 | 306,515 | 0 |
-| [07](../experiments/gpt_repeat/results/2026-10-17/run-07/result.json) | Passed | 33 | 323,645 / 273,920 | 2,560 / 67 | 326,205 | 0 |
-| [08](../experiments/gpt_repeat/results/2026-10-17/run-08/result.json) | Passed | 31 | 318,497 / 290,944 | 2,718 / 280 | 321,215 | 0 |
-| [09](../experiments/gpt_repeat/results/2026-10-17/run-09/result.json) | Passed | 32 | 319,639 / 283,008 | 2,891 / 241 | 322,530 | 0 |
-| [10](../experiments/gpt_repeat/results/2026-10-17/run-10/result.json) | Passed | 31 | 316,749 / 267,904 | 2,766 / 226 | 319,515 | 0 |
+| 01 | Passed | 32 | 316,723 / 263,680 | 2,564 / 236 | 319,287 | 0 |
+| 02 | Passed | 31 | 315,721 / 279,808 | 2,692 / 176 | 318,413 | 0 |
+| 03 | Run error | 7 | 56,137 / 43,136 | 854 / 318 | 56,991 (partial) | 0 |
+| 04 | Run error | 1 | 10,257 / 0 | 81 / 0 | 10,338 (partial) | 0 |
+| 05 | Passed | 32 | 307,406 / 268,544 | 2,704 / 210 | 310,110 | 0 |
+| 06 | Passed | 31 | 303,866 / 276,480 | 2,649 / 200 | 306,515 | 0 |
+| 07 | Passed | 33 | 323,645 / 273,920 | 2,560 / 67 | 326,205 | 0 |
+| 08 | Passed | 31 | 318,497 / 290,944 | 2,718 / 280 | 321,215 | 0 |
+| 09 | Passed | 32 | 319,639 / 283,008 | 2,891 / 241 | 322,530 | 0 |
+| 10 | Passed | 31 | 316,749 / 267,904 | 2,766 / 226 | 319,515 | 0 |
 
 In total **261 tool calls**; rounds in which both Agents have usage records: **8/10**. Also counting the single-Agent usage already returned in the interrupted rounds, **2,611,119 tokens** were observed, of which input 2,588,640 and output 22,479; cached input 2,247,424 and reasoning output 1,954 are sub-items of these respectively and are not added again.
 
@@ -155,11 +161,13 @@ The overwrite detector first passed a counter-example test of "overwrite and the
 
 ## Raw evidence and re-analysis
 
-- [Pre-registered protocol, prompts, source file hashes](../experiments/gpt_repeat/results/2026-10-17/protocol.json)
-- [Machine-readable summary](../experiments/gpt_repeat/results/2026-10-17/summary.json)
-- [Per-action differences and partial usage analysis](../experiments/gpt_repeat/results/2026-10-17/behavior-analysis.json)
-- [Raw record consistency check](../experiments/gpt_repeat/results/2026-10-17/log-audit.json)
-- [File SHA-256 manifest](../experiments/gpt_repeat/results/2026-10-17/SHA256SUMS.json)
+The following files are in `experiments/gpt_repeat/results/2026-10-17/` and are kept on the author's machine only, not in the repository:
+
+- Pre-registered protocol, prompts, source file hashes: `protocol.json`
+- Machine-readable summary: `summary.json`
+- Per-action differences and partial usage analysis: `behavior-analysis.json`
+- Raw record consistency check: `log-audit.json`
+- File SHA-256 manifest: `SHA256SUMS.json`
 
 Each round's directory contains the following files:
 
@@ -191,5 +199,5 @@ The recording entry point is based on the [OpenAI App Server documentation](http
 
 ## Run errors in this group
 
-- Round 3: `RuntimeError`; for the full error text see [result.json](../experiments/gpt_repeat/results/2026-10-17/run-03/result.json) and that round's raw logs.
-- Round 4: `RuntimeError`; for the full error text see [result.json](../experiments/gpt_repeat/results/2026-10-17/run-04/result.json) and that round's raw logs.
+- Round 3: `RuntimeError`; for the full error text see `experiments/gpt_repeat/results/2026-10-17/run-03/result.json` and that round's raw logs (both kept on the author's machine only).
+- Round 4: `RuntimeError`; for the full error text see `experiments/gpt_repeat/results/2026-10-17/run-04/result.json` and that round's raw logs (both kept on the author's machine only).

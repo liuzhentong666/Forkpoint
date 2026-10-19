@@ -1,0 +1,45 @@
+{
+  "verification_scope": "local_only: in-memory OSS protocol model, not real OSS",
+  "backend": "OSS SDK + in-memory service model",
+  "samples": [
+    {
+      "published_events": 1,
+      "cold_logical_reads": 2,
+      "cold_sdk_calls": 3,
+      "cold_downloaded_bytes": 8344,
+      "append_record_bytes": 8192,
+      "hot_logical_reads": 0,
+      "context_bytes": 556
+    },
+    {
+      "published_events": 100,
+      "cold_logical_reads": 2,
+      "cold_sdk_calls": 3,
+      "cold_downloaded_bytes": 8345,
+      "append_record_bytes": 8192,
+      "hot_logical_reads": 0,
+      "context_bytes": 558
+    },
+    {
+      "published_events": 1000,
+      "cold_logical_reads": 2,
+      "cold_sdk_calls": 3,
+      "cold_downloaded_bytes": 8346,
+      "append_record_bytes": 8192,
+      "hot_logical_reads": 0,
+      "context_bytes": 560
+    },
+    {
+      "published_events": 5001,
+      "cold_logical_reads": 2,
+      "cold_sdk_calls": 3,
+      "cold_downloaded_bytes": 8347,
+      "append_record_bytes": 8192,
+      "hot_logical_reads": 0,
+      "context_bytes": 562
+    }
+  ],
+  "elapsed_seconds": 2.174,
+  "real_cloud_verified": false,
+  "note": "Bounded access structure only. No real OSS consistency, throughput, latency or cost claim."
+}

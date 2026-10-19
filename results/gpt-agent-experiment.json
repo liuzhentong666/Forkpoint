@@ -1,0 +1,159 @@
+{
+  "client_date": "2026-10-17",
+  "database": "agentdb_test_gpt_70846a148f",
+  "status": "completed",
+  "model": "Real GPT/Codex subagents inheriting this session model; no explicit version override",
+  "claude_used": false,
+  "real_cloud_verified": false,
+  "scope": "Bounded, coordinator-staged two-agent task against existing local PostgreSQL. Policies stored and syntax/constant checked, not executed. Not a benchmark of general autonomous agent capability.",
+  "initial_attempt": {
+    "status": "interrupted_by_account_usage_limit",
+    "observed_state_on_resume": "main unchanged; gpt-a branch had no proposal; gpt-b proposal 72c2accb-3f09-4da5-ae26-0057c1f65d3c already existed; no open transactions"
+  },
+  "agents": [
+    {
+      "task": "gpt_pricing_resume",
+      "actor": "gpt-a",
+      "proposal": "0b218252-07f9-440f-aaec-05e58cbe1ed1",
+      "merged_head": "23de8279-8b9d-4d8e-99d1-4015878ffa1b",
+      "observed_errors": [],
+      "reported_actions": [
+        "read fixed baseline",
+        "propose price 11 and pricing code",
+        "inspect diff and current main",
+        "merge",
+        "read committed result"
+      ]
+    },
+    {
+      "task": "gpt_inventory_resume",
+      "actor": "gpt-b",
+      "original_proposal": "72c2accb-3f09-4da5-ae26-0057c1f65d3c",
+      "observed_errors": [
+        {
+          "sqlstate": "40001",
+          "error": "stale_head"
+        },
+        {
+          "sqlstate": "P0001",
+          "error": "merge_conflict",
+          "detail": "Row conflict on product 101"
+        }
+      ],
+      "recovery_branch": "gpt-b-recover-20261017",
+      "replacement_proposal": "5eac85b9-320f-44ad-b7a2-b9a906270c1e",
+      "merged_head": "497b67f6-cbd5-4c01-981e-ab6241f16e4f",
+      "reported_actions": [
+        "inspect existing proposal",
+        "read policy at fixed revision",
+        "attempt old expected head",
+        "read current main",
+        "attempt old proposal against current head",
+        "observe row conflict and unchanged main",
+        "fork current main",
+        "reapply stock decrease while preserving price 11",
+        "inspect diff and both policies",
+        "merge",
+        "verify"
+      ]
+    }
+  ],
+  "interface_finding": {
+    "reported_by": "gpt_inventory_resume",
+    "problem": "info/diff exposed file hashes but not content, preventing pre-merge policy inspection",
+    "change": "Added read-code with explicit revision and allowlisted policy path",
+    "checked_existing_policy": "STOCK = 95"
+  },
+  "agent_event_source": "Coordinator transcription of actual subagent tool reports; not a complete raw tool trace",
+  "independent_verification": {
+    "database": "agentdb_test_gpt_70846a148f",
+    "main": "497b67f6-cbd5-4c01-981e-ab6241f16e4f",
+    "product": {
+      "id": 101,
+      "sku": "sku-101",
+      "name": "product-101",
+      "price": 11.0,
+      "stock": 95
+    },
+    "policies": {
+      "pricing": "BASE_PRICE = 10.0\nINCREASE_PERCENT = 10\nPRICE = 11.0\n\ndef apply_price(product):\n    updated = dict(product)\n    updated.update(price=PRICE)\n    return updated",
+      "inventory": "STOCK = 95"
+    },
+    "effective_role": "agentdb_client",
+    "outcome_verified": true,
+    "real_cloud_verified": false
+  },
+  "independent_database_audit": {
+    "branches": [
+      {
+        "name": "gpt-a",
+        "head": "0b218252-07f9-440f-aaec-05e58cbe1ed1",
+        "base": "3a7e2c13-6389-408b-8af8-e243e2c2c742"
+      },
+      {
+        "name": "gpt-b",
+        "head": "72c2accb-3f09-4da5-ae26-0057c1f65d3c",
+        "base": "3a7e2c13-6389-408b-8af8-e243e2c2c742"
+      },
+      {
+        "name": "gpt-b-recover-20261017",
+        "head": "5eac85b9-320f-44ad-b7a2-b9a906270c1e",
+        "base": "23de8279-8b9d-4d8e-99d1-4015878ffa1b"
+      },
+      {
+        "name": "main",
+        "head": "497b67f6-cbd5-4c01-981e-ab6241f16e4f",
+        "base": "00000000-0000-0000-0000-000000000001"
+      }
+    ],
+    "rows": 4000,
+    "other_rows_unchanged": true,
+    "base_unchanged": true,
+    "open_transactions": 0,
+    "accepted_proposals_reachable": true,
+    "commits": [
+      {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "author": "system",
+        "message": "genesis",
+        "created_at": "2026-10-17T00:58:07.726628+08:00"
+      },
+      {
+        "id": "3a7e2c13-6389-408b-8af8-e243e2c2c742",
+        "author": "seed",
+        "message": "4000 local experiment rows",
+        "created_at": "2026-10-17T00:58:08.25852+08:00"
+      },
+      {
+        "id": "72c2accb-3f09-4da5-ae26-0057c1f65d3c",
+        "author": "gpt-b",
+        "message": "real GPT proposal",
+        "created_at": "2026-10-17T01:02:19.457418+08:00"
+      },
+      {
+        "id": "0b218252-07f9-440f-aaec-05e58cbe1ed1",
+        "author": "gpt-a",
+        "message": "real GPT proposal",
+        "created_at": "2026-10-17T12:07:11.663163+08:00"
+      },
+      {
+        "id": "23de8279-8b9d-4d8e-99d1-4015878ffa1b",
+        "author": "gpt-a",
+        "message": "merge 0b218252-07f9-440f-aaec-05e58cbe1ed1",
+        "created_at": "2026-10-17T12:07:39.533022+08:00"
+      },
+      {
+        "id": "5eac85b9-320f-44ad-b7a2-b9a906270c1e",
+        "author": "gpt-b",
+        "message": "real GPT proposal",
+        "created_at": "2026-10-17T12:09:49.602714+08:00"
+      },
+      {
+        "id": "497b67f6-cbd5-4c01-981e-ab6241f16e4f",
+        "author": "gpt-b",
+        "message": "merge 5eac85b9-320f-44ad-b7a2-b9a906270c1e",
+        "created_at": "2026-10-17T12:10:14.79786+08:00"
+      }
+    ]
+  }
+}

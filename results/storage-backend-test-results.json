@@ -1,0 +1,12 @@
+{
+  "verification_scope": "local_only: in-memory storage models and SDK stubs; not real cloud storage",
+  "real_cloud_verified": false,
+  "tests_run": 39,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "passed": true,
+  "real_oss_verified": false,
+  "real_s3_verified": false,
+  "real_gcs_verified": false
+}

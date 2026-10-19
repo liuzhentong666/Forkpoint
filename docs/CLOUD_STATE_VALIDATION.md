@@ -8,9 +8,9 @@
 
 ## 本地记录的含义
 
-- [cloud-test-results.json](../cloud-test-results.json)：最初状态模块的单元测试记录。使用 MemoryStore、SDK 测试替身及本机 HTTP，未连接真实 GCS。
-- [cloud-read-benchmark.json](../cloud-read-benchmark.json)：内存后端中的读取结构实验，计数不是云端实测流量，也不能推导云端延迟、吞吐或费用。
-- [cloud-postgres-integration.json](../cloud-postgres-integration.json)：现有 Ubuntu WSL PostgreSQL 与内存状态后端的接手实验。`resumed.verified` 只表示已核验本机数据库快照，不能解释为云存储验证成功。
+- [cloud-test-results.json](../results/cloud-test-results.json)：最初状态模块的单元测试记录。使用 MemoryStore、SDK 测试替身及本机 HTTP，未连接真实 GCS。
+- [cloud-read-benchmark.json](../results/cloud-read-benchmark.json)：内存后端中的读取结构实验，计数不是云端实测流量，也不能推导云端延迟、吞吐或费用。
+- [cloud-postgres-integration.json](../results/cloud-postgres-integration.json)：现有 Ubuntu WSL PostgreSQL 与内存状态后端的接手实验。`resumed.verified` 只表示已核验本机数据库快照，不能解释为云存储验证成功。
 
 这些文件保留本地测试事实；文件名中的 cloud 是历史命名，不表示运行地点或真实云连接。后续适配器的本地范围见 [多后端本地测试](STORAGE_BACKENDS_VALIDATION.md)。
 
@@ -32,9 +32,9 @@ This document only describes the source and scope of the local code tests; the r
 
 ## What the local records mean
 
-- [cloud-test-results.json](../cloud-test-results.json): the unit test record of the original state module. Uses MemoryStore, SDK test doubles and local HTTP; no real GCS was connected.
-- [cloud-read-benchmark.json](../cloud-read-benchmark.json): a read-structure experiment in the in-memory backend; the counts are not measured cloud traffic, and cloud latency, throughput or cost cannot be derived from them.
-- [cloud-postgres-integration.json](../cloud-postgres-integration.json): a hand-off experiment between the existing Ubuntu WSL PostgreSQL and the in-memory state backend. `resumed.verified` only means the local database snapshot was verified, and cannot be interpreted as successful cloud storage verification.
+- [cloud-test-results.json](../results/cloud-test-results.json): the unit test record of the original state module. Uses MemoryStore, SDK test doubles and local HTTP; no real GCS was connected.
+- [cloud-read-benchmark.json](../results/cloud-read-benchmark.json): a read-structure experiment in the in-memory backend; the counts are not measured cloud traffic, and cloud latency, throughput or cost cannot be derived from them.
+- [cloud-postgres-integration.json](../results/cloud-postgres-integration.json): a hand-off experiment between the existing Ubuntu WSL PostgreSQL and the in-memory state backend. `resumed.verified` only means the local database snapshot was verified, and cannot be interpreted as successful cloud storage verification.
 
 These files keep the facts of the local tests; "cloud" in the file names is historical naming and does not indicate where they ran or a real cloud connection. The local scope of the later adapters is in [Multi-backend local tests](STORAGE_BACKENDS_VALIDATION.md).
 

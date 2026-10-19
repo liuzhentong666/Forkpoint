@@ -1,0 +1,56 @@
+{
+  "results": [
+    {
+      "database": "agentdb_test_7a1b14ad0135",
+      "migration_runs": 2,
+      "data_and_history_unchanged": true,
+      "before": {
+        "products": "170bee01d2c43db489a51affa3dc7a12",
+        "orders": "d41d8cd98f00b204e9800998ecf8427e",
+        "branches": "1c025e814e141636512964413419029c",
+        "changesets": 13,
+        "row_changes": 4011,
+        "file_changes": 1,
+        "snapshots": 1
+      },
+      "after": {
+        "products": "170bee01d2c43db489a51affa3dc7a12",
+        "orders": "d41d8cd98f00b204e9800998ecf8427e",
+        "branches": "1c025e814e141636512964413419029c",
+        "changesets": 13,
+        "row_changes": 4011,
+        "file_changes": 1,
+        "snapshots": 1
+      },
+      "manager_can_inspect": true,
+      "raw_history_denied": true
+    },
+    {
+      "database": "agentdb",
+      "migration_runs": 2,
+      "data_and_history_unchanged": true,
+      "before": {
+        "products": "d41d8cd98f00b204e9800998ecf8427e",
+        "orders": "d41d8cd98f00b204e9800998ecf8427e",
+        "branches": "a18dfabc1698da93ee1df5d2c96365d5",
+        "changesets": 1,
+        "row_changes": 0,
+        "file_changes": 0,
+        "snapshots": 0
+      },
+      "after": {
+        "products": "d41d8cd98f00b204e9800998ecf8427e",
+        "orders": "d41d8cd98f00b204e9800998ecf8427e",
+        "branches": "a18dfabc1698da93ee1df5d2c96365d5",
+        "changesets": 1,
+        "row_changes": 0,
+        "file_changes": 0,
+        "snapshots": 0
+      },
+      "manager_can_inspect": true,
+      "raw_history_denied": true
+    }
+  ],
+  "real_cloud_verified": false,
+  "note": "Additive local API and grants only; no business record changes and no restricted login provisioned."
+}

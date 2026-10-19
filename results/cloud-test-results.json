@@ -1,0 +1,10 @@
+{
+  "verification_scope": "local_only: MemoryStore, SDK test doubles, loopback HTTP; not real cloud storage",
+  "real_cloud_verified": false,
+  "tests_run": 21,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "passed": true,
+  "real_gcs_verified": false
+}

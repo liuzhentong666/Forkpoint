@@ -1,0 +1,37 @@
+{
+  "verification_scope": "local_only: in-memory access counts, not real cloud network measurements",
+  "real_cloud_verified": false,
+  "backend": "memory-test-only",
+  "samples": [
+    {
+      "published_events": 1,
+      "cold_logical_reads": 2,
+      "cold_downloaded_bytes": 460,
+      "hot_logical_reads": 0,
+      "context_bytes": 581
+    },
+    {
+      "published_events": 100,
+      "cold_logical_reads": 2,
+      "cold_downloaded_bytes": 462,
+      "hot_logical_reads": 0,
+      "context_bytes": 583
+    },
+    {
+      "published_events": 1000,
+      "cold_logical_reads": 2,
+      "cold_downloaded_bytes": 464,
+      "hot_logical_reads": 0,
+      "context_bytes": 585
+    },
+    {
+      "published_events": 5001,
+      "cold_logical_reads": 2,
+      "cold_downloaded_bytes": 466,
+      "hot_logical_reads": 0,
+      "context_bytes": 587
+    }
+  ],
+  "elapsed_seconds": 1.463,
+  "note": "Counts demonstrate structural bounds only. Real GCS may use two SDK calls per read; cloud latency, billing and IAM are untested."
+}
