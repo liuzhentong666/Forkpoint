@@ -103,5 +103,14 @@ class ConnectionSettingsTest(unittest.TestCase):
             self.assertIn(key, prefix[prefix.index("-u"):psql])
 
 
+class FindPsqlTest(unittest.TestCase):
+    def test_psql_on_path_keeps_its_symlink_name(self):
+        # Debian's /usr/bin/psql links to pg_wrapper, which fails when run under its own name.
+        wrapper = Path("/usr/share/postgresql-common/pg_wrapper").absolute()
+        with mock.patch("db.shutil.which", return_value="/usr/bin/psql"), \
+                mock.patch.object(db.Path, "resolve", return_value=wrapper):
+            self.assertEqual(db.find_psql("").name, "psql")
+
+
 if __name__ == "__main__":
     unittest.main()

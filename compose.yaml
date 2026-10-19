@@ -1,0 +1,49 @@
+# One-command demo: PostgreSQL 16 with AgentDB installed, then the two-agent example.
+#   docker compose up                                        run it; PostgreSQL keeps running (Ctrl+C stops it)
+#   docker compose exec db psql -U postgres -d agentdb_demo  look around while it runs
+#   docker compose down                                      remove the containers
+# For local experiments only: the password is fixed and no port is published to the host.
+# The database lives in memory, so every start begins from an empty server.
+name: agentdb
+
+services:
+  db:
+    image: postgres:16
+    # Keep the server log out of `docker compose up`; see it with `docker compose logs db`.
+    attach: false
+    environment:
+      POSTGRES_PASSWORD: agentdb-demo
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      # Over TCP, so the check only passes once initialization has finished and the server restarted.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  demo:
+    build: deploy/docker
+    depends_on:
+      db:
+        condition: service_healthy
+    # Share db's network so 127.0.0.1 reaches PostgreSQL: db.py only allows non-loopback hosts over verified TLS.
+    network_mode: service:db
+    environment:
+      PGPASSWORD: agentdb-demo
+    volumes:
+      - ./db.py:/agentdb/db.py:ro
+      - ./sql:/agentdb/sql:ro
+      - ./examples:/agentdb/examples:ro
+    working_dir: /agentdb
+    # A terminal keeps psql's output line-buffered, so each error prints right after its step.
+    tty: true
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        PGOPTIONS='-c client_min_messages=warning' dropdb --if-exists -h 127.0.0.1 -U postgres agentdb_demo
+        python3 db.py install --database agentdb_demo > /dev/null
+        echo "AgentDB installed into database agentdb_demo"
+        psql -X -h 127.0.0.1 -U postgres -d agentdb_demo -f examples/two_agents.sql

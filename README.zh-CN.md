@@ -20,43 +20,63 @@ AgentDB 把 Git 的解法加到普通的 PostgreSQL 数据库上：
 
 ## 看它怎么工作
 
-两个 Agent 从商品 101 的同一个版本开始（价格 10，库存 100）。一个提价，一个减库存。完整过程见 [`examples/two_agents.sql`](examples/two_agents.sql)，关键几行如下：
+两个 Agent 从商品 101 的同一个版本开始（价格 10，库存 100）。一个提价，一个减库存。`docker compose up` 会运行 [`examples/two_agents.sql`](examples/two_agents.sql)，输出如下（示例的说明文字为英文）：
+
+```text
+1. main: product 101 costs 10 and has 100 in stock
+2. price-agent and stock-agent each fork a branch from that version
+3. price-agent: price 11 and src/pricing.py, in one commit
+4. stock-agent: stock 95, on a branch that never sees the price change
+5. price-agent merges into main
+6. stock-agent merges, still expecting main at the old version (should fail: stale head)
+psql:examples/two_agents.sql:44: ERROR:  Stale head: expected 2265b903-…, actual cd557e23-…
+   SQLSTATE 40001 -> re-read main and retry
+7. stock-agent retries against the latest main (should fail: its row 101 still has price 10)
+psql:examples/two_agents.sql:49: ERROR:  Row conflict: table 3c320fad-…, key {"id": 101}
+   SQLSTATE P0001 -> re-propose from the latest main
+8. stock-agent re-proposes from the latest main and merges
+9. main now has both changes, and the price change brought its code
+ id  | price | stock
+-----+-------+-------
+ 101 | 11.00 |    95
+
+ pricing_code
+--------------
+ PRICE = 11
+
+OK: both conflicts were caught, and no agent overwrote the other.
+```
+
+第 3 步是一个普通事务，行的修改和代码文件进入同一个提交：
 
 ```sql
--- 定价 Agent：新价格和定价代码放在同一个提交里
 BEGIN;
 SELECT vc.begin_change('price-agent', :'base', 'price-agent', 'raise price to 11');
 UPDATE agent.products SET price = 11 WHERE id = 101;
 SELECT vc.write_file('src/pricing.py', convert_to('PRICE = 11', 'UTF8'));
 SELECT vc.finish_change() AS price_rev \gset
 COMMIT;
-
-SELECT vc.merge('main', :'price_rev', :'base', 'price-agent');        -- 合入成功
-
--- 库存 Agent 的分支同样从 base 开始
-SELECT vc.merge('main', :'stock_rev', :'base', 'stock-agent');
--- ERROR 40001  Stale head: expected 6eba58d0-…, actual e2b0a9ab-…    → 重新读取 main 后重试
-SELECT vc.merge('main', :'stock_rev', vc.head(), 'stock-agent');
--- ERROR P0001  Row conflict: table 4833e757-…, key {"id": 101}       → 从最新的 main 重新提案
 ```
 
-库存 Agent 从最新的 `main` 重新提案后，两个修改都保留了：
+每次合入都只是一次调用 `SELECT vc.merge('main', :'stock_rev', :'base', 'stock-agent');`，要么完整生效，要么以上面的某个错误码失败。
 
-```text
- id  | price | stock          pricing_code
------+-------+-------        --------------
- 101 | 11.00 |    95          PRICE = 11
-```
-
-上面的错误和最终结果来自 PostgreSQL 16.15 上的一次真实运行，为排版做了缩写；错误码是引擎抛出的 SQLSTATE。同样的场景也用两个真实 GPT Agent 做过[预登记的十轮实验](docs/GPT_REPEAT_EXPERIMENT.md)：完成的 8 轮全部达成目标，没有一轮覆盖对方的工作；另外 2 轮因模型服务额度用尽而中断，计为失败。
+以上是 PostgreSQL 16.15 上一次真实运行的输出，UUID 做了缩写。同样的场景也用两个真实 GPT Agent 做过[预登记的十轮实验](docs/GPT_REPEAT_EXPERIMENT.md)：完成的 8 轮全部达成目标，没有一轮覆盖对方的工作；另外 2 轮因模型服务额度用尽而中断，计为失败。
 
 ## 快速开始
 
-需要一个 PostgreSQL 服务器（在 16 上测试）、`psql` 客户端和 Python 3.10+，不需要安装任何 pip 包。
+最快的试用方式是 Docker。一条命令即可启动 PostgreSQL 16、安装 AgentDB 并运行两个 Agent 的示例：
 
 ```bash
 git clone https://github.com/liuzhentong666/agentdb.git
 cd agentdb
+docker compose up
+```
+
+运行最后会输出 `OK: both conflicts were caught, and no agent overwrote the other.`。PostgreSQL 会继续运行，可以用 `docker compose exec db psql -U postgres -d agentdb_demo` 查看数据。按 Ctrl+C 停止，用 `docker compose down` 删除容器。
+
+如果要使用自己的 PostgreSQL，需要一个 PostgreSQL 服务器（在 16 上测试）、`psql` 客户端和 Python 3.10+，不需要安装任何 pip 包。
+
+```bash
 python db.py check                              # 找到 psql、连接并输出服务器版本
 python db.py install --database agentdb_demo    # 创建数据库并安装 schema
 psql -h 127.0.0.1 -U postgres -d agentdb_demo -f examples/two_agents.sql
@@ -145,6 +165,7 @@ review_local.py       本机审查：维护恢复、受限角色、十个分支�
 agent_lab.py          实验中 GPT Agent 使用的工具命令行
 agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
 smoke_cloud.py        云端状态服务冒烟测试（尚未运行）
+compose.yaml          一条命令的 Docker 演示
 sql/                  版本引擎，按 001–006 顺序安装
 examples/             可运行的 SQL 示例
 scripts/              基准测试、迁移检查、预发布演练

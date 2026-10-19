@@ -4,6 +4,12 @@
 
 快速开始见 [README](../README.zh-CN.md)。本文说明连接配置、升级已有安装和测试入口。
 
+## 用 Docker 试用
+
+在项目根目录运行 `docker compose up`。[compose.yaml](../compose.yaml) 启动 PostgreSQL 16，用 `db.py` 把 AgentDB 安装到 `agentdb_demo` 库，再运行 [examples/two_agents.sql](../examples/two_agents.sql)。演示结束后 PostgreSQL 继续运行，可用 `docker compose exec db psql -U postgres -d agentdb_demo` 查看；`docker compose down` 删除容器。
+
+演示只用于本机试用：口令固定，不向主机发布端口，数据保存在内存中，每次启动都从空库开始。需要在脚本或 CI 中判断成败时，运行 `docker compose up --build --exit-code-from demo`，示例结果不符时退出码非零。
+
 ## 连接 PostgreSQL
 
 `db.py` 不会初始化、启动、停止或重新配置 PostgreSQL，只连接已有的服务。默认以 `postgres` 用户连接 `127.0.0.1:5432`，维护库为 `postgres`，项目库为 `agentdb`。
@@ -110,6 +116,12 @@ OSS 适配器每个任务最多发布 524,288 次，达到后需显式建立后�
 # Setup, Connections and Upgrades
 
 For the quick start see the [README](../README.md). This document covers connection settings, upgrading an existing install, and the test entry points.
+
+## Trying it with Docker
+
+Run `docker compose up` in the project root. [compose.yaml](../compose.yaml) starts PostgreSQL 16, installs AgentDB into the `agentdb_demo` database with `db.py`, then runs [examples/two_agents.sql](../examples/two_agents.sql). PostgreSQL keeps running after the demo; look around with `docker compose exec db psql -U postgres -d agentdb_demo`, and remove it with `docker compose down`.
+
+The demo is for trying AgentDB on your own machine only: the password is fixed, no port is published to the host, and the data lives in memory, so every start begins from an empty server. To get a pass/fail result in a script or CI, run `docker compose up --build --exit-code-from demo`; it exits non-zero if the example's outcome is wrong.
 
 ## Connecting to PostgreSQL
 

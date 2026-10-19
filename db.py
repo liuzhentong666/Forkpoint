@@ -59,15 +59,16 @@ def add_connection_arguments(parser):
 
 
 def find_psql(explicit):
+    # Keep symlink names: on Debian/Ubuntu psql links to pg_wrapper, which picks the program from argv[0].
     if explicit:
         candidate = Path(explicit).expanduser()
         if not candidate.is_file():
             raise ValueError(f"psql client not found: {candidate}")
-        return candidate.resolve()
+        return candidate.absolute()
     located = shutil.which("psql")
     if located:
-        candidate = Path(located).resolve()
-        if not candidate.is_relative_to(ROOT / ".runtime"):
+        candidate = Path(located).absolute()
+        if not candidate.resolve().is_relative_to(ROOT / ".runtime"):
             return candidate
     if os.name == "nt":
         installation = Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "PostgreSQL"

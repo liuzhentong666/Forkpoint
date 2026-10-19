@@ -20,43 +20,63 @@ It is plain SQL and PL/pgSQL, with no extension and no separate server. The Pyth
 
 ## See it work
 
-Two agents start from the same version of product 101 (price 10, stock 100). One raises the price, the other cuts the stock. [`examples/two_agents.sql`](examples/two_agents.sql) runs the whole story; the key lines are:
+Two agents start from the same version of product 101 (price 10, stock 100). One raises the price, the other cuts the stock. `docker compose up` runs [`examples/two_agents.sql`](examples/two_agents.sql) and prints:
+
+```text
+1. main: product 101 costs 10 and has 100 in stock
+2. price-agent and stock-agent each fork a branch from that version
+3. price-agent: price 11 and src/pricing.py, in one commit
+4. stock-agent: stock 95, on a branch that never sees the price change
+5. price-agent merges into main
+6. stock-agent merges, still expecting main at the old version (should fail: stale head)
+psql:examples/two_agents.sql:44: ERROR:  Stale head: expected 2265b903-…, actual cd557e23-…
+   SQLSTATE 40001 -> re-read main and retry
+7. stock-agent retries against the latest main (should fail: its row 101 still has price 10)
+psql:examples/two_agents.sql:49: ERROR:  Row conflict: table 3c320fad-…, key {"id": 101}
+   SQLSTATE P0001 -> re-propose from the latest main
+8. stock-agent re-proposes from the latest main and merges
+9. main now has both changes, and the price change brought its code
+ id  | price | stock
+-----+-------+-------
+ 101 | 11.00 |    95
+
+ pricing_code
+--------------
+ PRICE = 11
+
+OK: both conflicts were caught, and no agent overwrote the other.
+```
+
+Step 3 is one ordinary transaction. The row change and the code file land in the same commit:
 
 ```sql
--- Price agent: the new price and the pricing code go in one commit
 BEGIN;
 SELECT vc.begin_change('price-agent', :'base', 'price-agent', 'raise price to 11');
 UPDATE agent.products SET price = 11 WHERE id = 101;
 SELECT vc.write_file('src/pricing.py', convert_to('PRICE = 11', 'UTF8'));
 SELECT vc.finish_change() AS price_rev \gset
 COMMIT;
-
-SELECT vc.merge('main', :'price_rev', :'base', 'price-agent');        -- merged
-
--- The stock agent's branch also started at base
-SELECT vc.merge('main', :'stock_rev', :'base', 'stock-agent');
--- ERROR 40001  Stale head: expected 6eba58d0-…, actual e2b0a9ab-…    → re-read main and retry
-SELECT vc.merge('main', :'stock_rev', vc.head(), 'stock-agent');
--- ERROR P0001  Row conflict: table 4833e757-…, key {"id": 101}       → re-propose from the latest main
 ```
 
-After the stock agent re-proposes from the latest `main`, both changes are kept:
+Each merge is one call, `SELECT vc.merge('main', :'stock_rev', :'base', 'stock-agent');`, and it either lands completely or fails with one of the codes above.
 
-```text
- id  | price | stock          pricing_code
------+-------+-------        --------------
- 101 | 11.00 |    95          PRICE = 11
-```
-
-The errors and the final row above come from a real run on PostgreSQL 16.15, shortened to fit; the error codes are the SQLSTATEs the engine raises. The same scenario was run with two real GPT agents in a [pre-registered ten-round experiment](docs/GPT_REPEAT_EXPERIMENT.md). All 8 rounds that finished reached the goal, and no round overwrote the other agent's work. The other 2 rounds stopped when the model service hit its usage limit; they count as failures.
+That is the output of a real run on PostgreSQL 16.15, with the UUIDs shortened. The same scenario was run with two real GPT agents in a [pre-registered ten-round experiment](docs/GPT_REPEAT_EXPERIMENT.md). All 8 rounds that finished reached the goal, and no round overwrote the other agent's work. The other 2 rounds stopped when the model service hit its usage limit; they count as failures.
 
 ## Quick start
 
-You need a PostgreSQL server (tested on 16), the `psql` client, and Python 3.10+. There are no pip packages to install.
+The fastest way to try it is Docker. One command starts PostgreSQL 16, installs AgentDB and runs the two-agent example:
 
 ```bash
 git clone https://github.com/liuzhentong666/agentdb.git
 cd agentdb
+docker compose up
+```
+
+The run ends with `OK: both conflicts were caught, and no agent overwrote the other.` PostgreSQL keeps running so you can look around with `docker compose exec db psql -U postgres -d agentdb_demo`. Press Ctrl+C to stop it, and run `docker compose down` to remove it.
+
+To use your own PostgreSQL instead, you need a PostgreSQL server (tested on 16), the `psql` client, and Python 3.10+. There are no pip packages to install.
+
+```bash
 python db.py check                              # find psql, connect, print the server version
 python db.py install --database agentdb_demo    # create the database and install the schemas
 psql -h 127.0.0.1 -U postgres -d agentdb_demo -f examples/two_agents.sql
@@ -145,6 +165,7 @@ review_local.py       local review: maintenance recovery, restricted role, ten b
 agent_lab.py          the tool CLI the GPT agents used in the experiments
 agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
 smoke_cloud.py        cloud state-service smoke test (not run yet)
+compose.yaml          the one-command Docker demo
 sql/                  the version engine, installed in order 001–006
 examples/             runnable SQL examples
 scripts/              benchmarks, migration checks, staging drills

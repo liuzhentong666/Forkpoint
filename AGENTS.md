@@ -134,6 +134,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | 范围 | 命令与条件 |
 |---|---|
 | PostgreSQL 版本引擎 | `python run_tests.py`：连接现有服务并创建专用测试数据库；不向项目业务库导入测试数据 |
+| Docker 演示 | `docker compose up --build --exit-code-from demo`：在内存中的 PostgreSQL 16 上用 `db.py` 安装，再运行 `examples/two_agents.sql`；结果不符时退出码非零。这是给访客的演示，不取代上面基于现有 WSL PostgreSQL 的开发与测试；需要 Docker Desktop 正在运行 |
 | 管理状态与 HTTP | `.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v` |
 | agent_lab 网关 | 单元测试含在上一行中（基于黄金样本，不连数据库）；`python scripts/compare_agent_lab_gateway.py` 新建两个 `agentdb_test_gpt_*` 库，对比逐次起进程与经网关两条路径的输出和耗时 |
 | 恢复读取结构 | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_cloud_state.py`：内存后端，检查历史增长时的读取量 |
@@ -291,6 +292,7 @@ From the project root, choose checks according to the scope of the change; after
 | Scope | Command and conditions |
 |---|---|
 | PostgreSQL version engine | `python run_tests.py`: connects to the existing service and creates a dedicated test database; does not import test data into the project business database |
+| Docker demo | `docker compose up --build --exit-code-from demo`: installs with `db.py` on an in-memory PostgreSQL 16, then runs `examples/two_agents.sql`; a wrong result gives a non-zero exit code. This is a demo for visitors and does not replace development and testing on the existing WSL PostgreSQL above; Docker Desktop must be running |
 | Management state and HTTP | `.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v` |
 | agent_lab gateway | Unit tests are included in the previous line (based on golden samples, no database connection); `python scripts/compare_agent_lab_gateway.py` creates two `agentdb_test_gpt_*` databases and compares the output and timing of the spawn-a-process-per-call path and the gateway path |
 | Recovery read structure | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_cloud_state.py`: in-memory backend, checks read volume as history grows |
