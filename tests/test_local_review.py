@@ -9,6 +9,8 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
 from agent_state.engine import Engine
 from agent_state.maintenance import SnapshotMaintenance
 from agent_state.oss import OSSStore

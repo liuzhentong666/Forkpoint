@@ -73,7 +73,7 @@ password_encryption = 'scram-sha-256'
 # Bounded detection of vanished clients; values justified in docs/STAGING_S4_S5.md
 # section 4. Every client sends a versioned transaction as one script, so a live
 # client is idle inside it for about one round trip; the longest deliberate gap
-# (staging_drills.py netcut's lock holder) is about 4 s. The 60 s
+# (scripts/staging_drills.py netcut's lock holder) is about 4 s. The 60 s
 # idle_in_transaction_session_timeout is set on the agentdb_staging role by
 # create_staging_role.sql, so admin sessions and other roles keep the default.
 # A silent peer on an idle connection: first probe after 60 s, closed after 6 unanswered

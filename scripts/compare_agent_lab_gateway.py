@@ -3,15 +3,15 @@
 Each pass creates its own agentdb_test_gpt_* database with `agent_lab.py init` on the existing
 local PostgreSQL (kept for inspection). Outputs are compared after replacing the database
 name and UUIDs by placeholders; per-call wall time includes starting the client process.
-Usage: python compare_agent_lab_gateway.py [--output agent-lab-gateway-results.json]
+Usage: python scripts/compare_agent_lab_gateway.py [--output results/agent-lab-gateway-results.json]
 """
 import argparse
 from datetime import datetime, timezone
 import hashlib, json, os, platform, re, subprocess, sys, tempfile, time
 from pathlib import Path
-project = Path(__file__).resolve().parent
+project = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--output", type=Path, default=project / "agent-lab-gateway-results.json")
+parser.add_argument("--output", type=Path, default=project / "results" / "agent-lab-gateway-results.json")
 out = parser.parse_args().output
 flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 

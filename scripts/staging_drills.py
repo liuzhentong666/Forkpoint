@@ -2,7 +2,7 @@
 
 Plan and results: docs/STAGING_S4_S5.md. Every run creates its own
 agentdb_test_* database on the server named by --config (normally
-connection.staging.local.json) and writes staging-results/<command>.json.
+connection.staging.local.json) and writes results/staging/<command>.json.
 
   growth   S4: deepen main's history and measure reads, merges and commits
   backup   S5: pg_dump / pg_restore a populated database and compare it
@@ -22,15 +22,18 @@ import json
 from pathlib import Path
 import statistics
 import subprocess
+import sys
 import threading
 import time
 import uuid
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from db import FLAGS, Connection, add_connection_arguments, sqlstate
 from review_local import seed
 
-ROOT = Path(__file__).resolve().parent
-RESULTS = ROOT / "staging-results"
+RESULTS = ROOT / "results" / "staging"
 VBOX = r"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
 
 
@@ -75,7 +78,7 @@ def json_values(text):
 
 
 def write(name, result, quiet=False):
-    RESULTS.mkdir(exist_ok=True)
+    RESULTS.mkdir(parents=True, exist_ok=True)
     path = RESULTS / f"{name}.json"
     path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     if not quiet:
@@ -299,7 +302,7 @@ def run_backup(args, owner):
         source, _ = new_database(args, owner, "backupsrc")
     bin_dir = Path(owner.settings["psql"]).parent
     dump = RESULTS / f"{source}.dump"
-    RESULTS.mkdir(exist_ok=True)
+    RESULTS.mkdir(parents=True, exist_ok=True)
     common = ["-h", owner.settings["host"], "-p", str(owner.settings["port"]), "-U", owner.settings["user"],
               "--no-password"]
     before = fingerprint(connect(args, source))

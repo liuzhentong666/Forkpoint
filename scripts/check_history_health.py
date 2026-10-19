@@ -2,7 +2,7 @@
 
 Existing local PostgreSQL only. Creates agentdb_test_hhmig_* with the schema of
 --old-ref (001-005 as Connection.install applied them then), seeds it and adds
-the history of check_history_migration.py (branches, merges both ways, a
+the history of scripts/check_history_migration.py (branches, merges both ways, a
 criss-cross, table snapshots). It records data, history, every read and merge
 outcome of that checker, and the attributes of the existing functions; applies
 `db.py install-history-health` twice; and checks that nothing changed, that
@@ -18,7 +18,11 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import uuid
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from agent_state.engine import Engine
 from agent_state.maintenance import SnapshotMaintenance
@@ -29,7 +33,6 @@ from check_merge_migration import fingerprint
 from db import add_connection_arguments
 from review_local import connect, seed
 
-ROOT = Path(__file__).resolve().parent
 OLD_FILES = ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql",
              "005_bounded_history.sql")
 EXISTING = ("vc._ancestors(uuid)", "vc.rows_at(uuid,uuid)", "vc._file_state(uuid,text)",
@@ -76,7 +79,7 @@ def main():
     add_connection_arguments(parser)
     parser.add_argument("--old-ref", default="d5c68b0",
                         help="git commit whose sql/ predates 006_history_health.sql (default d5c68b0)")
-    parser.add_argument("--output", type=Path, default=ROOT / "history-health-results.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "results" / "history-health-results.json")
     args = parser.parse_args()
     def old_file(name):
         return subprocess.run(["git", "show", f"{args.old_ref}:sql/{name}"], cwd=ROOT, check=True,

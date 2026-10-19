@@ -45,7 +45,7 @@ OSS 每条任务入口记录固定 8 KiB，单任务文件最多 4 GiB / 524,288
 
 S3 用户复制 `cloud.s3.example.json`，设置 bucket、region；示例 region 为北京 `cn-north-1`，按实际部署调整。使用 boto3 的凭据链，JSON 不接收密钥。可配置 HTTPS endpoint，但自定义 S3 兼容产品只有通过真实条件写入测试后才能列为已验证；不支持条件写入的端点不回退到普通覆盖。
 
-GCS 用户使用 `cloud.example.json`，通过 [ADC](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc) 提供身份。旧配置不含 provider 时继续选择 GCS。`project` 与 `subscription` 仅适用于 GCS；OSS/S3 配置这些字段会报错。旧 `smoke_gcs.py --bucket ...` 入口仍保留，新验证优先使用统一 `smoke_cloud.py`。
+GCS 用户使用 `cloud.example.json`，通过 [ADC](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc) 提供身份。旧配置不含 provider 时继续选择 GCS。`project` 与 `subscription` 仅适用于 GCS；OSS/S3 配置这些字段会报错。旧 `scripts/smoke_gcs.py --bucket ...` 入口仍保留，新验证优先使用统一 `smoke_cloud.py`。
 
 每个部署选择一个权威后端。修改 provider、bucket 或 prefix 会指向另一个命名空间，不会自动迁移旧数据。已有部署迁移应单独冻结写入、复制并核验所有引用、建立目标入口并验证恢复；本版没有自动跨云迁移工具，也不会双写两个云。
 
@@ -116,14 +116,14 @@ kind 可为 changed 或 deleted；bucket/prefix 必须匹配当前部署。消�
 
 ## PostgreSQL 维护与测试
 
-杭州 ECS + OSS 内网的具体部署见 [ECS 指南](ALIYUN_ECS_DEPLOYMENT.md)。SSH 隧道建立后，本机可用 `maintain_snapshot.py --state-url http://127.0.0.1:18844` 加下列相同任务参数操作现有 PostgreSQL；`--state-url` 与 `--cloud-config` 二选一，客户端不需要 OSS 凭据。实例角色模式仅在 ECS 配置 `AGENTDB_OSS_CREDENTIALS=ecs_ram_role`。
+杭州 ECS + OSS 内网的具体部署见 [ECS 指南](ALIYUN_ECS_DEPLOYMENT.md)。SSH 隧道建立后，本机可用 `scripts/maintain_snapshot.py --state-url http://127.0.0.1:18844` 加下列相同任务参数操作现有 PostgreSQL；`--state-url` 与 `--cloud-config` 二选一，客户端不需要 OSS 凭据。实例角色模式仅在 ECS 配置 `AGENTDB_OSS_CREDENTIALS=ecs_ram_role`。
 
 正式维护入口使用选定云后端和现有 `connection.local.json`：
 
 以下仍为暂缓执行的云端示例。新版维护器需要先在现有数据库执行 `python db.py install-manager`；使用受限快照身份时加 `--role agentdb_manager`。其 `vc.snapshot_status` 只返回目标和快照是否存在，维护器不再直接查询历史表。
 
 ```powershell
-.\.venv-cloud\Scripts\python.exe maintain_snapshot.py --cloud-config cloud.local.json --task snapshot-job-1 --actor admin-agent-1 --revision REVISION_UUID --table-id TABLE_UUID
+.\.venv-cloud\Scripts\python.exe scripts/maintain_snapshot.py --cloud-config cloud.local.json --task snapshot-job-1 --actor admin-agent-1 --revision REVISION_UUID --table-id TABLE_UUID
 ```
 
 先记录意图，再检查/创建/核验固定版本快照，最后发布结果。接手者会检查实际数据库结果。云端发布与 PG 不共享事务；其他 DDL 或执行器需要自己的幂等、协调与恢复设计。
@@ -135,8 +135,8 @@ kind 可为 changed 或 deleted；bucket/prefix 必须匹配当前部署。消�
 ```powershell
 .\.venv-cloud\Scripts\python.exe -m pip install -r requirements-storage-tests.txt
 .\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v
-.\.venv-cloud\Scripts\python.exe benchmark_oss_protocol.py
-.\.venv-cloud\Scripts\python.exe integration_cloud_postgres.py --database agentdb_test_EXISTING --test-backend oss-protocol
+.\.venv-cloud\Scripts\python.exe scripts/benchmark_oss_protocol.py
+.\.venv-cloud\Scripts\python.exe scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING --test-backend oss-protocol
 ```
 
 前两种本地测试不访问云。最后一项使用现有 PostgreSQL 测试库与内存 OSS 服务模型，会保留测试分支；不启停服务，不创建 ops schema。内存模拟、SDK 契约、真实数据库与真实云验证必须分别报告。
@@ -192,7 +192,7 @@ Each OSS task entry record is a fixed 8 KiB, and a single task file allows at mo
 
 S3 users copy `cloud.s3.example.json` and set bucket and region; the example region is Beijing `cn-north-1`, adjust according to the actual deployment. boto3's credential chain is used, and the JSON does not accept keys. An HTTPS endpoint can be configured, but a custom S3-compatible product can only be listed as verified after passing real conditional write tests; endpoints that do not support conditional writes do not fall back to ordinary overwrites.
 
-GCS users use `cloud.example.json` and provide identity through [ADC](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc). Old configurations without provider continue to select GCS. `project` and `subscription` apply only to GCS; configuring these fields for OSS/S3 is an error. The old `smoke_gcs.py --bucket ...` entry point is still kept, but new verification should preferably use the unified `smoke_cloud.py`.
+GCS users use `cloud.example.json` and provide identity through [ADC](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc). Old configurations without provider continue to select GCS. `project` and `subscription` apply only to GCS; configuring these fields for OSS/S3 is an error. The old `scripts/smoke_gcs.py --bucket ...` entry point is still kept, but new verification should preferably use the unified `smoke_cloud.py`.
 
 Each deployment selects one authoritative backend. Changing provider, bucket or prefix points to another namespace and does not automatically migrate old data. Migrating an existing deployment should separately freeze writes, copy and verify all references, build the target entry point and verify recovery; this version has no automatic cross-cloud migration tool, and does not dual-write to two clouds.
 
@@ -265,14 +265,14 @@ The default context limit is 8,192 UTF-8 bytes of complete JSON; when required f
 
 ## PostgreSQL maintenance and testing
 
-For the specific deployment of Hangzhou ECS + OSS internal network see the [ECS guide](ALIYUN_ECS_DEPLOYMENT.md). Once the SSH tunnel is established, this machine can use `maintain_snapshot.py --state-url http://127.0.0.1:18844` plus the same task arguments below to operate on the existing PostgreSQL; use either `--state-url` or `--cloud-config`, and the client does not need OSS credentials. Instance role mode is configured only on ECS with `AGENTDB_OSS_CREDENTIALS=ecs_ram_role`.
+For the specific deployment of Hangzhou ECS + OSS internal network see the [ECS guide](ALIYUN_ECS_DEPLOYMENT.md). Once the SSH tunnel is established, this machine can use `scripts/maintain_snapshot.py --state-url http://127.0.0.1:18844` plus the same task arguments below to operate on the existing PostgreSQL; use either `--state-url` or `--cloud-config`, and the client does not need OSS credentials. Instance role mode is configured only on ECS with `AGENTDB_OSS_CREDENTIALS=ecs_ram_role`.
 
 The formal maintenance entry point uses the selected cloud backend and the existing `connection.local.json`:
 
 The following is still a cloud example whose execution is on hold. The new maintainer requires first running `python db.py install-manager` on the existing database; when using the restricted snapshot identity add `--role agentdb_manager`. Its `vc.snapshot_status` returns only the target and whether the snapshot exists, and the maintainer no longer queries the history tables directly.
 
 ```powershell
-.\.venv-cloud\Scripts\python.exe maintain_snapshot.py --cloud-config cloud.local.json --task snapshot-job-1 --actor admin-agent-1 --revision REVISION_UUID --table-id TABLE_UUID
+.\.venv-cloud\Scripts\python.exe scripts/maintain_snapshot.py --cloud-config cloud.local.json --task snapshot-job-1 --actor admin-agent-1 --revision REVISION_UUID --table-id TABLE_UUID
 ```
 
 It first records the intent, then checks/creates/verifies the pinned-version snapshot, and finally publishes the result. A taker-over checks the actual database result. Cloud publishing and PG do not share a transaction; other DDL or executors need their own idempotency, coordination and recovery design.
@@ -284,8 +284,8 @@ Development verification entry points:
 ```powershell
 .\.venv-cloud\Scripts\python.exe -m pip install -r requirements-storage-tests.txt
 .\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v
-.\.venv-cloud\Scripts\python.exe benchmark_oss_protocol.py
-.\.venv-cloud\Scripts\python.exe integration_cloud_postgres.py --database agentdb_test_EXISTING --test-backend oss-protocol
+.\.venv-cloud\Scripts\python.exe scripts/benchmark_oss_protocol.py
+.\.venv-cloud\Scripts\python.exe scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING --test-backend oss-protocol
 ```
 
 The first two local tests do not access the cloud. The last one uses an existing PostgreSQL test database and the in-memory OSS service model, and keeps the test branches; it does not start/stop the service and does not create an ops schema. In-memory simulation, SDK contracts, real database and real cloud verification must be reported separately.

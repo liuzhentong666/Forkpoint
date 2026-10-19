@@ -2,8 +2,12 @@
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
+from pathlib import Path
+import sys
 import threading
 import uuid
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from agent_state.engine import Engine
 from agent_state.runtime import Runtime
 from agent_state.storage import GCSStore, Conflict

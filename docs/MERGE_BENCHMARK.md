@@ -4,7 +4,7 @@
 
 日期：2026-10-17。**仅为本机合成负载**：现有 Ubuntu WSL PostgreSQL 上 10 个脚本写入者，不是大模型 Agent，不代表生产容量，未访问任何云服务。这次测量时，`vc.merge` 与版本引擎都没有修改，也没有实现任何修复；之后的实现与复测见“实现长连接后的复测”和“批量解析目标状态后的复测”两节。
 
-入口：[`benchmark_merge.py`](../benchmark_merge.py)。原始结果：[`merge-benchmark-results.json`](../merge-benchmark-results.json)，含每次调用的客户端耗时与服务端时间戳。用 `python benchmark_merge.py --reanalyze` 可在不连数据库的情况下，从原始调用重算派生字段。
+入口：[`scripts/benchmark_merge.py`](../scripts/benchmark_merge.py)。原始结果：[`results/merge-benchmark-results.json`](../results/merge-benchmark-results.json)，含每次调用的客户端耗时与服务端时间戳。用 `python scripts/benchmark_merge.py --reanalyze` 可在不连数据库的情况下，从原始调用重算派生字段。
 
 ## 问题
 
@@ -84,7 +84,7 @@ EXPLAIN ANALYZE（模板状态和第 10 次合入前状态各测 5 次）：单�
 
 第 1 项建议已经实现，即 `db.Session`（见 [README](../README.md)）。`vc.merge` 与版本引擎仍未修改，第 2、3 项尚未实现。Session 每次调用都保持单次进程的语义：遇错即停、回滚未结束的事务、重置会话状态与 psql 变量。为此每次调用约多花 1 ms，探针中 `SELECT 1` 往返中位为 1.08 ms，而原型中的裸管道为 0.16 ms。`run_tests.py` 新增的检查逐项核对这些语义，并与单次进程的输出比较。
 
-`benchmark_merge.py` 的常驻会话模式改用 `db.Session` 后，在新模板 `agentdb_test_mergebench_05e9004d_tpl` 上复测（各 3 次，[原始结果](../merge-benchmark-session-results.json)）：
+`scripts/benchmark_merge.py` 的常驻会话模式改用 `db.Session` 后，在新模板 `agentdb_test_mergebench_05e9004d_tpl` 上复测（各 3 次，[原始结果](../results/merge-benchmark-session-results.json)）：
 
 | 模式 | 阶段耗时 | 40001 重试 | main 锁被持有的时间占比 | 交接间隔（中位） |
 |---|---:|---:|---:|---:|
@@ -92,7 +92,7 @@ EXPLAIN ANALYZE（模板状态和第 10 次合入前状态各测 5 次）：单�
 | `db.Session`，同时开始 | 1.16 s (0.99–1.19) | 45（一次为 44） | 93 % | 7.7 ms |
 | `db.Session`，逐个合入 | 0.92 s (0.87–1.13) | 0 | 96 % | 4.1 ms |
 
-`review_local.py` 的写入者现在默认各用一个 Session，`--client spawn` 恢复原做法。一次完整运行（库 `agentdb_test_review_0fbedc9103`）中，十个分支全部合入，核验全部通过：建分支阶段 0.39 s（原 4.97 s），合入阶段 1.19 s（原 9.47 s），端到端 2.30 s（原 14.93 s），陈旧 head 重试仍为 45 次。打开 10 个会话另需 2.07 s，在计时开始之前完成。原纪录保存在 `local-review-results.2026-10-17-spawn.json`。
+`review_local.py` 的写入者现在默认各用一个 Session，`--client spawn` 恢复原做法。一次完整运行（库 `agentdb_test_review_0fbedc9103`）中，十个分支全部合入，核验全部通过：建分支阶段 0.39 s（原 4.97 s），合入阶段 1.19 s（原 9.47 s），端到端 2.30 s（原 14.93 s），陈旧 head 重试仍为 45 次。打开 10 个会话另需 2.07 s，在计时开始之前完成。原纪录保存在 `results/local-review-results.2026-10-17-spawn.json`。
 
 `agent_lab.py` 每次工具调用都是一个新的 Python 进程，无法跨调用保持 Session。可选的常驻网关 `agent_lab_gateway.py` 替 Agent 持有 Session，默认关闭，尚未用于任何真实 GPT 实验，见 [agent_lab 常驻网关](AGENT_LAB_GATEWAY.md)。
 
@@ -104,10 +104,10 @@ EXPLAIN ANALYZE（模板状态和第 10 次合入前状态各测 5 次）：单�
 
 - 改动前先跑基线：`run_tests.py` 18 项与 Session 检查、`review_local.py` 全部通过，用的是旧版 `vc.merge`。
 - `run_tests.py` 新增 `merge_resolves_target_state_per_changed_row`，共 13 个合入情形：与来源相同的行被跳过、两边插入相同行、合入分支时 before_row 取目标状态，以及修改/修改、删除/修改、修改/删除、插入/插入、合入分支时冲突、多行冲突时报告哪一行。原 18 项断言未改。
-- [`check_merge_migration.py`](../check_merge_migration.py) 用提交 8aeb3d7 的旧 `001_core.sql` 建库（`agentdb_test_mergemig_502ef6643a`），先跑 18 项断言和上述情形，并提交一次合入。迁移连续执行两次后：业务数据与历史表的哈希不变；函数所有者、SECURITY DEFINER、配置与 ACL 不变；13 个情形的规范化输出（行变更、父边、错误码与报错的键）与旧函数逐项相同；18 项断言再次通过；`agentdb_client` 仍可合入。脚本同时确认 001 与 004 中的函数体一致。结果见 [`merge-batch-migration-results.json`](../merge-batch-migration-results.json)：该文件为提交前复核时的重跑（库 `agentdb_test_mergemig_21ad82e33c`），结论与首次运行逐项相同，首次运行的结果文件已被覆盖。另在一个旧版测试库上通过命令行入口 `db.py install-merge-batch` 执行过迁移。
+- [`scripts/check_merge_migration.py`](../scripts/check_merge_migration.py) 用提交 8aeb3d7 的旧 `001_core.sql` 建库（`agentdb_test_mergemig_502ef6643a`），先跑 18 项断言和上述情形，并提交一次合入。迁移连续执行两次后：业务数据与历史表的哈希不变；函数所有者、SECURITY DEFINER、配置与 ACL 不变；13 个情形的规范化输出（行变更、父边、错误码与报错的键）与旧函数逐项相同；18 项断言再次通过；`agentdb_client` 仍可合入。脚本同时确认 001 与 004 中的函数体一致。结果见 [`results/merge-batch-migration-results.json`](../results/merge-batch-migration-results.json)：该文件为提交前复核时的重跑（库 `agentdb_test_mergemig_21ad82e33c`），结论与首次运行逐项相同，首次运行的结果文件已被覆盖。另在一个旧版测试库上通过命令行入口 `db.py install-merge-batch` 执行过迁移。
 - 改动后 `run_tests.py`（库 `agentdb_test_1ab8001efa3d`）与 `review_local.py`（库 `agentdb_test_review_16e28e9e61`）全部通过。在 `review_local.py` 中，十个分支合入阶段 0.49 s，端到端 1.79 s，陈旧 head 重试 45 次。同一天改动前用旧函数跑的基线为 1.29 s 和 2.65 s。
 
-`python benchmark_merge.py --runs 3 --modes persistent_concurrent persistent_serialized --output merge-benchmark-batched-results.json` 的结果见[原始结果](../merge-benchmark-batched-results.json)。模板库为 `agentdb_test_mergebench_bb4c8a05_tpl`，历史结构与前两次相同；所有运行和 profile 的核验均通过。下表中“改动前”取自上文：SQL 一列来自第一次 profile，其余各列来自 Session 复测。
+`python scripts/benchmark_merge.py --runs 3 --modes persistent_concurrent persistent_serialized --output results/merge-benchmark-batched-results.json` 的结果见[原始结果](../results/merge-benchmark-batched-results.json)。模板库为 `agentdb_test_mergebench_bb4c8a05_tpl`，历史结构与前两次相同；所有运行和 profile 的核验均通过。下表中“改动前”取自上文：SQL 一列来自第一次 profile，其余各列来自 Session 复测。
 
 | 指标 | 改动前 | 批量解析后 |
 |---|---:|---:|
@@ -144,7 +144,7 @@ EXPLAIN ANALYZE（模板状态和第 10 次合入前状态各测 5 次）：单�
 
 Date: 2026-10-17. **Local synthetic load only**: 10 scripted writers on the existing Ubuntu WSL PostgreSQL, not large-language-model Agents; it does not represent production capacity, and no cloud services were accessed. At the time of this measurement, neither `vc.merge` nor the version engine had been modified, and no fix had been implemented; the later implementation and re-measurements are in the two sections "Re-measurement after implementing long-lived connections" and "Re-measurement after batch-resolving the target state".
 
-Entry point: [`benchmark_merge.py`](../benchmark_merge.py). Raw results: [`merge-benchmark-results.json`](../merge-benchmark-results.json), including the client time and server timestamps of every call. `python benchmark_merge.py --reanalyze` recomputes the derived fields from the raw calls without connecting to the database.
+Entry point: [`scripts/benchmark_merge.py`](../scripts/benchmark_merge.py). Raw results: [`results/merge-benchmark-results.json`](../results/merge-benchmark-results.json), including the client time and server timestamps of every call. `python scripts/benchmark_merge.py --reanalyze` recomputes the derived fields from the raw calls without connecting to the database.
 
 ## Problem
 
@@ -224,7 +224,7 @@ EXPLAIN ANALYZE (5 measurements each in the template state and in the state befo
 
 Recommendation 1 has been implemented as `db.Session` (see [README](../README.md)). `vc.merge` and the version engine are still unmodified, and recommendations 2 and 3 are not yet implemented. Each Session call keeps the semantics of a single process: stop at the first error, roll back an unfinished transaction, reset session state and psql variables. This costs about 1 ms more per call: in the probe the `SELECT 1` round trip median is 1.08 ms, while the bare pipe in the prototype was 0.16 ms. A new check in `run_tests.py` verifies these semantics item by item and compares with the output of a single process.
 
-After the resident session modes of `benchmark_merge.py` were switched to `db.Session`, the measurement was repeated on a new template `agentdb_test_mergebench_05e9004d_tpl` (3 times each, [raw results](../merge-benchmark-session-results.json)):
+After the resident session modes of `scripts/benchmark_merge.py` were switched to `db.Session`, the measurement was repeated on a new template `agentdb_test_mergebench_05e9004d_tpl` (3 times each, [raw results](../results/merge-benchmark-session-results.json)):
 
 | Mode | Phase time | 40001 retries | Share of time the main lock is held | Hand-off gap (median) |
 |---|---:|---:|---:|---:|
@@ -232,7 +232,7 @@ After the resident session modes of `benchmark_merge.py` were switched to `db.Se
 | `db.Session`, starting at the same time | 1.16 s (0.99–1.19) | 45 (44 once) | 93 % | 7.7 ms |
 | `db.Session`, merging one at a time | 0.92 s (0.87–1.13) | 0 | 96 % | 4.1 ms |
 
-The writers of `review_local.py` now each use a Session by default, and `--client spawn` restores the original approach. In one complete run (database `agentdb_test_review_0fbedc9103`), all ten branches were merged and all verifications passed: branch creation phase 0.39 s (originally 4.97 s), merge phase 1.19 s (originally 9.47 s), end to end 2.30 s (originally 14.93 s), still 45 stale-head retries. Opening the 10 sessions takes another 2.07 s, done before timing starts. The original record is saved in `local-review-results.2026-10-17-spawn.json`.
+The writers of `review_local.py` now each use a Session by default, and `--client spawn` restores the original approach. In one complete run (database `agentdb_test_review_0fbedc9103`), all ten branches were merged and all verifications passed: branch creation phase 0.39 s (originally 4.97 s), merge phase 1.19 s (originally 9.47 s), end to end 2.30 s (originally 14.93 s), still 45 stale-head retries. Opening the 10 sessions takes another 2.07 s, done before timing starts. The original record is saved in `results/local-review-results.2026-10-17-spawn.json`.
 
 Each tool call of `agent_lab.py` is a new Python process and cannot keep a Session across calls. The optional resident gateway `agent_lab_gateway.py` holds Sessions for the Agents; it is off by default and has not yet been used for any real GPT experiment; see [agent_lab resident gateway](AGENT_LAB_GATEWAY.md).
 
@@ -244,10 +244,10 @@ Verification (all on dedicated local test databases):
 
 - Before the change, the baseline was run first: `run_tests.py`'s 18 items and the Session check, and `review_local.py`, all passed, using the old `vc.merge`.
 - `run_tests.py` adds `merge_resolves_target_state_per_changed_row`, with 13 merge cases in total: rows identical to the source are skipped, identical rows inserted on both sides, before_row taking the target state when merging into a branch, as well as modify/modify, delete/modify, modify/delete, insert/insert, conflict when merging into a branch, and which row is reported when multiple rows conflict. The original 18 assertions are unchanged.
-- [`check_merge_migration.py`](../check_merge_migration.py) builds a database with the old `001_core.sql` from commit 8aeb3d7 (`agentdb_test_mergemig_502ef6643a`), first runs the 18 assertions and the cases above, and commits one merge. After running the migration twice in a row: the hashes of business data and history tables are unchanged; function owner, SECURITY DEFINER, configuration and ACL are unchanged; the normalized outputs of the 13 cases (row changes, parent edges, error codes and the keys in errors) are identical item by item to the old function; the 18 assertions pass again; `agentdb_client` can still merge. The script also confirms that the function bodies in 001 and 004 are identical. Results are in [`merge-batch-migration-results.json`](../merge-batch-migration-results.json): this file is a rerun during the pre-commit review (database `agentdb_test_mergemig_21ad82e33c`), with conclusions identical item by item to the first run, whose result file was overwritten. In addition, the migration was run once on an old-version test database through the command-line entry point `db.py install-merge-batch`.
+- [`scripts/check_merge_migration.py`](../scripts/check_merge_migration.py) builds a database with the old `001_core.sql` from commit 8aeb3d7 (`agentdb_test_mergemig_502ef6643a`), first runs the 18 assertions and the cases above, and commits one merge. After running the migration twice in a row: the hashes of business data and history tables are unchanged; function owner, SECURITY DEFINER, configuration and ACL are unchanged; the normalized outputs of the 13 cases (row changes, parent edges, error codes and the keys in errors) are identical item by item to the old function; the 18 assertions pass again; `agentdb_client` can still merge. The script also confirms that the function bodies in 001 and 004 are identical. Results are in [`results/merge-batch-migration-results.json`](../results/merge-batch-migration-results.json): this file is a rerun during the pre-commit review (database `agentdb_test_mergemig_21ad82e33c`), with conclusions identical item by item to the first run, whose result file was overwritten. In addition, the migration was run once on an old-version test database through the command-line entry point `db.py install-merge-batch`.
 - After the change, `run_tests.py` (database `agentdb_test_1ab8001efa3d`) and `review_local.py` (database `agentdb_test_review_16e28e9e61`) all passed. In `review_local.py`, the ten-branch merge phase took 0.49 s, end to end 1.79 s, with 45 stale-head retries. The baseline run with the old function on the same day before the change was 1.29 s and 2.65 s.
 
-The results of `python benchmark_merge.py --runs 3 --modes persistent_concurrent persistent_serialized --output merge-benchmark-batched-results.json` are in the [raw results](../merge-benchmark-batched-results.json). The template database is `agentdb_test_mergebench_bb4c8a05_tpl`, with the same history structure as the previous two; verification of all runs and profiles passed. In the table below, "before the change" is taken from above: the SQL row comes from the first profile, and the other rows from the Session re-measurement.
+The results of `python scripts/benchmark_merge.py --runs 3 --modes persistent_concurrent persistent_serialized --output results/merge-benchmark-batched-results.json` are in the [raw results](../results/merge-benchmark-batched-results.json). The template database is `agentdb_test_mergebench_bb4c8a05_tpl`, with the same history structure as the previous two; verification of all runs and profiles passed. In the table below, "before the change" is taken from above: the SQL row comes from the first profile, and the other rows from the Session re-measurement.
 
 | Metric | Before the change | After batch resolution |
 |---|---:|---:|

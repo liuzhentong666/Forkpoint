@@ -12,7 +12,7 @@
 
 - [Anthropic：Redesigning source control at Anthropic](https://www.anthropic.com/engineering/redesigning-source-control)：2026-10-16 重新读取，页面标注 2026-10-15 更新。采用其架构原则，按本项目的数据库和管理状态场景落实。
 - 模块重构框架（作者的本地文档，不在本仓库中）：采用分阶段、行为保持、可验证和可回退的重构流程。
-- 当前实现与用户已确定的约束见 [README](README.md)、[版本引擎设计](DESIGN_REVIEW.md)、[云端状态设计](docs/CLOUD_STATE_DESIGN.md) 和 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md)。以下具体接口、容量与事务要求来自本项目。
+- 当前实现与用户已确定的约束见 [README](README.md)、[版本引擎设计](docs/DESIGN_REVIEW.md)、[云端状态设计](docs/CLOUD_STATE_DESIGN.md) 和 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md)。以下具体接口、容量与事务要求来自本项目。
 
 ## Scion 原则的提炼
 
@@ -76,9 +76,9 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `sql/001_core.sql` | 版本模型、固定版本读取、提交、合并与快照；保持事务和历史语义 |
 | `sql/002_demo_app.sql` | 示例业务表、视图与接入；不要把示例结构扩散到通用版本算法 |
 | `sql/003_manager_role.sql` | 可重入的受限管理角色与快照状态函数迁移；不回写历史 |
-| `sql/004_merge_batch.sql` | 可重入迁移：以 001 中相同定义替换 `vc.merge`（每表一次 `rows_at`）；两处须保持一致，旧安装用 `db.py install-merge-batch`，`check_merge_migration.py` 核验 |
-| `sql/005_bounded_history.sql` | 可重入迁移，新安装在 001–004 之后执行：以等价定义替换 `vc._ancestors`、`vc.rows_at`、`vc._file_state`、`vc.merge_base`、`vc.merge`（父边逐步走索引、`_file_state` 找到路径即停、合入只检查可能不同的路径），新增 `vc._merge_base` 与只读快照策略 `vc.snapshot_due`；001 中这些函数是旧定义，以 005 为准；旧安装用 `db.py install-bounded-history`，`check_history_migration.py` 核验（见 [历史增长](docs/HISTORY_GROWTH.md)） |
-| `sql/006_history_health.sql` | 可重入、只读的迁移，新安装在 005 之后执行：新增 STABLE 函数 `vc.history_health(branch)`，返回 head 可达的 changeset 数（合入遍历的规模）与其遍历耗时、第一父链深度、每表距最近快照的提交数；只授权给 `agentdb_manager`；旧安装用 `db.py install-history-health`，`check_history_health.py` 核验 |
+| `sql/004_merge_batch.sql` | 可重入迁移：以 001 中相同定义替换 `vc.merge`（每表一次 `rows_at`）；两处须保持一致，旧安装用 `db.py install-merge-batch`，`scripts/check_merge_migration.py` 核验 |
+| `sql/005_bounded_history.sql` | 可重入迁移，新安装在 001–004 之后执行：以等价定义替换 `vc._ancestors`、`vc.rows_at`、`vc._file_state`、`vc.merge_base`、`vc.merge`（父边逐步走索引、`_file_state` 找到路径即停、合入只检查可能不同的路径），新增 `vc._merge_base` 与只读快照策略 `vc.snapshot_due`；001 中这些函数是旧定义，以 005 为准；旧安装用 `db.py install-bounded-history`，`scripts/check_history_migration.py` 核验（见 [历史增长](docs/HISTORY_GROWTH.md)） |
+| `sql/006_history_health.sql` | 可重入、只读的迁移，新安装在 005 之后执行：新增 STABLE 函数 `vc.history_health(branch)`，返回 head 可达的 changeset 数（合入遍历的规模）与其遍历耗时、第一父链深度、每表距最近快照的提交数；只授权给 `agentdb_manager`；旧安装用 `db.py install-history-health`，`scripts/check_history_health.py` 核验 |
 | `db.py` | 连接既有 PostgreSQL；不承担版本算法，不隐式启停数据库。`Session` 复用一个 psql 进程，每次调用的语义须与 `Connection.execute` 单次进程一致 |
 | `agent_state/storage.py` | 公共对象/错误契约、原有 GCS 适配与内存测试替身 |
 | `agent_state/heads.py`、`oss.py`、`s3.py` | 条件发布接口与提供商适配；不能以普通覆盖代替原子条件操作 |
@@ -94,6 +94,10 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `review_local.py`、`agent_lab.py` | 仅限现有本机 PostgreSQL 的专用测试库；分别记录脚本并发与真实 GPT 行为 |
 | `agent_lab_gateway.py` | 可选的回环常驻进程，为 `agent_lab.py` 的工作动作复用 `db.Session`；默认关闭，未运行时 `agent_lab.py` 行为不变；不重试，不并入 `agent_state/server.py`（见 [设计](docs/AGENT_LAB_GATEWAY.md)） |
 | `experiments/gpt_repeat/` | 真实 GPT 重复实验、原始 RPC JSONL、独立 SQL 核验及离线统计；不修改生产版本算法，不把预期冲突或服务中断隐藏为成功 |
+| `scripts/` | 基准、迁移核验与预发布演练；在项目根目录以 `python scripts/<name>.py` 运行，脚本自行把根目录加入 `sys.path`；纳入版本库的结果默认写入 `results/` |
+| `results/`、`examples/` | 文档中数字对应的原始结果（`results/staging/` 为预发布虚拟机）；可直接用 psql 运行的 SQL 示例 |
+
+以下文件留在根目录，不要移入 `scripts/`：`db.py`、`run_tests.py` 是主入口；`experiments/gpt_repeat/run_gpt_repeats.py` 按根目录路径调用并记录 `agent_lab.py`、`review_local.py` 的哈希；`agent_lab.py` 按模块名导入 `agent_lab_gateway`；ECS 部署包与 `install.sh` 按根目录路径使用 `smoke_cloud.py` 和 `requirements-*.txt`。
 
 核心依赖方向为 `runtime → engine → objects / HeadStore → 存储适配器`。网络、时钟、数据库与存储通过明确边界接入，便于替换和故障注入。SDK 集成留在适配器或启动装配层；新增薄层必须解决实际耦合，不为每个函数制造接口。
 
@@ -131,14 +135,14 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 |---|---|
 | PostgreSQL 版本引擎 | `python run_tests.py`：连接现有服务并创建专用测试数据库；不向项目业务库导入测试数据 |
 | 管理状态与 HTTP | `.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v` |
-| agent_lab 网关 | 单元测试含在上一行中（基于黄金样本，不连数据库）；`python compare_agent_lab_gateway.py` 新建两个 `agentdb_test_gpt_*` 库，对比逐次起进程与经网关两条路径的输出和耗时 |
-| 恢复读取结构 | `.\.venv-cloud\Scripts\python.exe benchmark_cloud_state.py`：内存后端，检查历史增长时的读取量 |
-| 维护与 PG 接手 | `.\.venv-cloud\Scripts\python.exe integration_cloud_postgres.py --database agentdb_test_EXISTING`：替换为已安装示例的测试库 |
-| OSS 读取结构 | `.\.venv-cloud\Scripts\python.exe benchmark_oss_protocol.py`：使用内存 OSS 服务模型，不代表云端性能 |
+| agent_lab 网关 | 单元测试含在上一行中（基于黄金样本，不连数据库）；`python scripts/compare_agent_lab_gateway.py` 新建两个 `agentdb_test_gpt_*` 库，对比逐次起进程与经网关两条路径的输出和耗时 |
+| 恢复读取结构 | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_cloud_state.py`：内存后端，检查历史增长时的读取量 |
+| 维护与 PG 接手 | `.\.venv-cloud\Scripts\python.exe scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING`：替换为已安装示例的测试库 |
+| OSS 读取结构 | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_oss_protocol.py`：使用内存 OSS 服务模型，不代表云端性能 |
 | 本机审查与全部合入 | `.\.venv-cloud\Scripts\python.exe review_local.py`：新建专用测试库；18 项原断言、受限角色、两个中断窗口和十个分支最终全部合入，以及 main 锁被占用时合入报告 `lock_timeout`；计时包含 COMMIT；写入者默认每人复用一个长连接，`--client spawn` 恢复为每次调用启动进程 |
-| 历史增长迁移 | `.\.venv-cloud\Scripts\python.exe check_history_migration.py`：新建旧版（0bf7309）测试库，迁移两次后逐项比较读取与合入结果、授权和新安装定义，并经 `SnapshotMaintenance.run_due`（MemoryStore）执行快照策略 |
-| 历史健康检查 | `.\.venv-cloud\Scripts\python.exe check_history_health.py`：新建 006 之前（d5c68b0）的测试库并写入分支、合入与快照历史，迁移两次后核对数据、读取与合入结果及已有函数不变，`vc.history_health` 为 STABLE、仅 `agentdb_manager` 可执行、与新安装一致，各分支数值与独立查询及 `vc.snapshot_due` 相符，再经 `SnapshotMaintenance.check_history`（MemoryStore）发布一次、重跑不发布；单元测试见 `tests/test_cloud_state.py` 的 `HistoryHealthTests` |
-| 预发布虚拟机 S4/S5 | `.\.venv-cloud\Scripts\python.exe staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`：只对 [预发布虚拟机](docs/STAGING_VM.md) 运行；restart/crash/netcut 会通过 VBoxManage 断电、重启或断网，切勿指向重要数据库；结果见 [S4/S5](docs/STAGING_S4_S5.md) |
+| 历史增长迁移 | `.\.venv-cloud\Scripts\python.exe scripts/check_history_migration.py`：新建旧版（0bf7309）测试库，迁移两次后逐项比较读取与合入结果、授权和新安装定义，并经 `SnapshotMaintenance.run_due`（MemoryStore）执行快照策略 |
+| 历史健康检查 | `.\.venv-cloud\Scripts\python.exe scripts/check_history_health.py`：新建 006 之前（d5c68b0）的测试库并写入分支、合入与快照历史，迁移两次后核对数据、读取与合入结果及已有函数不变，`vc.history_health` 为 STABLE、仅 `agentdb_manager` 可执行、与新安装一致，各分支数值与独立查询及 `vc.snapshot_due` 相符，再经 `SnapshotMaintenance.check_history`（MemoryStore）发布一次、重跑不发布；单元测试见 `tests/test_cloud_state.py` 的 `HistoryHealthTests` |
+| 预发布虚拟机 S4/S5 | `.\.venv-cloud\Scripts\python.exe scripts/staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`：只对 [预发布虚拟机](docs/STAGING_VM.md) 运行；restart/crash/netcut 会通过 VBoxManage 断电、重启或断网，切勿指向重要数据库；结果见 [S4/S5](docs/STAGING_S4_S5.md) |
 | 真实云端（未执行，当前暂缓） | `smoke_cloud.py` 仅保留为以后联调入口；当前不运行，不据此宣称任何提供商已通过验证 |
 
 真实模型实验遵循预登记协议：记录接口返回的精确模型 ID、推理强度、运行器版本、提示词与源文件哈希；不把未暴露的权重快照猜成确定版本。固定样本数并保留失败，不以新轮次替换失败轮次。保存未经摘要或截断的工具请求/响应 JSONL，逐 Agent 保存累计用量最后值；缓存输入与推理输出是子项，缺失用量保持未知。每次实际写入后独立核查已发布内容和对方分支，发生覆盖后又恢复仍计为失败。区分受控恢复提示、脚本压力测试和模型自主行为；云端状态仍未经真实验证。
@@ -147,7 +151,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 涉及并发/恢复的变更至少核验：旧版本竞争、旧命令重试、发布前后中断、缓存失效竞态、固定版本一致性与上下文省略提示。涉及新格式时增加旧数据兼容检查；不要用跑通新建空库代替迁移验证。
 
-交付说明改了什么、为什么、本地检查结果和剩余限制。区分内存模拟、SDK 契约与真实本机 PostgreSQL；各云提供商均须注明未经真实验证，删除任何将本地结果包装为云端成功的表述。容量与延迟结论注明负载和环境。本机记录见 [版本引擎验证](VALIDATION.md) 与 [状态模块本地测试](docs/CLOUD_STATE_VALIDATION.md)，不能当作以后改动已经自动通过的证明。
+交付说明改了什么、为什么、本地检查结果和剩余限制。区分内存模拟、SDK 契约与真实本机 PostgreSQL；各云提供商均须注明未经真实验证，删除任何将本地结果包装为云端成功的表述。容量与延迟结论注明负载和环境。本机记录见 [版本引擎验证](docs/VALIDATION.md) 与 [状态模块本地测试](docs/CLOUD_STATE_VALIDATION.md)，不能当作以后改动已经自动通过的证明。
 
 ---
 
@@ -165,7 +169,7 @@ This file is the task entry point and the architectural constraints, not a compl
 
 - [Anthropic: Redesigning source control at Anthropic](https://www.anthropic.com/engineering/redesigning-source-control): re-read on 2026-10-16; the page is marked as updated on 2026-10-15. Its architectural principles are adopted and applied to this project's database and management-state scenarios.
 - Module refactoring framework (the author's local document, not in this repository): its staged, behavior-preserving, verifiable and reversible refactoring process is adopted.
-- The current implementation and the constraints the user has settled are in [README](README.md), [Version engine design](DESIGN_REVIEW.md), [Cloud state design](docs/CLOUD_STATE_DESIGN.md) and [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md). The specific interface, capacity and transaction requirements below come from this project.
+- The current implementation and the constraints the user has settled are in [README](README.md), [Version engine design](docs/DESIGN_REVIEW.md), [Cloud state design](docs/CLOUD_STATE_DESIGN.md) and [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md). The specific interface, capacity and transaction requirements below come from this project.
 
 ## Distilled Scion principles
 
@@ -229,9 +233,9 @@ The rule text that a formal task will adopt is stored as cloud evidence, and its
 | `sql/001_core.sql` | Version model, pinned-version reads, commits, merges and snapshots; keep transaction and history semantics |
 | `sql/002_demo_app.sql` | Demo business tables, views and onboarding; do not spread the demo structure into the generic version algorithm |
 | `sql/003_manager_role.sql` | Re-runnable migration for the restricted management role and the snapshot status function; does not rewrite history |
-| `sql/004_merge_batch.sql` | Re-runnable migration: replaces `vc.merge` with the same definition as in 001 (one `rows_at` per table); the two must stay consistent; old installations use `db.py install-merge-batch`, verified by `check_merge_migration.py` |
-| `sql/005_bounded_history.sql` | Re-runnable migration, run after 001–004 in new installations: replaces `vc._ancestors`, `vc.rows_at`, `vc._file_state`, `vc.merge_base` and `vc.merge` with equivalent definitions (parent edges walked step by step through the index, `_file_state` stops as soon as it finds the path, merges check only paths that may differ), and adds `vc._merge_base` and the read-only snapshot policy `vc.snapshot_due`; the definitions of these functions in 001 are the old ones, and 005 takes precedence; old installations use `db.py install-bounded-history`, verified by `check_history_migration.py` (see [History growth](docs/HISTORY_GROWTH.md)) |
-| `sql/006_history_health.sql` | Re-runnable, read-only migration, run after 005 in new installations: adds the STABLE function `vc.history_health(branch)`, which returns the number of changesets reachable from head (the size of the merge traversal) and its traversal time, the first-parent chain depth, and the number of commits per table since the latest snapshot; granted only to `agentdb_manager`; old installations use `db.py install-history-health`, verified by `check_history_health.py` |
+| `sql/004_merge_batch.sql` | Re-runnable migration: replaces `vc.merge` with the same definition as in 001 (one `rows_at` per table); the two must stay consistent; old installations use `db.py install-merge-batch`, verified by `scripts/check_merge_migration.py` |
+| `sql/005_bounded_history.sql` | Re-runnable migration, run after 001–004 in new installations: replaces `vc._ancestors`, `vc.rows_at`, `vc._file_state`, `vc.merge_base` and `vc.merge` with equivalent definitions (parent edges walked step by step through the index, `_file_state` stops as soon as it finds the path, merges check only paths that may differ), and adds `vc._merge_base` and the read-only snapshot policy `vc.snapshot_due`; the definitions of these functions in 001 are the old ones, and 005 takes precedence; old installations use `db.py install-bounded-history`, verified by `scripts/check_history_migration.py` (see [History growth](docs/HISTORY_GROWTH.md)) |
+| `sql/006_history_health.sql` | Re-runnable, read-only migration, run after 005 in new installations: adds the STABLE function `vc.history_health(branch)`, which returns the number of changesets reachable from head (the size of the merge traversal) and its traversal time, the first-parent chain depth, and the number of commits per table since the latest snapshot; granted only to `agentdb_manager`; old installations use `db.py install-history-health`, verified by `scripts/check_history_health.py` |
 | `db.py` | Connects to the existing PostgreSQL; does not carry the version algorithm and does not implicitly start or stop the database. `Session` reuses one psql process, and the semantics of each call must match a single-process `Connection.execute` |
 | `agent_state/storage.py` | Common object/error contract, the original GCS adapter and the in-memory test double |
 | `agent_state/heads.py`, `oss.py`, `s3.py` | Conditional publishing interface and provider adapters; ordinary overwrites must not replace atomic conditional operations |
@@ -247,6 +251,10 @@ The rule text that a formal task will adopt is stored as cloud evidence, and its
 | `review_local.py`, `agent_lab.py` | Only for dedicated test databases on the existing local PostgreSQL; record scripted concurrency and real GPT behavior respectively |
 | `agent_lab_gateway.py` | Optional loopback long-running process that reuses `db.Session` for `agent_lab.py`'s work actions; off by default, and when it is not running `agent_lab.py` behaves unchanged; no retries, not merged into `agent_state/server.py` (see [design](docs/AGENT_LAB_GATEWAY.md)) |
 | `experiments/gpt_repeat/` | Real GPT repeat experiment, raw RPC JSONL, independent SQL verification and offline statistics; does not modify the production version algorithm, and does not hide expected conflicts or service interruptions as successes |
+| `scripts/` | Benchmarks, migration checks and staging drills; run from the project root as `python scripts/<name>.py`, each script adds the root to `sys.path` itself; committed results go to `results/` by default |
+| `results/`, `examples/` | Raw results behind the numbers in the docs (`results/staging/` is the staging VM); SQL examples that run directly with psql |
+
+These files stay in the project root; do not move them into `scripts/`: `db.py` and `run_tests.py` are the main entry points; `experiments/gpt_repeat/run_gpt_repeats.py` calls `agent_lab.py` and hashes it and `review_local.py` by their root paths; `agent_lab.py` imports `agent_lab_gateway` by module name; the ECS bundle and `install.sh` use `smoke_cloud.py` and `requirements-*.txt` at the root.
 
 The core dependency direction is `runtime → engine → objects / HeadStore → storage adapters`. Network, clock, database and storage are connected through explicit boundaries, which makes replacement and fault injection easy. SDK integration stays in the adapter or startup-wiring layer; a new thin layer must solve an actual coupling, not create an interface for every function.
 
@@ -284,14 +292,14 @@ From the project root, choose checks according to the scope of the change; after
 |---|---|
 | PostgreSQL version engine | `python run_tests.py`: connects to the existing service and creates a dedicated test database; does not import test data into the project business database |
 | Management state and HTTP | `.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v` |
-| agent_lab gateway | Unit tests are included in the previous line (based on golden samples, no database connection); `python compare_agent_lab_gateway.py` creates two `agentdb_test_gpt_*` databases and compares the output and timing of the spawn-a-process-per-call path and the gateway path |
-| Recovery read structure | `.\.venv-cloud\Scripts\python.exe benchmark_cloud_state.py`: in-memory backend, checks read volume as history grows |
-| Maintenance and PG hand-off | `.\.venv-cloud\Scripts\python.exe integration_cloud_postgres.py --database agentdb_test_EXISTING`: replace with a test database that has the demo installed |
-| OSS read structure | `.\.venv-cloud\Scripts\python.exe benchmark_oss_protocol.py`: uses the in-memory OSS service model, does not represent cloud performance |
+| agent_lab gateway | Unit tests are included in the previous line (based on golden samples, no database connection); `python scripts/compare_agent_lab_gateway.py` creates two `agentdb_test_gpt_*` databases and compares the output and timing of the spawn-a-process-per-call path and the gateway path |
+| Recovery read structure | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_cloud_state.py`: in-memory backend, checks read volume as history grows |
+| Maintenance and PG hand-off | `.\.venv-cloud\Scripts\python.exe scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING`: replace with a test database that has the demo installed |
+| OSS read structure | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_oss_protocol.py`: uses the in-memory OSS service model, does not represent cloud performance |
 | Local review and merging everything | `.\.venv-cloud\Scripts\python.exe review_local.py`: creates a dedicated test database; the 18 original assertions, the restricted role, the two interruption windows and the final merging of all ten branches, plus a merge reporting `lock_timeout` while the main lock is held; timings include COMMIT; by default each writer reuses one long-lived connection, and `--client spawn` restores starting a process per call |
-| History growth migration | `.\.venv-cloud\Scripts\python.exe check_history_migration.py`: creates an old-version (0bf7309) test database, migrates twice, then compares read and merge results, grants and the new-installation definitions item by item, and runs the snapshot policy through `SnapshotMaintenance.run_due` (MemoryStore) |
-| History health check | `.\.venv-cloud\Scripts\python.exe check_history_health.py`: creates a pre-006 (d5c68b0) test database and writes branch, merge and snapshot history, migrates twice, then checks that data, read and merge results and existing functions are unchanged, that `vc.history_health` is STABLE, executable only by `agentdb_manager` and identical to a new installation, and that each branch's values match independent queries and `vc.snapshot_due`; then publishes once through `SnapshotMaintenance.check_history` (MemoryStore), and a rerun does not publish; unit tests are `HistoryHealthTests` in `tests/test_cloud_state.py` |
-| Staging VM S4/S5 | `.\.venv-cloud\Scripts\python.exe staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`: run only against the [staging VM](docs/STAGING_VM.md); restart/crash/netcut power off, restart or disconnect the network through VBoxManage, so never point it at an important database; results are in [S4/S5](docs/STAGING_S4_S5.md) |
+| History growth migration | `.\.venv-cloud\Scripts\python.exe scripts/check_history_migration.py`: creates an old-version (0bf7309) test database, migrates twice, then compares read and merge results, grants and the new-installation definitions item by item, and runs the snapshot policy through `SnapshotMaintenance.run_due` (MemoryStore) |
+| History health check | `.\.venv-cloud\Scripts\python.exe scripts/check_history_health.py`: creates a pre-006 (d5c68b0) test database and writes branch, merge and snapshot history, migrates twice, then checks that data, read and merge results and existing functions are unchanged, that `vc.history_health` is STABLE, executable only by `agentdb_manager` and identical to a new installation, and that each branch's values match independent queries and `vc.snapshot_due`; then publishes once through `SnapshotMaintenance.check_history` (MemoryStore), and a rerun does not publish; unit tests are `HistoryHealthTests` in `tests/test_cloud_state.py` |
+| Staging VM S4/S5 | `.\.venv-cloud\Scripts\python.exe scripts/staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`: run only against the [staging VM](docs/STAGING_VM.md); restart/crash/netcut power off, restart or disconnect the network through VBoxManage, so never point it at an important database; results are in [S4/S5](docs/STAGING_S4_S5.md) |
 | Real cloud (not run, currently on hold) | `smoke_cloud.py` is kept only as a future integration entry point; it is not run now, and no provider is claimed to have passed verification on its basis |
 
 Real-model experiments follow a pre-registered protocol: record the exact model ID returned by the interface, reasoning effort, runner version, and hashes of the prompts and source files; do not guess an unexposed weight snapshot as a definite version. Fix the sample size and keep failures; do not replace failed rounds with new ones. Save tool request/response JSONL without summarizing or truncating, and save the last value of each Agent's cumulative usage; cached input and reasoning output are sub-items, and missing usage stays unknown. After each actual write, independently check the published content and the other party's branch; an overwrite that is later restored still counts as a failure. Distinguish controlled recovery prompts, scripted stress tests and autonomous model behavior; cloud state is still not verified against real cloud services.
@@ -300,4 +308,4 @@ Existing records are in [Real GPT repeat experiment](docs/GPT_REPEAT_EXPERIMENT.
 
 Changes involving concurrency/recovery must at least verify: stale-version races, retries of old commands, interruptions before and after publishing, cache invalidation races, pinned-version consistency and context omission markers. When a new format is involved, add a compatibility check against old data; do not substitute running successfully on a newly created empty database for migration verification.
 
-Delivery notes state what was changed, why, the local check results and the remaining limitations. Distinguish in-memory simulation, SDK contracts and the real local PostgreSQL; each cloud provider must be noted as not verified against real cloud services, and any wording that packages local results as cloud success must be removed. Capacity and latency conclusions must state the load and environment. Local records are in [Version engine validation](VALIDATION.md) and [State module local tests](docs/CLOUD_STATE_VALIDATION.md); they cannot be taken as proof that later changes have automatically passed.
+Delivery notes state what was changed, why, the local check results and the remaining limitations. Distinguish in-memory simulation, SDK contracts and the real local PostgreSQL; each cloud provider must be noted as not verified against real cloud services, and any wording that packages local results as cloud success must be removed. Capacity and latency conclusions must state the load and environment. Local records are in [Version engine validation](docs/VALIDATION.md) and [State module local tests](docs/CLOUD_STATE_VALIDATION.md); they cannot be taken as proof that later changes have automatically passed.

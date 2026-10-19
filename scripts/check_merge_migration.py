@@ -12,13 +12,16 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import uuid
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from db import add_connection_arguments
 from review_local import connect, seed
 import run_tests
 
-ROOT = Path(__file__).resolve().parent
 OLD_LOOKUP = "SELECT r.doc INTO ours FROM vc.rows_at(ctx.base,t.id) r WHERE r.pk=d.pk;"
 MERGE = "'vc.merge(text,uuid,uuid,text)'::regprocedure"
 
@@ -73,7 +76,7 @@ def main():
     add_connection_arguments(parser)
     parser.add_argument("--old-ref", default="8aeb3d7",
                         help="git commit whose sql/001_core.sql has the per-row vc.merge (default 8aeb3d7)")
-    parser.add_argument("--output", type=Path, default=ROOT / "merge-batch-migration-results.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "results" / "merge-batch-migration-results.json")
     args = parser.parse_args()
     old_core = subprocess.run(["git", "show", f"{args.old_ref}:sql/001_core.sql"], cwd=ROOT, check=True,
                               capture_output=True, text=True, encoding="utf-8").stdout

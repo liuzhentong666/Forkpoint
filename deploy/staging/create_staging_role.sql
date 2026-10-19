@@ -16,7 +16,7 @@ BEGIN
     CREATE ROLE agentdb_manager NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB
       NOCREATEROLE NOREPLICATION NOBYPASSRLS;
   END IF;
-  -- CREATEDB: run_tests.py, review_local.py and check_merge_migration.py each
+  -- CREATEDB: run_tests.py, review_local.py and scripts/check_merge_migration.py each
   -- create their own agentdb_test_* database and own everything in it.
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agentdb_staging') THEN
     CREATE ROLE agentdb_staging LOGIN NOSUPERUSER NOCREATEROLE CREATEDB

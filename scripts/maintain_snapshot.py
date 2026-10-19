@@ -2,6 +2,9 @@
 import argparse
 import json
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from db import Connection, add_connection_arguments
 from agent_state.engine import Engine
 from agent_state.runtime import Runtime

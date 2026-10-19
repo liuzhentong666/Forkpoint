@@ -31,11 +31,13 @@ import threading
 import time
 import uuid
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from db import FLAGS, Connection, add_connection_arguments
 from review_local import seed
 import run_tests
 
-ROOT = Path(__file__).resolve().parent
 WRITERS = 10
 MODES = ("baseline", "spawn_concurrent", "spawn_serialized", "persistent_concurrent", "persistent_serialized")
 
@@ -460,7 +462,7 @@ def main():
     parser.add_argument("--runs", type=int, default=3, help="Repetitions per mode (default 3)")
     parser.add_argument("--modes", nargs="+", choices=MODES, default=list(MODES))
     parser.add_argument("--profile-runs", type=int, default=3, help="track_functions profiling runs (0 to skip)")
-    parser.add_argument("--output", type=Path, default=ROOT / "merge-benchmark-results.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "results" / "merge-benchmark-results.json")
     parser.add_argument("--reanalyze", action="store_true",
                         help="Rebuild derived fields of --output from its raw calls; no database access")
     args = parser.parse_args()

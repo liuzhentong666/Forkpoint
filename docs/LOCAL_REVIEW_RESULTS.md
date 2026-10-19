@@ -59,7 +59,7 @@
 
 十个来源提交均可从最终 main 沿父边到达，固定基线仍保持原值，没有遗留工作事务。只有 `40001` 陈旧版本错误触发有界重读重试，语义冲突不会被盲目重试。
 
-计时包含客户端、WSL/psql 启动、等待、重试和最终 COMMIT，不含测试库初始化、其他检查及末尾完整性核验。所有写者起初刻意竞争同一个 head；这是一次本机争用实验，不能推导生产吞吐或模型协作能力。45 次重试也提示后续应测量退避/合入调度的收益。原始结果见 [本机审查结果](../local-review-results.2026-10-17-spawn.json)（`local-review-results.json` 会被之后的运行覆盖）。耗时分解与后续建议见 [合入耗时分解](MERGE_BENCHMARK.md)。此后 `review_local.py` 的写入者默认复用长连接，复测结果也记录在该文档中。
+计时包含客户端、WSL/psql 启动、等待、重试和最终 COMMIT，不含测试库初始化、其他检查及末尾完整性核验。所有写者起初刻意竞争同一个 head；这是一次本机争用实验，不能推导生产吞吐或模型协作能力。45 次重试也提示后续应测量退避/合入调度的收益。原始结果见 [本机审查结果](../results/local-review-results.2026-10-17-spawn.json)（`local-review-results.json` 会被之后的运行覆盖）。耗时分解与后续建议见 [合入耗时分解](MERGE_BENCHMARK.md)。此后 `review_local.py` 的写入者默认复用长连接，复测结果也记录在该文档中。
 
 ## 5. 真实 GPT 实验
 
@@ -161,7 +161,7 @@ Dedicated database: `agentdb_test_review_2a02f90171`. 4,000 product rows; ten sc
 
 All ten source commits are reachable from the final main along parent edges, the pinned baseline still keeps its original values, and there are no leftover work transactions. Only `40001` stale-version errors trigger bounded re-read retries; semantic conflicts are not retried blindly.
 
-Timing includes the client, WSL/psql startup, waiting, retries and the final COMMIT, but not test database initialization, other checks or the final integrity verification. All writers deliberately compete for the same head at first; this is a local contention experiment, from which production throughput or model collaboration ability cannot be inferred. The 45 retries also suggest that the benefit of backoff/merge scheduling should be measured later. The raw results are in [local review results](../local-review-results.2026-10-17-spawn.json) (`local-review-results.json` is overwritten by later runs). For the timing breakdown and follow-up recommendations see [Merge timing breakdown](MERGE_BENCHMARK.md). After this, the writers of `review_local.py` reuse long-lived connections by default, and the re-measurement results are also recorded in that document.
+Timing includes the client, WSL/psql startup, waiting, retries and the final COMMIT, but not test database initialization, other checks or the final integrity verification. All writers deliberately compete for the same head at first; this is a local contention experiment, from which production throughput or model collaboration ability cannot be inferred. The 45 retries also suggest that the benefit of backoff/merge scheduling should be measured later. The raw results are in [local review results](../results/local-review-results.2026-10-17-spawn.json) (`local-review-results.json` is overwritten by later runs). For the timing breakdown and follow-up recommendations see [Merge timing breakdown](MERGE_BENCHMARK.md). After this, the writers of `review_local.py` reuse long-lived connections by default, and the re-measurement results are also recorded in that document.
 
 ## 5. Real GPT experiment
 

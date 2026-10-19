@@ -1,439 +1,177 @@
-中文 | [English](#english-version)
+# AgentDB
 
-# AgentDB PostgreSQL：代码与业务表的联合版本管理
+**Git-style branches for AI agents, inside PostgreSQL.** Each agent works on its own branch, commits code files and table rows together, and merges into `main` only if nobody else's work gets overwritten and your real constraints still hold.
 
-> **云服务状态（2026-10-17）：未经真实验证。** 阿里云 OSS、GCS、S3 均未完成真实云端读写或联调，ECS 状态服务未部署。云端部署暂缓，当前只开展本地开发和模拟测试；本地测试结果不能作为云存储已验证或部署可用的依据。
+[中文说明](README.zh-CN.md) · [Technical blog](docs/TECHNICAL_BLOG.md) · [Design notes](docs/DESIGN_REVIEW.md)
 
-目标规模：第一阶段单张业务表约 **4,000 行、10 个 Agent 并发写入**。
+![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)
 
-这个方向采用你提供的 PostgreSQL 计划：代码对象、changeset 和业务记录历史保存在同一个 PostgreSQL 数据库中，普通 main 表与分支视图共存。核心逻辑由 SQL / PL/pgSQL 实现，没有 SQLite 依赖。
+## Why
 
-它是构建面向 Agent 的数据库系统的第一阶段：先验证版本、隔离、事务与合入语义。PostgreSQL 负责事务、恢复和原生约束；本项目实现代码与数据的版本模型。当前仍是单节点实现，不声称已经替代分布式 Spanner。
+When several agents edit the same database, they run into the problems Git solved for developers. One agent overwrites another's change. Another reads data that moved under it halfway through its task. A third changes a pricing rule in code but not the prices that depend on it.
 
-## 项目亮点
+AgentDB adds Git's answers to an ordinary PostgreSQL database:
 
-AgentDB 让多个 AI Agent 像使用 Git 一样使用数据库：在各自隔离的分支上同时修改代码和业务数据，一次提交、按固定版本读取，再安全地合入主线。
+- **Branches.** An agent forks a branch from a pinned version. Later changes on `main` don't leak into it.
+- **Commits that hold code and data.** A changed file and the changed rows are published in one transaction. If either fails, neither lands.
+- **Merges that refuse to guess.** A merge based on an old `main` is rejected. So is a merge that conflicts with someone else's change. Each failure has its own error code, so the agent knows whether to retry or redo its work.
 
-| 优势 | 做法 | 依据 |
-|---|---|---|
-| **代码与数据一起提交** | 代码文件、changeset 和业务行的变更在同一个 PostgreSQL 事务中发布；任何一步失败都整体回滚 | `run_tests.py` 的 `code_and_native_data_publish_atomically` |
-| **分支几乎零成本** | 建分支不复制业务行或代码（实测新增行历史 0 条）；分支读取固定版本，不受 main 后续变化影响 | [本机验证](VALIDATION.md) |
-| **并发安全，冲突可区分** | 基于旧 head 的合入被明确拒绝（`40001` stale_head），内容冲突单独报告（`P0001` merge_conflict），等锁超时报告为 `lock_timeout`（`55P03`）；Agent 能分清“重读后重试”和“需要重新提案” | 10 个连接竞争同一旧 head：1 个成功、9 个被明确拒绝 |
-| **由真实约束把关** | 合入 main 时由 PostgreSQL 原生 UNIQUE、外键、CHECK 校验，违反即整次回滚 | `run_tests.py` 的三项约束违规用例 |
-| **历史变长后依然快** | 父边走索引、文件状态找到即停、按策略物化快照：main 上 2,000 个提交时，一次 10 行合入 181 ms、一次提交约 20 ms（修复前为 50.7 s 和 499 ms） | [S4/S5 第 7 节](docs/STAGING_S4_S5.md)（预发布虚拟机） |
-| **经过故障演练** | 断电时 201 个已确认提交全部保留，没有半个提交；备份恢复 13 项指纹完全一致；正常重启、会话被终止、断网均通过；失联客户端持有的锁约 60 s 内由服务器自动释放 | [S4/S5 结果](docs/STAGING_S4_S5.md) |
-| **为 Agent 设计** | 结构化错误、固定版本读取与按版本读代码；受限维护角色；可恢复的维护协议（两个中断窗口均经测试）；管理 Agent 自动监测历史增长并在越线时报告 | [本机审查](docs/LOCAL_REVIEW_RESULTS.md)、[管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md) |
-| **用真实模型检验** | 两个 GPT Agent 处理同一商品的预登记十轮实验：完成的 8 轮全部达成目标，覆盖对方已发布内容 0 次；另 2 轮因模型服务额度中断，计入失败 | [十轮实验](docs/GPT_REPEAT_EXPERIMENT.md) |
-| **安全接入与证据可复查** | 远程连接只接受 TLS `verify-full`，测试以非超级用户运行；每项结论都有原始结果文件和可重跑的脚本 | [S1 结果](docs/STAGING_S1_RESULTS.md)、`staging-results/` |
+It is plain SQL and PL/pgSQL, with no extension and no separate server. The Python files are a thin CLI and test harness.
 
-**当前定位**：单节点 PostgreSQL，第一阶段目标为单表约 4,000 行、10 个 Agent 并发；以上数字来自本机与本机虚拟机上的合成负载，不是生产容量承诺；云端对象存储状态服务尚未经真实验证；冲突按整行判断，schema 固定。详见下文“当前限制”。
+## See it work
 
-**开发方式**：本项目在 AI 编程助手的协助下开发，其中包括 Anthropic 的 Claude Code。由 Claude 参与的提交在提交信息中带有 `Co-Authored-By: Claude` 行，因此 Claude 会出现在 GitHub 的贡献者列表中；项目方向、审查与取舍由作者决定。
+Two agents start from the same version of product 101 (price 10, stock 100). One raises the price, the other cuts the stock. [`examples/two_agents.sql`](examples/two_agents.sql) runs the whole story; the key lines are:
 
-技术博客：[让 Agent 的工作可以提交、分支和接手：AgentDB 的第一阶段实现](docs/TECHNICAL_BLOG.md)，介绍当前架构、关键实现、验证结果与下一阶段问题。
+```sql
+-- Price agent: the new price and the pricing code go in one commit
+BEGIN;
+SELECT vc.begin_change('price-agent', :'base', 'price-agent', 'raise price to 11');
+UPDATE agent.products SET price = 11 WHERE id = 101;
+SELECT vc.write_file('src/pricing.py', convert_to('PRICE = 11', 'UTF8'));
+SELECT vc.finish_change() AS price_rev \gset
+COMMIT;
 
-本机审查补充：[维护恢复、受限角色与多 Agent 实验](docs/LOCAL_REVIEW_RESULTS.md)。包括旧维护者的发布冲突、两个中断窗口、非默认前缀配置路径，以及十个分支全部合入。所有云存储仍未经真实验证。
+SELECT vc.merge('main', :'price_rev', :'base', 'price-agent');        -- merged
 
-真实 GPT 重复实验：[十轮结果、逐 Agent 用量与原始 JSONL](docs/GPT_REPEAT_EXPERIMENT.md)。本组记录 10 轮、完成 8 轮、成功 8 轮，保留所有失败样本；原始日志在本机项目的 `experiments/gpt_repeat/results/2026-10-17/`，不随源码自动提交。
+-- The stock agent's branch also started at base
+SELECT vc.merge('main', :'stock_rev', :'base', 'stock-agent');
+-- ERROR 40001  Stale head: expected 6eba58d0-…, actual e2b0a9ab-…    → re-read main and retry
+SELECT vc.merge('main', :'stock_rev', vc.head(), 'stock-agent');
+-- ERROR P0001  Row conflict: table 4833e757-…, key {"id": 101}       → re-propose from the latest main
+```
 
-现有安装使用新版快照维护器前，先由数据库所有者执行 `python db.py install-manager`，新增 `vc.snapshot_status` 与 `agentdb_manager`，不改业务记录或版本历史。常规维护可加 `--role agentdb_manager`，只使用快照检查/物化权限；修改系统规则仍由原管理员身份承担。该 NOLOGIN 角色不自动分配给其他登录用户。
-
-`vc.merge` 现在每张表只调用一次 `vc.rows_at` 解析全部改动行的目标状态，冲突规则与历史不变（见 [合入耗时分解](docs/MERGE_BENCHMARK.md)）。新安装已包含；现有安装由数据库所有者执行 `python db.py install-merge-batch`（`sql/004_merge_batch.sql`，可重复执行，只替换函数；已安装 005 的库会拒绝执行，以免还原 005 的 `vc.merge`，保留授权，不改业务记录或版本历史）。`python check_merge_migration.py` 在新建的旧版测试库上核验这一迁移。
-
-历史遍历不再随全部历史长度变慢（见 [历史增长](docs/HISTORY_GROWTH.md)）：父边逐步走索引，`vc._file_state` 找到路径即停，`vc.merge` 只遍历一次目标祖先并只检查可能不同的路径；结果、错误与授权不变。新增只读快照策略 `vc.snapshot_due`，由维护执行器 `SnapshotMaintenance.run_due` 按其结果物化快照。新安装已包含；现有安装由数据库所有者执行 `python db.py install-bounded-history`（`sql/005_bounded_history.sql`，可重复执行）。`check_history_migration.py` 在新建的旧版测试库上核验。
-
-## 可替换云存储的管理 Agent 状态服务
-
-设计目标是将管理任务的最新状态、事件、规则版本与证据保存到配置选择的云端对象存储（GCS / 阿里云 OSS / S3），常驻进程只保留有界内存缓存。相关适配代码已编写，但尚无真实云服务运行结果。任务入口、条件发布、命令去重、分页历史和带预算的上下文 API 目前仅有本地实现与测试。
-
-- [多后端设计](docs/STORAGE_BACKENDS.md)：OSS 条件追加发布、GCS/S3 条件写入、兼容与容量边界。
-- [原始设计](docs/CLOUD_STATE_DESIGN.md)：有界状态、幂等命令与跨系统恢复。
-- [运行与 API](docs/CLOUD_STATE_RUNBOOK.md)：GCS 配置、常驻服务、上下文读取和 PostgreSQL 维护示例。
-- [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md)：可固定为云端规则对象的 superuser Agent 操作约定。
-- [多后端本地测试](docs/STORAGE_BACKENDS_VALIDATION.md)：内存服务模型和 SDK 测试替身的结果，不包含真实云存储。
-- [ECS 部署草案（暂缓）](docs/ALIYUN_ECS_DEPLOYMENT.md)：保留配置与脚本供以后参考；[部署脚本本地检查](docs/ALIYUN_ECS_VALIDATION.md)不代表已部署或已完成云端验证。
-
-用户已报告创建杭州 OSS 桶 `<your-oss-bucket>`，但本项目未核验该桶的配置、权限和真实读写；也没有 ECS。当前不安排云资源采购、云端联调或部署。保留的部署草案不绑定自定义域名。OSS 适配器代码设置每任务 524,288 次发布的上限，达到后需显式建立后继任务；这不是实测云端容量，且尚无透明日志轮转。PostgreSQL 继续负责代码与业务数据版本，管理状态不写入 ops schema。各后端依赖文件与 ECS 配置保留供后续开发使用。
-
-## 当前工作流程
+After the stock agent re-proposes from the latest `main`, both changes are kept:
 
 ```text
-Agent 选择固定版本
-  → 创建分支（新增指针，不复制业务表）
-  → BEGIN + begin_change(branch, expected_head)
-  → SQL 修改分支视图 + write_file 修改代码
-  → finish_change() + COMMIT
-  → 比较差异
-  → merge(main, source_revision, expected_head)
-  → 冲突检查 + PostgreSQL 原生约束检查
-  → 一个事务发布代码、历史和 main 业务表
+ id  | price | stock          pricing_code
+-----+-------+-------        --------------
+ 101 | 11.00 |    95          PRICE = 11
 ```
 
-- `app.products` / `app.orders`：真正的 PostgreSQL 业务表，代表 main。
-- `agent.products` / `agent.orders`：按选定版本读取的视图，分支写入由 `INSTEAD OF` 触发器捕获。
-- `vc.*`：历史、版本指针、不可变内容、暂存修改和可重建快照。
+The errors and the final row above come from a real run on PostgreSQL 16.15, shortened to fit; the error codes are the SQLSTATEs the engine raises. The same scenario was run with two real GPT agents in a [pre-registered ten-round experiment](docs/GPT_REPEAT_EXPERIMENT.md). All 8 rounds that finished reached the goal, and no round overwrote the other agent's work. The other 2 rounds stopped when the model service hit its usage limit; they count as failures.
 
-创建分支不会复制业务行或代码内容；仍会写入一条分支记录，并有索引/事务开销。“O(1)”只适合描述不随数据行数增长的逻辑复制工作，不能当成严格延迟保证。
+## Quick start
 
-## 使用现有的本地 PostgreSQL
+You need a PostgreSQL server (tested on 16), the `psql` client, and Python 3.10+. There are no pip packages to install.
 
-当前连接已配置为 **Ubuntu WSL 中现有的 PostgreSQL 16.15**：
-
-| 配置 | 当前值 |
-|---|---|
-| WSL 发行版 | Ubuntu |
-| 已有集群 | 16/main |
-| 客户端 | Ubuntu 的 `/usr/bin/psql` |
-| 连接 | Unix socket `/var/run/postgresql`，端口 5432 |
-| 本地系统账户 / 数据库账户 | postgres / postgres |
-| 持久项目数据库 | agentdb |
-
-Windows Python 通过 WSL 调用已经安装的 psql，并使用现有的本地认证设置。连接参数在 `connection.local.json`，该文件已加入忽略列表。项目脚本不会初始化、启动、停止或重新配置 PostgreSQL；旧 `.runtime` 目录不再被使用。
-
-`Connection.execute()` 每次调用都启动一个 `wsl.exe` + psql 进程，本机约需 0.2–2 s。需要连续调用的客户端可改用 `connection.session()`：它保持一个 psql 进程，提供同样的 `execute()` / `sql()`，本机每次调用约 1–2 ms。每次调用的行为与单独起一个进程相同：遇到第一个错误即停止（返回码非零，错误写在 stderr）；未结束的事务回滚；服务端会话状态（设置、角色、临时表、咨询锁）和 psql 变量在下一次调用前重置。一个 Session 一次只执行一个调用，每个线程或写入者各用一个。合入耗时对比见 [合入耗时分解](docs/MERGE_BENCHMARK.md)。
-
-需要 Python 3.10+，不需要第三方 Python 包。在本项目目录执行：
-
-```console
-python db.py check
+```bash
+git clone https://github.com/liuzhentong666/agentdb.git
+cd agentdb
+python db.py check                              # find psql, connect, print the server version
+python db.py install --database agentdb_demo    # create the database and install the schemas
+psql -h 127.0.0.1 -U postgres -d agentdb_demo -f examples/two_agents.sql
+python run_tests.py                             # integration tests in a throwaway agentdb_test_* database
 ```
 
-`check` 连接维护库，输出真实版本和连接信息。当前 `agentdb` 项目库已安装，并已由用户于 2026-10-18 依次执行 `install-merge-batch`、`install-bounded-history`、`install-history-health`，处于 001–006 的最新状态（业务数据仍为空）；在另一套环境首次安装时执行：
+By default `db.py` connects to `127.0.0.1:5432` as `postgres` and finds `psql` on your `PATH`. To change that, copy `connection.example.json` to `connection.local.json`. [docs/SETUP.md](docs/SETUP.md) covers passwords, remote servers (TLS `verify-full` only), PostgreSQL inside WSL, and upgrading an existing install.
 
-```console
-python db.py install
-```
-
-安装命令先创建配置中的项目库（若尚不存在），再在一个事务中按顺序安装六个 SQL 文件（版本引擎、示例业务表、受限维护角色、批量合入、有界历史遍历与快照策略、只读历史健康检查）。已有安装按 004 → 005 → 006 的顺序用对应的 `db.py install-*` 命令升级；004 在已装 005 的库上会拒绝执行。它会拒绝已有项目 schema 或用户表的目标库。项目库初始为空业务数据，不导入测试用的 4,000 条商品。
-
-安装包含 `app.products`、`app.orders` 示例表和 `agentdb_client` NOLOGIN 角色。角色是整个 PostgreSQL 实例共享的；若已存在，只授予本项目的库内权限，不修改其角色属性。当前通过本机 postgres 管理账户安装和测试；Agent 的权限示例仍使用 `agentdb_client`。
-
-进入项目数据库：
-
-```console
-wsl --distribution Ubuntu --user postgres --exec /usr/bin/psql -h /var/run/postgresql -p 5432 -U postgres -d agentdb
-```
-
-### 更换本机连接配置
-
-新环境可将 `connection.example.json` 复制为 `connection.local.json`。Windows 原生 PostgreSQL 使用 `127.0.0.1`，将 `wsl_distribution`、`wsl_user` 置空，并填写已安装的 psql 路径或将其加入 PATH。原生 Linux 也可直接使用本地 psql。
-
-参数优先级：命令行 > `PGHOST` / `PGPORT` / `PGUSER` / `PGDATABASE` / `AGENTDB_PSQL` 环境变量 > 配置文件 > 默认值。
-
-远程（非回环）PostgreSQL 只接受 `sslmode` 为 `verify-full` 且指定 `sslrootcert` 的连接；TLS 设置只取自配置文件或 `--sslmode` / `--sslrootcert`，继承的 `PGSSL*` 环境变量会被清除。预发布接入步骤与专用登录角色见 [预发布 PostgreSQL 接入](docs/STAGING.md)，整体阶段与通过条件见 [生产环境测试计划（草案）](docs/PRODUCTION_TEST_PLAN.md)。
-
-需要密码时，可在自己终端运行 `python db.py check --password`，隐藏输入且不保存。长期配置也支持 PostgreSQL 的 [密码文件](https://www.postgresql.org/docs/current/libpq-pgpass.html)：Windows 原生客户端使用 `%APPDATA%\postgresql\pgpass.conf`；WSL 客户端使用对应 Linux 用户的 `~/.pgpass`。密码不写进 JSON 或命令参数。
-
-## 运行集成测试
-
-```console
-python run_tests.py
-```
-
-测试使用同一个现有 PostgreSQL 服务，每次新建 `agentdb_test_<随机后缀>` 专用数据库，在其中安装 SQL、生成 4,000 行并执行集成测试和 10 连接并发验证。测试不写入持久项目库 `agentdb`。
-
-结果保存到 `test-results-local.json`。测试库保留供检查，服务继续运行。连接账户需要创建数据库、安装对象及切换 `agentdb_client` 角色的权限；当前本机 postgres 账户满足这些条件。
-
-## SQL 使用示例
-
-以下使用 psql 的 `\gset` 保存查询结果。每个代码块对应一个完整事务或操作。
-
-初始化 main 的代码和业务数据：
+To version your own table, create it empty with a primary key and register it. Its branch view then appears in the `agent` schema:
 
 ```sql
-BEGIN;
-SELECT vc.begin_change('main', vc.head(), 'developer', 'initial data');
-INSERT INTO app.products VALUES (1, 'book-1', 'Book', 100, 10);
-SELECT vc.write_file('src/pricing.py', convert_to('DISCOUNT = 0', 'UTF8'));
-SELECT vc.finish_change() AS initial_revision \gset
-COMMIT;
+SELECT vc.register_table('app.products');   -- agents write through agent.products
 ```
-
-创建隔离分支并联合修改代码与数据：
-
-```sql
-SELECT vc.fork('agent-pricing', :'initial_revision');
-
-BEGIN;
-SELECT vc.begin_change('agent-pricing', :'initial_revision', 'agent-pricing', 'pricing experiment');
-UPDATE agent.products SET price = 90 WHERE id = 1;
-SELECT vc.write_file('src/pricing.py', convert_to('DISCOUNT = 10', 'UTF8'));
-SELECT vc.finish_change() AS proposed_revision \gset
-COMMIT;
-```
-
-读取固定版本：
-
-```sql
-BEGIN;
-SELECT vc.pin(:'initial_revision');
-SELECT * FROM agent.products WHERE id = 1; -- 仍然是 100
-COMMIT;
-
-SELECT * FROM vc.diff_rows(:'initial_revision', :'proposed_revision', vc.table_id('app.products'));
-SELECT * FROM vc.diff_files(:'initial_revision', :'proposed_revision');
-SELECT * FROM vc.history(:'proposed_revision');
-```
-
-合入 main：
-
-```sql
-BEGIN;
-SELECT vc.merge('main', :'proposed_revision', :'initial_revision', 'reviewed-agent');
-COMMIT;
-```
-
-如果 main 已经前进，`expected_head` 检查会失败。调用方应重新读取并决定是否重新比较/合入，不能无条件覆盖。
-
-`finish_change()` 只在当前事务内建立完整版本；对其他连接的可见性与业务数据一样，等到真正 COMMIT 才发生。忘记调用它时，延迟约束触发器会阻止 COMMIT。
-
-## 已实现的关键保护
-
-- 普通 main 表的 DML 必须处于版本化写事务中；未经登记的写入被拒绝。
-- 同一行多次更新只保留最初 `before` 与最终 `after`；插入后删除会抵消。
-- 分支读取固定基线；main 继续更新不会改变旧分支。
-- 分支增量覆盖基线，包含显式删除标记和复合主键支持。
-- 代码与行变化在同一事务、同一个 changeset 下发布。
-- main 合入保留第一父提交和来源提交，按整文件/整行检测冲突。
-- 合入 main 时执行普通 SQL，由真实 UNIQUE、FK、CHECK、NOT NULL 约束检查结果。
-- 普通客户端不能直接写历史表，也不能向已发布的 changeset 追加行。
-- 已发布历史不允许 UPDATE、DELETE、TRUNCATE；数据库所有者/超级用户仍是可信管理员。
-- 快照缓存以 `(提交 ID, 逻辑表 ID)` 标识，不以不断变化的分支名标识。
-
-## 当前限制
-
-1. **固定 schema**：尚未实现 DDL 分支、迁移合并、历史 schema 重建或 event trigger 捕获。
-2. **整行冲突**：不同列的并发修改也会报告同一行冲突，尚未自动逐列合并。
-3. **业务规则**：原生约束能检查其覆盖的规则；例如“订单总量不超过库存”的跨行规则仍需专门实现，不能由 diff 自动推断。
-4. **分支允许部分无效状态**：除主键/类型检查外，分支可能暂时违反唯一键、外键等约束，合入 main 才由真实表验证。
-5. **读取成本**：分支视图可能解析/扫描整张逻辑表；逻辑快照不等于普通表的索引查询性能。`materialize` 只减少历史回放，不让 JSON 视图自动获得原表索引。
-6. **合入成本**：文件只检查分歧以来记录过的路径，行状态的回放受快照间隔限制；但每次合入仍完整遍历目标与来源的全部祖先（廉价、但与历史长度成正比，见 [历史增长](docs/HISTORY_GROWTH.md)），且需要维护执行器按 `vc.snapshot_due` 物化快照，否则 `rows_at` 回放自上次快照以来的全部提交。不适合直接推广到大规模历史或大型合并。
-7. **兼容范围**：注册空的普通表，先版本化导入；不支持 generated/identity 列、任意扩展类型、其他业务触发器的普遍兼容性或现有数据库无停机接入。
-8. **同一分支写入串行**：分支头行锁保证一致性；不同分支可并发，但全部合入同一个 main 仍会争用。
-9. **本地单租户实验**：没有完整身份认证、租户隔离、资源配额、审计身份绑定、版本保留/回收、跨节点复制与灾难恢复方案。
-10. **测试数据发布边界**：本示例可将分支数据合入本地 main；真实开发中，不应把实验产生的订单直接合入生产，应发布经验证的迁移方案。
-
-设计取舍和对原计划的修订见 [DESIGN_REVIEW.md](DESIGN_REVIEW.md)。
-
----
-
-<a id="english-version"></a>
-
-# AgentDB PostgreSQL: Joint Version Control of Code and Business Tables
-
-> **Cloud service status (2026-10-17): not verified against real cloud services.** None of Alibaba Cloud OSS, GCS or S3 has completed real cloud reads/writes or integration testing, and the ECS state service has not been deployed. Cloud deployment is on hold; only local development and simulated testing are being carried out. Local test results cannot be used as evidence that cloud storage has been verified or that a deployment is usable.
-
-Target scale: for the first phase, a single business table of about **4,000 rows, with 10 Agents writing concurrently**.
-
-This direction follows the PostgreSQL plan you provided: code objects, changesets and the history of business records are kept in the same PostgreSQL database, and ordinary main tables coexist with branch views. The core logic is implemented in SQL / PL/pgSQL, with no SQLite dependency.
-
-It is the first phase of building an Agent-oriented database system: first validate the semantics of versions, isolation, transactions and merging. PostgreSQL is responsible for transactions, recovery and native constraints; this project implements the version model for code and data. It is still a single-node implementation and does not claim to have replaced a distributed Spanner.
 
 ## Highlights
 
-AgentDB lets several AI Agents use a database the way developers use Git: each works on its own isolated branch, changes code and business data together, commits once, reads pinned versions, and merges safely into the main line.
-
-| Advantage | How | Evidence |
+| | What happens | Evidence |
 |---|---|---|
-| **Code and data commit together** | Code files, changesets and business-row changes are published in one PostgreSQL transaction; if any step fails, everything rolls back | `code_and_native_data_publish_atomically` in `run_tests.py` |
-| **Branches cost almost nothing** | Creating a branch copies no business rows or code (0 new row-history entries measured); branches read a pinned version that later changes on main do not affect | [Local validation](VALIDATION.md) |
-| **Safe concurrency, distinguishable conflicts** | A merge based on a stale head is rejected explicitly (`40001` stale_head), content conflicts are reported separately (`P0001` merge_conflict), and waiting too long for the lock is reported as `lock_timeout` (`55P03`), so an Agent can tell "re-read and retry" from "re-propose" | 10 connections racing on the same stale head: 1 succeeded, 9 were rejected explicitly |
-| **Real constraints guard main** | Merging into main runs PostgreSQL's native UNIQUE, foreign-key and CHECK constraints; a violation rolls back the whole merge | The three constraint-violation cases in `run_tests.py` |
-| **Stays fast as history grows** | Index-probed parent walks, file lookups that stop at the nearest change, and policy-driven snapshots: at 2,000 commits on main a 10-row merge takes 181 ms and a commit about 20 ms (50.7 s and 499 ms before the fix) | [S4/S5 section 7](docs/STAGING_S4_S5.md) (staging VM) |
-| **Failure-drilled** | A power cut kept all 201 acknowledged commits with no partial commit; backup and restore matched on all 13 fingerprint fields; graceful restart, a killed session and a network cut all passed; a vanished client's lock is released by the server within about 60 s | [S4/S5 results](docs/STAGING_S4_S5.md) |
-| **Built for Agents** | Structured errors, pinned-version reads and reading code at a revision; a restricted maintenance role; a recoverable maintenance protocol (both interruption windows tested); a manager Agent that watches history growth and reports when a threshold is crossed | [Local review](docs/LOCAL_REVIEW_RESULTS.md), [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md) |
-| **Tested with real models** | A pre-registered ten-round experiment with two GPT Agents editing the same product: all 8 completed rounds reached the goal, with 0 overwrites of the other Agent's published work; the other 2 rounds were interrupted by the model service's usage limit and count as failures | [Ten-round experiment](docs/GPT_REPEAT_EXPERIMENT.md) |
-| **Secure access, reviewable evidence** | Remote connections accept only TLS `verify-full`, and tests run as a non-superuser; every claim has raw result files and scripts you can rerun | [S1 results](docs/STAGING_S1_RESULTS.md), `staging-results/` |
+| **Code and data commit together** | Files, row changes and the changeset are published in one PostgreSQL transaction; any failure rolls back all of it | `code_and_native_data_publish_atomically` in [run_tests.py](run_tests.py) |
+| **Branches are cheap** | Forking copies no rows and no files (0 new row-history entries measured) | [Validation record](docs/VALIDATION.md) |
+| **Errors an agent can act on** | `40001` stale head → re-read and retry · `P0001` merge conflict → re-propose · `55P03` lock timeout → wait and retry | 10 connections racing on one stale head: 1 succeeded, 9 rejected |
+| **Real constraints guard `main`** | Merges run as ordinary SQL against the real tables, so UNIQUE, foreign keys and CHECK constraints apply | three constraint-violation cases in [run_tests.py](run_tests.py) |
+| **Stays fast as history grows** | With 2,000 commits on `main`: a 10-row merge takes 181 ms and a commit about 20 ms (50.7 s and 499 ms before the history fix) | [S4/S5 report, section 7](docs/STAGING_S4_S5.md) |
+| **Failure-drilled** | A power cut kept all 201 acknowledged commits and no partial one; backup and restore matched on 13 fingerprints; a vanished client's lock is freed in about 60 s | [S4/S5 report](docs/STAGING_S4_S5.md) |
+| **Evidence you can rerun** | Every number links to a raw result file in [results/](results/) and the script that produced it | [scripts/](scripts/) |
 
-**Current scope**: single-node PostgreSQL; the first-phase target is a table of about 4,000 rows with 10 concurrent Agents. The numbers above come from synthetic load on the local machine and a local VM, not a production capacity promise. The cloud object-storage state service is not yet verified against real cloud services; conflicts are detected per whole row, and the schema is fixed. See "Current limitations" below.
+The numbers come from synthetic load on one laptop and a local VM. They show the design works at the first-phase target (one table of about 4,000 rows, 10 concurrent agents); they are not a production capacity promise.
 
-**How it was built**: this project was developed with the help of AI coding assistants, including Anthropic's Claude Code. Commits that Claude contributed to carry a `Co-Authored-By: Claude` line in their message, which is why Claude appears in the GitHub contributors list; the project's direction, review and decisions are the author's.
-
-Technical blog: [Making Agent work committable, branchable and hand-off-able: the first-phase implementation of AgentDB](docs/TECHNICAL_BLOG.md), covering the current architecture, key implementation points, validation results and the questions for the next phase.
-
-Supplementary local review: [Maintenance recovery, restricted roles and multi-Agent experiments](docs/LOCAL_REVIEW_RESULTS.md). It includes a publishing conflict from a stale maintainer, two interruption windows, the non-default prefix configuration path, and merging all ten branches. All cloud storage remains not verified against real cloud services.
-
-Real GPT repeat experiment: [ten-round results, per-Agent usage and raw JSONL](docs/GPT_REPEAT_EXPERIMENT.md). This group recorded 10 rounds, 8 completed and 8 successful, keeping all failed samples; the raw logs are in the local project's `experiments/gpt_repeat/results/2026-10-17/` and are not committed automatically with the source code.
-
-Before an existing installation uses the new snapshot maintainer, the database owner first runs `python db.py install-manager`, which adds `vc.snapshot_status` and `agentdb_manager` without changing business records or version history. Routine maintenance can add `--role agentdb_manager` to use only the snapshot check/materialize permissions; changing system rules is still done under the original administrator identity. This NOLOGIN role is not automatically granted to other login users.
-
-`vc.merge` now calls `vc.rows_at` only once per table to resolve the target state of all changed rows; conflict rules and history are unchanged (see [Merge timing breakdown](docs/MERGE_BENCHMARK.md)). New installations already include it; for existing installations the database owner runs `python db.py install-merge-batch` (`sql/004_merge_batch.sql`, can be run repeatedly, replaces functions only; a database that already has 005 installed refuses to run it, so that 005's `vc.merge` is not reverted; grants are preserved, business records and version history are not changed). `python check_merge_migration.py` verifies this migration on a newly created old-version test database.
-
-History traversal no longer slows down with the length of the whole history (see [History growth](docs/HISTORY_GROWTH.md)): parent edges are walked step by step through the index, `vc._file_state` stops as soon as it finds the path, and `vc.merge` traverses the target's ancestors only once and checks only paths that may differ; results, errors and grants are unchanged. A new read-only snapshot policy `vc.snapshot_due` has been added, and the maintenance executor `SnapshotMaintenance.run_due` materializes snapshots according to its result. New installations already include it; for existing installations the database owner runs `python db.py install-bounded-history` (`sql/005_bounded_history.sql`, can be run repeatedly). `check_history_migration.py` verifies it on a newly created old-version test database.
-
-## Manager Agent state service with replaceable cloud storage
-
-The design goal is to save the latest state, events, rule versions and evidence of management tasks to the cloud object storage selected by configuration (GCS / Alibaba Cloud OSS / S3), with the long-running process keeping only a bounded in-memory cache. The related adapter code has been written, but there are no results from running against real cloud services yet. The task entry point, conditional publishing, command deduplication, paginated history and the budgeted context API currently have only local implementations and tests.
-
-- [Multi-backend design](docs/STORAGE_BACKENDS.md): OSS conditional-append publishing, GCS/S3 conditional writes, compatibility and capacity limits.
-- [Original design](docs/CLOUD_STATE_DESIGN.md): bounded state, idempotent commands and cross-system recovery.
-- [Operation and API](docs/CLOUD_STATE_RUNBOOK.md): GCS configuration, the long-running service, context reads and PostgreSQL maintenance examples.
-- [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md): operating conventions for the superuser Agent that can be pinned as a cloud rule object.
-- [Multi-backend local tests](docs/STORAGE_BACKENDS_VALIDATION.md): results from the in-memory service model and SDK test doubles, not including real cloud storage.
-- [ECS deployment draft (on hold)](docs/ALIYUN_ECS_DEPLOYMENT.md): configuration and scripts kept for future reference; the [local check of the deployment scripts](docs/ALIYUN_ECS_VALIDATION.md) does not mean anything has been deployed or that cloud verification has been completed.
-
-The user has reported creating the Hangzhou OSS bucket `<your-oss-bucket>`, but this project has not verified that bucket's configuration, permissions or real reads/writes; there is also no ECS. No cloud resource purchasing, cloud integration testing or deployment is currently scheduled. The retained deployment draft does not bind a custom domain. The OSS adapter code sets a limit of 524,288 publishes per task, after which a successor task must be created explicitly; this is not a measured cloud capacity, and there is no transparent log rotation yet. PostgreSQL continues to be responsible for versioning code and business data, and management state is not written to the ops schema. Each backend's dependency files and the ECS configuration are kept for later development.
-
-## Current workflow
+## How it works
 
 ```text
-Agent 选择固定版本
-  → 创建分支（新增指针，不复制业务表）
-  → BEGIN + begin_change(branch, expected_head)
-  → SQL 修改分支视图 + write_file 修改代码
-  → finish_change() + COMMIT
-  → 比较差异
-  → merge(main, source_revision, expected_head)
-  → 冲突检查 + PostgreSQL 原生约束检查
-  → 一个事务发布代码、历史和 main 业务表
+pick a pinned version
+  → fork a branch                          (a new pointer; no table copy)
+  → BEGIN; begin_change(branch, expected_head)
+  → edit rows through agent.* views, edit files with write_file()
+  → finish_change(); COMMIT
+  → diff_rows() / diff_files()
+  → merge(main, source, expected_head)     (conflict check + native constraints)
+  → code, history and main's tables are published in one transaction
 ```
 
-In English, the flow above is: the Agent picks a pinned version → creates a branch (adds a pointer, does not copy business tables) → `BEGIN` + `begin_change(branch, expected_head)` → modifies the branch views with SQL + modifies code with `write_file` → `finish_change()` + `COMMIT` → compares differences → `merge(main, source_revision, expected_head)` → conflict check + PostgreSQL native constraint check → one transaction publishes the code, the history and the main business tables.
-
-- `app.products` / `app.orders`: real PostgreSQL business tables, representing main.
-- `agent.products` / `agent.orders`: views that read at the selected version; branch writes are captured by `INSTEAD OF` triggers.
-- `vc.*`: history, version pointers, immutable content, staged changes and rebuildable snapshots.
-
-Creating a branch does not copy business rows or code content; it still writes one branch record and has index/transaction overhead. "O(1)" only describes logical copying work that does not grow with the number of data rows; it must not be taken as a strict latency guarantee.
-
-## Using the existing local PostgreSQL
-
-The current connection is configured for the **existing PostgreSQL 16.15 in Ubuntu WSL**:
-
-| Setting | Current value |
+| Schema | What it holds |
 |---|---|
-| WSL distribution | Ubuntu |
-| Existing cluster | 16/main |
-| Client | Ubuntu's `/usr/bin/psql` |
-| Connection | Unix socket `/var/run/postgresql`, port 5432 |
-| Local system account / database account | postgres / postgres |
-| Persistent project database | agentdb |
+| `app.*` | Your real tables. They are `main`. |
+| `agent.*` | One view per registered table. It shows the chosen branch or version; writes are captured by `INSTEAD OF` triggers. |
+| `vc.*` | Changesets, branch heads, file blobs, row history, and rebuildable snapshots. |
 
-Windows Python calls the already installed psql through WSL and uses the existing local authentication settings. The connection parameters are in `connection.local.json`, which has been added to the ignore list. The project scripts do not initialize, start, stop or reconfigure PostgreSQL; the old `.runtime` directory is no longer used.
+Guarantees enforced by the database:
 
-Each call to `Connection.execute()` starts a `wsl.exe` + psql process, which takes about 0.2–2 s on this machine. Clients that need consecutive calls can use `connection.session()` instead: it keeps one psql process and provides the same `execute()` / `sql()`, at about 1–2 ms per call on this machine. Each call behaves the same as starting a separate process: it stops at the first error (non-zero return code, error written to stderr); an unfinished transaction is rolled back; server-side session state (settings, role, temporary tables, advisory locks) and psql variables are reset before the next call. A Session executes only one call at a time; use one per thread or writer. For the merge timing comparison see [Merge timing breakdown](docs/MERGE_BENCHMARK.md).
+- Writes to `app.*` outside a versioned change are rejected.
+- A published changeset can't be updated, deleted or appended to.
+- If you forget `finish_change()`, `COMMIT` fails and the table changes roll back.
+- Repeated updates to a row in one change collapse to one before/after pair. An insert followed by a delete cancels out.
 
-Python 3.10+ is required; no third-party Python packages are needed. Run in this project directory:
+Main SQL functions: `vc.head`, `vc.fork`, `vc.pin`, `vc.checkout`, `vc.begin_change`, `vc.finish_change`, `vc.write_file`, `vc.read_file`, `vc.diff_rows`, `vc.diff_files`, `vc.history`, `vc.merge`, `vc.register_table`. The full design and the trade-offs are in [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md).
 
-```console
-python db.py check
+## How it compares
+
+| | AgentDB | [Dolt](https://github.com/dolthub/dolt) | [Neon](https://neon.tech) branching |
+|---|---|---|---|
+| Runs in | Your existing PostgreSQL | Its own database engine (MySQL-compatible; Doltgres for PostgreSQL) | Neon's hosted PostgreSQL |
+| A branch is | A pointer plus the rows changed on it | A branch of the versioned tables | A copy-on-write copy of the whole database |
+| Merge back into `main` | Row-level three-way merge, checked by your constraints | Cell-level three-way merge | Not row by row |
+| Versions code files too | Yes, in the same commit as the rows | No | No |
+| Maturity | Early: single node, first-phase scale | Mature, used in production | Managed service |
+
+If you need a mature, general-purpose versioned database, use Dolt. AgentDB is for when you want to stay on your own PostgreSQL, and when you want an agent's code change and data change to be one reviewable, mergeable unit. We haven't benchmarked AgentDB against either.
+
+## Limitations
+
+- **Fixed schema.** No DDL branching or migration merging yet.
+- **Whole-row conflicts.** Two agents changing different columns of the same row still conflict; there is no per-column merge.
+- **Cross-row rules aren't inferred.** Native constraints are checked; a rule like "orders can't exceed stock" needs its own check.
+- **Branches may be temporarily invalid.** UNIQUE and foreign keys are checked only when merging into `main`.
+- **Reads replay history.** Branch views resolve from history plus snapshots, not the table's own indexes, so a maintenance job should create snapshots (`vc.snapshot_due` says when).
+- **Single node and single tenant.** There is no replication, quota or tenant isolation. Writes to one branch are serialized, and every merge into `main` takes `main`'s lock.
+- **Limited table types.** Tables need a primary key and must be registered while empty. Generated and identity columns aren't supported.
+- **The cloud state service is unverified.** The manager agent's state service has GCS, Alibaba Cloud OSS and S3 adapters, but none has run against a real cloud, and deployment is on hold. See [docs/STORAGE_BACKENDS.md](docs/STORAGE_BACKENDS.md).
+
+## Project layout
+
+```text
+db.py                 CLI: check the connection, install, upgrade an existing install
+run_tests.py          integration tests (creates its own agentdb_test_* database)
+review_local.py       local review: maintenance recovery, restricted role, ten branches merged
+agent_lab.py          the tool CLI the GPT agents used in the experiments
+agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
+smoke_cloud.py        cloud state-service smoke test (not run yet)
+sql/                  the version engine, installed in order 001–006
+examples/             runnable SQL examples
+scripts/              benchmarks, migration checks, staging drills
+results/              raw results behind the numbers in the docs
+agent_state/          manager-agent state service and storage adapters
+experiments/          pre-registered GPT experiment: runner, scoring, log audit
+deploy/               staging VM setup and the on-hold ECS bundle
+docs/                 setup, design, validation records, technical blog
+tests/                unit tests
 ```
 
-`check` connects to the maintenance database and prints the real version and connection information. The current `agentdb` project database is installed, and on 2026-10-18 the user ran `install-merge-batch`, `install-bounded-history` and `install-history-health` in order, so it is at the latest state of 001–006 (business data is still empty); for a first installation in another environment, run:
+## Documentation
 
-```console
-python db.py install
-```
+- [Setup and upgrades](docs/SETUP.md): connection options, passwords, TLS, WSL, migrations, tests
+- [Technical blog](docs/TECHNICAL_BLOG.md): architecture and what two real GPT agents taught us
+- [Design notes](docs/DESIGN_REVIEW.md): the version model and revisions to the original plan
+- [GPT repeat experiment](docs/GPT_REPEAT_EXPERIMENT.md): ten pre-registered rounds, failures kept
+- [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
+- [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut
+- [Manager agent protocol](docs/MANAGER_AGENT_PROTOCOL.md) and [AGENTS.md](AGENTS.md): conventions for agents that work on this repo
 
-The install command first creates the project database from the configuration (if it does not exist yet), then installs the six SQL files in order in one transaction (version engine, demo business tables, restricted maintenance role, batched merge, bounded history traversal and snapshot policy, read-only history health check). Existing installations are upgraded in the order 004 → 005 → 006 with the corresponding `db.py install-*` commands; 004 refuses to run on a database that already has 005 installed. It refuses a target database that already has project schemas or user tables. The project database starts with empty business data and does not import the 4,000 test products.
+Most documents in `docs/` are written in Chinese first, with the English version below it in the same file.
 
-The installation includes the demo tables `app.products` and `app.orders` and the `agentdb_client` NOLOGIN role. Roles are shared across the whole PostgreSQL instance; if it already exists, only this project's in-database privileges are granted and its role attributes are not modified. Installation and testing currently go through the local postgres administrator account; the Agent permission examples still use `agentdb_client`.
+## How it was built
 
-Enter the project database:
+This project was developed with AI coding assistants, including Anthropic's Claude Code. Commits Claude contributed to carry a `Co-Authored-By: Claude` line, which is why Claude appears in the contributors list. The project's direction, review and decisions are the author's.
 
-```console
-wsl --distribution Ubuntu --user postgres --exec /usr/bin/psql -h /var/run/postgresql -p 5432 -U postgres -d agentdb
-```
+## License
 
-### Changing the local connection configuration
-
-In a new environment, copy `connection.example.json` to `connection.local.json`. Native Windows PostgreSQL uses `127.0.0.1`; set `wsl_distribution` and `wsl_user` to empty, and fill in the path of the installed psql or add it to PATH. Native Linux can also use the local psql directly.
-
-Parameter precedence: command line > `PGHOST` / `PGPORT` / `PGUSER` / `PGDATABASE` / `AGENTDB_PSQL` environment variables > configuration file > defaults.
-
-A remote (non-loopback) PostgreSQL only accepts connections with `sslmode` set to `verify-full` and `sslrootcert` specified; TLS settings are taken only from the configuration file or `--sslmode` / `--sslrootcert`, and inherited `PGSSL*` environment variables are cleared. For the staging connection steps and the dedicated login role see [Staging PostgreSQL connection](docs/STAGING.md); for the overall phases and pass criteria see [Production test plan (draft)](docs/PRODUCTION_TEST_PLAN.md).
-
-When a password is needed, you can run `python db.py check --password` in your own terminal; input is hidden and not saved. For long-term configuration PostgreSQL's [password file](https://www.postgresql.org/docs/current/libpq-pgpass.html) is also supported: the native Windows client uses `%APPDATA%\postgresql\pgpass.conf`; the WSL client uses the corresponding Linux user's `~/.pgpass`. Passwords are not written into JSON or command arguments.
-
-## Running the integration tests
-
-```console
-python run_tests.py
-```
-
-The tests use the same existing PostgreSQL service and each time create a dedicated `agentdb_test_<random suffix>` database, in which they install the SQL, generate 4,000 rows and run the integration tests and a 10-connection concurrency check. The tests do not write to the persistent project database `agentdb`.
-
-Results are saved to `test-results-local.json`. The test database is kept for inspection, and the service keeps running. The connecting account needs permission to create databases, install objects and switch to the `agentdb_client` role; the local postgres account currently meets these conditions.
-
-## SQL usage examples
-
-The following uses psql's `\gset` to save query results. Each code block corresponds to one complete transaction or operation.
-
-Initialize main's code and business data:
-
-```sql
-BEGIN;
-SELECT vc.begin_change('main', vc.head(), 'developer', 'initial data');
-INSERT INTO app.products VALUES (1, 'book-1', 'Book', 100, 10);
-SELECT vc.write_file('src/pricing.py', convert_to('DISCOUNT = 0', 'UTF8'));
-SELECT vc.finish_change() AS initial_revision \gset
-COMMIT;
-```
-
-Create an isolated branch and modify code and data together:
-
-```sql
-SELECT vc.fork('agent-pricing', :'initial_revision');
-
-BEGIN;
-SELECT vc.begin_change('agent-pricing', :'initial_revision', 'agent-pricing', 'pricing experiment');
-UPDATE agent.products SET price = 90 WHERE id = 1;
-SELECT vc.write_file('src/pricing.py', convert_to('DISCOUNT = 10', 'UTF8'));
-SELECT vc.finish_change() AS proposed_revision \gset
-COMMIT;
-```
-
-Read a pinned version:
-
-```sql
-BEGIN;
-SELECT vc.pin(:'initial_revision');
-SELECT * FROM agent.products WHERE id = 1; -- 仍然是 100
-COMMIT;
-
-SELECT * FROM vc.diff_rows(:'initial_revision', :'proposed_revision', vc.table_id('app.products'));
-SELECT * FROM vc.diff_files(:'initial_revision', :'proposed_revision');
-SELECT * FROM vc.history(:'proposed_revision');
-```
-
-(The comment `-- 仍然是 100` means "still 100".)
-
-Merge into main:
-
-```sql
-BEGIN;
-SELECT vc.merge('main', :'proposed_revision', :'initial_revision', 'reviewed-agent');
-COMMIT;
-```
-
-If main has already moved forward, the `expected_head` check fails. The caller should re-read and decide whether to compare/merge again; it must not overwrite unconditionally.
-
-`finish_change()` only builds the complete version within the current transaction; as with business data, it becomes visible to other connections only at the actual COMMIT. If you forget to call it, a deferred constraint trigger blocks the COMMIT.
-
-## Key protections implemented
-
-- DML on the ordinary main tables must happen inside a versioned write transaction; unregistered writes are rejected.
-- Multiple updates to the same row keep only the original `before` and the final `after`; an insert followed by a delete cancels out.
-- Branch reads use a pinned baseline; main continuing to update does not change older branches.
-- Branch deltas overlay the baseline, including explicit delete markers and support for composite primary keys.
-- Code and row changes are published in the same transaction, under the same changeset.
-- Merges into main keep the first parent commit and the source commit, and detect conflicts per whole file / whole row.
-- When merging into main, ordinary SQL is executed, and the real UNIQUE, FK, CHECK and NOT NULL constraints decide the result.
-- Ordinary clients cannot write the history tables directly, nor append rows to an already published changeset.
-- Published history does not allow UPDATE, DELETE or TRUNCATE; the database owner/superuser is still a trusted administrator.
-- The snapshot cache is identified by `(commit ID, logical table ID)`, not by the ever-changing branch name.
-
-## Current limitations
-
-1. **Fixed schema**: DDL branching, migration merging, historical schema reconstruction and event trigger capture are not implemented yet.
-2. **Whole-row conflicts**: concurrent changes to different columns are still reported as a conflict on the same row; automatic per-column merging is not implemented yet.
-3. **Business rules**: native constraints can check the rules they cover; cross-row rules such as "the total quantity ordered does not exceed stock" still need a dedicated implementation and cannot be inferred automatically from the diff.
-4. **Branches allow partially invalid states**: apart from primary key/type checks, a branch may temporarily violate constraints such as unique keys and foreign keys; only merging into main validates against the real tables.
-5. **Read cost**: branch views may resolve/scan the whole logical table; a logical snapshot does not equal the index query performance of an ordinary table. `materialize` only reduces history replay; it does not make JSON views automatically get the original tables' indexes.
-6. **Merge cost**: files are checked only for paths recorded since the divergence, and replay of row state is bounded by the snapshot interval; but each merge still traverses all ancestors of the target and the source in full (cheap, but proportional to the length of history, see [History growth](docs/HISTORY_GROWTH.md)), and a maintenance executor is needed to materialize snapshots according to `vc.snapshot_due`, otherwise `rows_at` replays all commits since the last snapshot. Not suitable for direct extension to large-scale history or large merges.
-7. **Compatibility scope**: register an empty ordinary table and import through versioning first; generated/identity columns, arbitrary extension types, general compatibility with other business triggers, or zero-downtime onboarding of existing databases are not supported.
-8. **Writes to the same branch are serialized**: the branch head row lock guarantees consistency; different branches can proceed concurrently, but all merging into the same main still contend.
-9. **Local single-tenant experiment**: there is no complete authentication, tenant isolation, resource quotas, audit identity binding, version retention/reclamation, cross-node replication or disaster recovery plan.
-10. **Publishing boundary for test data**: this example can merge branch data into the local main; in real development, orders produced by experiments should not be merged directly into production; a validated migration plan should be published instead.
-
-For design trade-offs and the revisions to the original plan see [DESIGN_REVIEW.md](DESIGN_REVIEW.md).
+[MIT](LICENSE)

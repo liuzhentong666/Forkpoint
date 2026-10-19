@@ -22,7 +22,11 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import uuid
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from agent_state.engine import Engine
 from agent_state.maintenance import SnapshotMaintenance
@@ -33,7 +37,6 @@ from db import add_connection_arguments
 from review_local import connect, seed
 import run_tests
 
-ROOT = Path(__file__).resolve().parent
 OLD_FILES = ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql")
 REPLACED = ("vc._ancestors(uuid)", "vc.rows_at(uuid,uuid)", "vc._file_state(uuid,text)",
             "vc.merge_base(uuid,uuid)", "vc.merge(text,uuid,uuid,text)")
@@ -268,7 +271,7 @@ def main():
     add_connection_arguments(parser)
     parser.add_argument("--old-ref", default="0bf7309",
                         help="git commit whose sql/ predates 005_bounded_history.sql (default 0bf7309)")
-    parser.add_argument("--output", type=Path, default=ROOT / "history-migration-results.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "results" / "history-migration-results.json")
     args = parser.parse_args()
     def old_file(name):
         return subprocess.run(["git", "show", f"{args.old_ref}:sql/{name}"], cwd=ROOT, check=True,

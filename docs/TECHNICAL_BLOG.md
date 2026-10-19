@@ -174,7 +174,7 @@ COMMIT;
 
 合并检查 base、目标版本和来源版本，目前采用整行、整文件粒度。相同记录被两侧改成不同结果，会报告冲突；尚未实现字段级自动合并。合入 main 时，还要执行普通表 DML 并检查 PostgreSQL 原生约束。文件冲突、唯一键冲突或外键失败，都应使整次合入回滚。
 
-并发控制也有明确范围：不同分支分别锁自己的分支记录，同一个 main 分支头上的发布仍然串行。旧的 `expected_head` 会被拒绝。代码与数据放在同一数据库，保证的是这些数据库对象一起发布；它不会自动把代码部署到外部进程，更不会让邮件、支付等外部动作加入同一个事务。[设计说明](../DESIGN_REVIEW.md)
+并发控制也有明确范围：不同分支分别锁自己的分支记录，同一个 main 分支头上的发布仍然串行。旧的 `expected_head` 会被拒绝。代码与数据放在同一数据库，保证的是这些数据库对象一起发布；它不会自动把代码部署到外部进程，更不会让邮件、支付等外部动作加入同一个事务。[设计说明](DESIGN_REVIEW.md)
 
 ## Agent 丢失上下文后，从哪里继续
 
@@ -295,7 +295,7 @@ OSS 的 `PutObject` 不支持 `If-Match` / `If-None-Match` 这组条件参数，
 | 4,000 行、10 并发连接 | 独立分支 10 个成功；同一旧 main head 竞争时 1 成功、9 个陈旧版本错误 | 合成并发连接模拟 Agent 写入，不包含模型推理 |
 | 数据库接手 | 中断后成功核验，未重复物化 | 真实 PostgreSQL 加内存 OSS 协议模型 |
 
-数据库结果见 [本机验证记录](../VALIDATION.md) 与 [原始测试报告](../test-results-local.json)。状态适配器的本地环境及范围见 [本地测试说明](STORAGE_BACKENDS_VALIDATION.md)，其中不包含云端成功记录。
+数据库结果见 [本机验证记录](VALIDATION.md) 与 [原始测试报告](../test-results-local.json)。状态适配器的本地环境及范围见 [本地测试说明](STORAGE_BACKENDS_VALIDATION.md)，其中不包含云端成功记录。
 
 历史增长实验也只运行于内存 OSS 模型；其读取计数不属于真实 OSS 流量或性能测量。这里不列作云存储验证结果，原始本地数据保留在 [模型实验记录](../oss-protocol-benchmark.json)。真实一致性、持久性、延迟、吞吐、容量和费用均未经验证。
 
@@ -499,7 +499,7 @@ COMMIT;
 
 The merge checks the base, the target version and the source version, currently at whole-row, whole-file granularity. When the same record is changed to different results on the two sides, a conflict is reported; field-level automatic merging is not yet implemented. When merging into main, ordinary-table DML is also executed and PostgreSQL native constraints checked. A file conflict, a unique key conflict or a foreign key failure should all roll back the whole merge.
 
-Concurrency control also has a clear scope: different branches lock their own branch records separately, and publishing on the same main branch head is still serialized. A stale `expected_head` is rejected. Putting code and data in the same database guarantees that these database objects are published together; it does not automatically deploy the code to external processes, let alone bring external actions such as email or payments into the same transaction. [Design notes](../DESIGN_REVIEW.md)
+Concurrency control also has a clear scope: different branches lock their own branch records separately, and publishing on the same main branch head is still serialized. A stale `expected_head` is rejected. Putting code and data in the same database guarantees that these database objects are published together; it does not automatically deploy the code to external processes, let alone bring external actions such as email or payments into the same transaction. [Design notes](DESIGN_REVIEW.md)
 
 ## Where does an Agent continue after losing its context
 
@@ -624,7 +624,7 @@ The existing results come from the local PostgreSQL, in-memory service models, S
 | 4,000 rows, 10 concurrent connections | 10 separate branches succeeded; competing on the same old main head, 1 succeeded and 9 got stale-version errors | Synthetic concurrent connections simulating Agent writes, not including model reasoning |
 | Database hand-off | Verified successfully after the interruption, without repeated materialization | Real PostgreSQL plus the in-memory OSS protocol model |
 
-The database results are in the [local validation record](../VALIDATION.md) and the [raw test report](../test-results-local.json). The local environment and scope of the state adapters are in the [local test notes](STORAGE_BACKENDS_VALIDATION.md), which contain no records of cloud success.
+The database results are in the [local validation record](VALIDATION.md) and the [raw test report](../test-results-local.json). The local environment and scope of the state adapters are in the [local test notes](STORAGE_BACKENDS_VALIDATION.md), which contain no records of cloud success.
 
 The history growth experiment also ran only on the in-memory OSS model; its read counts are not real OSS traffic or performance measurements. It is not listed here as a cloud storage verification result, and the raw local data is kept in the [model experiment record](../oss-protocol-benchmark.json). Real consistency, durability, latency, throughput, capacity and cost are all not verified.
 

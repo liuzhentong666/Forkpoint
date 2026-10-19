@@ -20,10 +20,10 @@
 
 | 检查 | 结果 | 原始记录 |
 |---|---|---|
-| `db.py check` | `ssl: true`，`TLSv1.3`，`sslmode: verify-full`，`user: agentdb_staging`，服务器 16.15 | [db-check.json](../staging-results/db-check.json) |
-| `run_tests.py` | 原有 18 项断言、Session 等价检查、批量合入 13 个情形全部通过；10 个独立分支 10 个成功，同一旧 head 竞争 1 成功、9 个陈旧版本拒绝。测试库 `agentdb_test_273d7423471f` | [run-tests.json](../staging-results/run-tests.json) |
-| `review_local.py` | 全部通过：受限管理角色以 42501 拒绝 7 类操作；两个中断窗口（意图后接手 `applied=true`，提交后接手 `applied=false`）与旧执行者冲突；十个分支全部合入，核验 100 行改动、3,900 行未变、10 个文件、10 个来源提交可达、基线不变、无遗留事务。测试库 `agentdb_test_review_12b899a534` | [review-local.json](../staging-results/review-local.json) |
-| `check_merge_migration.py` | 用提交 8aeb3d7 的旧 `001_core.sql` 建库后连续迁移两次：数据与历史哈希不变、函数属性不变、13 个合入情形输出逐项相同、迁移前后 18 项断言均通过、`agentdb_client` 仍可合入。测试库 `agentdb_test_mergemig_ef8b856aa0` | [merge-batch-migration.json](../staging-results/merge-batch-migration.json) |
+| `db.py check` | `ssl: true`，`TLSv1.3`，`sslmode: verify-full`，`user: agentdb_staging`，服务器 16.15 | [db-check.json](../results/staging/db-check.json) |
+| `run_tests.py` | 原有 18 项断言、Session 等价检查、批量合入 13 个情形全部通过；10 个独立分支 10 个成功，同一旧 head 竞争 1 成功、9 个陈旧版本拒绝。测试库 `agentdb_test_273d7423471f` | [run-tests.json](../results/staging/run-tests.json) |
+| `review_local.py` | 全部通过：受限管理角色以 42501 拒绝 7 类操作；两个中断窗口（意图后接手 `applied=true`，提交后接手 `applied=false`）与旧执行者冲突；十个分支全部合入，核验 100 行改动、3,900 行未变、10 个文件、10 个来源提交可达、基线不变、无遗留事务。测试库 `agentdb_test_review_12b899a534` | [review-local.json](../results/staging/review-local.json) |
+| `scripts/check_merge_migration.py` | 用提交 8aeb3d7 的旧 `001_core.sql` 建库后连续迁移两次：数据与历史哈希不变、函数属性不变、13 个合入情形输出逐项相同、迁移前后 18 项断言均通过、`agentdb_client` 仍可合入。测试库 `agentdb_test_mergemig_ef8b856aa0` | [merge-batch-migration.json](../results/staging/merge-batch-migration.json) |
 
 以上全部以非超级用户 `agentdb_staging` 经 TLS 远程连接完成，满足计划中 S1 的通过条件。此前只能在本机核验到认证步骤为止的 `verify-full` 成功路径，在此得到真实覆盖。
 
@@ -40,7 +40,7 @@
 ## 保留与后续
 
 - 虚拟机上保留三个测试库（见上表），以及快照 `clean-postgres`（配置前状态）。是否清理由用户决定。
-- 本机原有结果文件 `test-results-local.json`、`local-review-results.json` 在运行前备份、运行后恢复；预发布结果另存于 `staging-results/`。
+- 本机原有结果文件 `test-results-local.json`、`local-review-results.json` 在运行前备份、运行后恢复；预发布结果另存于 `results/staging/`。
 - 未覆盖：真实 CA 签发的证书、跨机器网络、生产形态的主机。下一阶段 S2（真实对象存储）需要用户先解除云端暂缓；S4（负载与增长）和 S5（故障演练）可以在此虚拟机上继续，快照便于重置。
 
 ---
@@ -67,10 +67,10 @@
 
 | Check | Result | Raw record |
 |---|---|---|
-| `db.py check` | `ssl: true`, `TLSv1.3`, `sslmode: verify-full`, `user: agentdb_staging`, server 16.15 | [db-check.json](../staging-results/db-check.json) |
-| `run_tests.py` | The original 18 assertions, the Session equivalence check and the 13 batched-merge cases all passed; 10 separate branches, 10 succeeded; competing on the same old head, 1 succeeded and 9 were rejected as stale versions. Test database `agentdb_test_273d7423471f` | [run-tests.json](../staging-results/run-tests.json) |
-| `review_local.py` | All passed: the restricted management role rejected 7 kinds of operations with 42501; the two interruption windows (hand-off after intent `applied=true`, hand-off after commit `applied=false`) and the stale-executor conflict; all ten branches merged, verifying 100 rows changed, 3,900 rows unchanged, 10 files, 10 source commits reachable, baseline unchanged, no leftover transactions. Test database `agentdb_test_review_12b899a534` | [review-local.json](../staging-results/review-local.json) |
-| `check_merge_migration.py` | After building a database with the old `001_core.sql` from commit 8aeb3d7, migrated twice in a row: data and history hashes unchanged, function attributes unchanged, the outputs of the 13 merge cases identical item by item, the 18 assertions all passed before and after the migration, and `agentdb_client` could still merge. Test database `agentdb_test_mergemig_ef8b856aa0` | [merge-batch-migration.json](../staging-results/merge-batch-migration.json) |
+| `db.py check` | `ssl: true`, `TLSv1.3`, `sslmode: verify-full`, `user: agentdb_staging`, server 16.15 | [db-check.json](../results/staging/db-check.json) |
+| `run_tests.py` | The original 18 assertions, the Session equivalence check and the 13 batched-merge cases all passed; 10 separate branches, 10 succeeded; competing on the same old head, 1 succeeded and 9 were rejected as stale versions. Test database `agentdb_test_273d7423471f` | [run-tests.json](../results/staging/run-tests.json) |
+| `review_local.py` | All passed: the restricted management role rejected 7 kinds of operations with 42501; the two interruption windows (hand-off after intent `applied=true`, hand-off after commit `applied=false`) and the stale-executor conflict; all ten branches merged, verifying 100 rows changed, 3,900 rows unchanged, 10 files, 10 source commits reachable, baseline unchanged, no leftover transactions. Test database `agentdb_test_review_12b899a534` | [review-local.json](../results/staging/review-local.json) |
+| `scripts/check_merge_migration.py` | After building a database with the old `001_core.sql` from commit 8aeb3d7, migrated twice in a row: data and history hashes unchanged, function attributes unchanged, the outputs of the 13 merge cases identical item by item, the 18 assertions all passed before and after the migration, and `agentdb_client` could still merge. Test database `agentdb_test_mergemig_ef8b856aa0` | [merge-batch-migration.json](../results/staging/merge-batch-migration.json) |
 
 All of the above was done by the non-superuser `agentdb_staging` over a remote TLS connection, meeting the plan's pass criteria for S1. The `verify-full` success path, which locally could only be verified up to the authentication step, is actually covered here.
 
@@ -87,5 +87,5 @@ In `review_local.py` the ten-branch merge phase took 941 ms, end to end 1,804 ms
 ## What is kept and next steps
 
 - Three test databases are kept on the VM (see the table above), as well as the snapshot `clean-postgres` (the state before configuration). Whether to clean them up is up to the user.
-- The local original result files `test-results-local.json` and `local-review-results.json` were backed up before the run and restored after it; the staging results are saved separately in `staging-results/`.
+- The local original result files `test-results-local.json` and `local-review-results.json` were backed up before the run and restored after it; the staging results are saved separately in `results/staging/`.
 - Not covered: certificates issued by a real CA, cross-machine networking, a production-shaped host. The next phase, S2 (real object storage), needs the user to lift the cloud hold first; S4 (load and growth) and S5 (failure drills) can continue on this VM, and the snapshot makes resetting easy.

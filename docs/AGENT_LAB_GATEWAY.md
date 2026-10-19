@@ -45,7 +45,7 @@
 
 ## 本机真实 PostgreSQL 对比
 
-`python compare_agent_lab_gateway.py` 用同一串 20 次调用（init、fork、propose、diff、read-code、陈旧 expected 的 propose、merge 成功/40001/整行冲突、verify 失败与成功、非法分支、参数错误）分别跑两个新建测试库：一个逐次起进程，一个经网关。网关以 `--idle-timeout 10` 启动，最后自行退出。[结果](../agent-lab-gateway-results.json) 记录了源文件哈希，以及运行期间源文件是否被改动过。
+`python scripts/compare_agent_lab_gateway.py` 用同一串 20 次调用（init、fork、propose、diff、read-code、陈旧 expected 的 propose、merge 成功/40001/整行冲突、verify 失败与成功、非法分支、参数错误）分别跑两个新建测试库：一个逐次起进程，一个经网关。网关以 `--idle-timeout 10` 启动，最后自行退出。[结果](../results/agent-lab-gateway-results.json) 记录了源文件哈希，以及运行期间源文件是否被改动过。
 
 | 本机，2026-10-18 | 逐次起进程 | 经网关 |
 |---|---:|---:|
@@ -114,7 +114,7 @@ The client starts a new process for every call, so it imports as few modules as 
 
 ## Comparison on the real local PostgreSQL
 
-`python compare_agent_lab_gateway.py` runs the same sequence of 20 calls (init, fork, propose, diff, read-code, propose with a stale expected, merge success/40001/whole-row conflict, verify failure and success, invalid branch, argument error) against two newly created test databases: one spawning a process per call, one through the gateway. The gateway is started with `--idle-timeout 10` and exits on its own at the end. The [results](../agent-lab-gateway-results.json) record the source file hashes, and whether the source files were changed during the run.
+`python scripts/compare_agent_lab_gateway.py` runs the same sequence of 20 calls (init, fork, propose, diff, read-code, propose with a stale expected, merge success/40001/whole-row conflict, verify failure and success, invalid branch, argument error) against two newly created test databases: one spawning a process per call, one through the gateway. The gateway is started with `--idle-timeout 10` and exits on its own at the end. The [results](../results/agent-lab-gateway-results.json) record the source file hashes, and whether the source files were changed during the run.
 
 | Local, 2026-10-18 | Spawn per call | Through gateway |
 |---|---:|---:|

@@ -7,7 +7,7 @@
 ## 部署设计与验收
 
 ```text
-本机 Agent / maintain_snapshot.py ──SSH 隧道──> ECS 127.0.0.1:8844
+本机 Agent / scripts/maintain_snapshot.py ──SSH 隧道──> ECS 127.0.0.1:8844
           │                                   │
           v                                   v
 现有 WSL PostgreSQL                 杭州 OSS 内网端点 → <your-oss-bucket>
@@ -121,7 +121,7 @@ ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCount
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:18844/health
-.\.venv-cloud\Scripts\python.exe maintain_snapshot.py --state-url http://127.0.0.1:18844 --task snapshot-job-1 --actor admin-agent-1 --revision REVISION_UUID --table-id TABLE_UUID
+.\.venv-cloud\Scripts\python.exe scripts/maintain_snapshot.py --state-url http://127.0.0.1:18844 --task snapshot-job-1 --actor admin-agent-1 --revision REVISION_UUID --table-id TABLE_UUID
 ```
 
 把两个 UUID 换成现有数据库中明确选定的版本/逻辑表。默认沿用 `connection.local.json`，不创建或迁移数据库。状态请求出错时工具停止；结果不明时恢复连接后使用同一任务目标接手，它会重新检查 PostgreSQL 的真实结果。HTTP 客户端不自动改 command_id、expected_version 或重放维护动作。
@@ -143,14 +143,14 @@ Status update: 2026-10-17. **Cloud services are not verified against real cloud 
 ## Deployment design and acceptance
 
 ```text
-本机 Agent / maintain_snapshot.py ──SSH 隧道──> ECS 127.0.0.1:8844
+本机 Agent / scripts/maintain_snapshot.py ──SSH 隧道──> ECS 127.0.0.1:8844
           │                                   │
           v                                   v
 现有 WSL PostgreSQL                 杭州 OSS 内网端点 → <your-oss-bucket>
 代码与业务数据版本                  管理任务状态、历史、规则、证据
 ```
 
-(The diagram reads: local Agent / `maintain_snapshot.py` ── SSH tunnel ──> ECS 127.0.0.1:8844; the local side goes to the existing WSL PostgreSQL, holding code and business data versions; the ECS side goes to the Hangzhou OSS internal endpoint → `<your-oss-bucket>`, holding management task state, history, rules and evidence.)
+(The diagram reads: local Agent / `scripts/maintain_snapshot.py` ── SSH tunnel ──> ECS 127.0.0.1:8844; the local side goes to the existing WSL PostgreSQL, holding code and business data versions; the ECS side goes to the Hangzhou OSS internal endpoint → `<your-oss-bucket>`, holding management task state, history, rules and evidence.)
 
 In the proposed plan, ECS runs only the state service, obtains temporary credentials through the instance RAM role, and no AccessKey is saved in the configuration; all connected Agents use the same state API capabilities. Formal state is planned to be kept in OSS, the process uses only a bounded in-memory cache, and the system disk holds only the program, dependencies and configuration. These cloud behaviors and credential renewal have not been tested on a real ECS.
 
@@ -261,7 +261,7 @@ In another terminal, check the service, and have the maintenance tool operate on
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:18844/health
-.\.venv-cloud\Scripts\python.exe maintain_snapshot.py --state-url http://127.0.0.1:18844 --task snapshot-job-1 --actor admin-agent-1 --revision REVISION_UUID --table-id TABLE_UUID
+.\.venv-cloud\Scripts\python.exe scripts/maintain_snapshot.py --state-url http://127.0.0.1:18844 --task snapshot-job-1 --actor admin-agent-1 --revision REVISION_UUID --table-id TABLE_UUID
 ```
 
 Replace the two UUIDs with an explicitly chosen version/logical table in the existing database. By default `connection.local.json` is used, and no database is created or migrated. The tool stops when a state request fails; when the result is unclear, after the connection is restored take over with the same task target, and it will re-check the real result in PostgreSQL. The HTTP client does not automatically change command_id or expected_version, or replay maintenance actions.

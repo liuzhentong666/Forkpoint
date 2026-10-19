@@ -18,7 +18,7 @@
 
 真实桶访问与配置、IAM、条件发布、网络故障恢复、Pub/Sub、跨实例通知、长期运行、容量及费用均无真实验证结果。用户报告已创建 OSS 桶，也不等于本项目已连接或核验该桶。
 
-云端入口与部署代码保留供以后使用，当前不运行云端测试或部署。现有本机 PostgreSQL 测试仍独立记录在 [本机版本引擎验证](../VALIDATION.md)，不扩展为云端结论。
+云端入口与部署代码保留供以后使用，当前不运行云端测试或部署。现有本机 PostgreSQL 测试仍独立记录在 [本机版本引擎验证](VALIDATION.md)，不扩展为云端结论。
 
 ---
 
@@ -42,4 +42,4 @@ These files keep the facts of the local tests; "cloud" in the file names is hist
 
 Real bucket access and configuration, IAM, conditional publishing, network failure recovery, Pub/Sub, cross-instance notifications, long-running operation, capacity and cost all have no real verification results. The user reporting that an OSS bucket has been created does not mean this project has connected to or verified that bucket.
 
-The cloud entry points and deployment code are kept for later use; no cloud tests or deployments are currently run. The existing local PostgreSQL tests are still recorded separately in [Local version engine validation](../VALIDATION.md) and are not extended into cloud conclusions.
+The cloud entry points and deployment code are kept for later use; no cloud tests or deployments are currently run. The existing local PostgreSQL tests are still recorded separately in [Local version engine validation](VALIDATION.md) and are not extended into cloud conclusions.

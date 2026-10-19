@@ -91,7 +91,7 @@ class SnapshotMaintenance:
         """Publish history-growth facts for a branch and flag when a threshold is crossed.
 
         Never changes PostgreSQL data (vc.history_health is STABLE). merge_ms are
-        merge durations the caller observed (e.g. staging_drills.py growth); without
+        merge durations the caller observed (e.g. scripts/staging_drills.py growth); without
         them the median-merge threshold is not evaluated. A rerun that measures the
         same values publishes nothing; the ancestor walk time alone is not a change.
         """

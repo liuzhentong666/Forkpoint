@@ -34,9 +34,9 @@
 
 ## 3. 前后对比
 
-### 增长测试（`staging_drills.py growth --config connection.local.json --levels 0 100 1000`）
+### 增长测试（`scripts/staging_drills.py growth --config connection.local.json --levels 0 100 1000`）
 
-每个增长提交改 10 行商品，并写 50 个文件之一；合入为 3 次的中位，提交为最后 10 个提交的中位，读取为 `EXPLAIN ANALYZE` 5 次的中位。原始结果在 [local-results/history-growth/](../local-results/history-growth/)。测试复制到本地时，staging 的 `growth.json` 未被覆盖。结果文件中关于“TLS 连接虚拟机”的说明是脚本的固定文字，本次实际连接的是本机。
+每个增长提交改 10 行商品，并写 50 个文件之一；合入为 3 次的中位，提交为最后 10 个提交的中位，读取为 `EXPLAIN ANALYZE` 5 次的中位。原始结果在 [results/history-growth/](../results/history-growth/)。测试复制到本地时，staging 的 `growth.json` 未被覆盖。结果文件中关于“TLS 连接虚拟机”的说明是脚本的固定文字，本次实际连接的是本机。
 
 | 提交数 | 合入 前 → 后（无策略）→ 后（策略 100） | 提交 前 → 后 → 后（策略） | head 全表读取 前 → 后 → 后（策略） |
 |---|---|---|---|
@@ -66,12 +66,12 @@
 |---|---|---|
 | `python run_tests.py`：18 项原断言 + 并发、会话、合入语义 | 全部通过（`agentdb_test_06f5945e3a67`） | 全部通过（`agentdb_test_ff98e378fcd4`） |
 | `review_local.py`：受限角色、两个中断窗口、十个分支全部合入 | 通过；合入阶段 575 ms，45 次重试 | 通过；合入阶段 531 ms，45 次重试 |
-| `check_merge_migration.py`（004 的迁移核验） | 通过，13 个情形相同 | 通过，13 个情形相同 |
+| `scripts/check_merge_migration.py`（004 的迁移核验） | 通过，13 个情形相同 | 通过，13 个情形相同 |
 | `unittest discover -s tests` | — | 75 项通过（含新增的快照策略测试） |
 
-## 4. 迁移核验：`check_history_migration.py`
+## 4. 迁移核验：`scripts/check_history_migration.py`
 
-[`check_history_migration.py`](../check_history_migration.py)，结果见 [`history-migration-results.json`](../history-migration-results.json)（库 `agentdb_test_histmig_2b0e3f493e`、`agentdb_test_histreg_2b0e3f493e`、`agentdb_test_histnew_2b0e3f493e`）。
+[`scripts/check_history_migration.py`](../scripts/check_history_migration.py)，结果见 [`results/history-migration-results.json`](../results/history-migration-results.json)（库 `agentdb_test_histmig_2b0e3f493e`、`agentdb_test_histreg_2b0e3f493e`、`agentdb_test_histnew_2b0e3f493e`）。
 
 - 用提交 0bf7309 的 001–004 建两个旧版库，安装方式与当时的 `Connection.install` 相同。
   - `histreg` 库运行 18 项原断言和 13 个行合入情形。这些断言假定库中只有 seed（例如只有 1 个 blob），所以单独建库。
@@ -87,8 +87,8 @@
 
 ## 5. 剩余限制与后续
 
-- 预发布虚拟机上的 S4 增长测试尚未用新函数重跑：需要先在虚拟机的测试库上执行迁移，再运行 `staging_drills.py growth --snapshot-interval 100`。
-- 策略需要有执行器定期运行；当前 `maintain_snapshot.py` 只处理单个目标，`run_due` 还没有命令行入口，也没有常驻调度。云端状态仍未经真实验证。
+- 预发布虚拟机上的 S4 增长测试尚未用新函数重跑：需要先在虚拟机的测试库上执行迁移，再运行 `scripts/staging_drills.py growth --snapshot-interval 100`。
+- 策略需要有执行器定期运行；当前 `scripts/maintain_snapshot.py` 只处理单个目标，`run_due` 还没有命令行入口，也没有常驻调度。云端状态仍未经真实验证。
 - 祖先遍历仍与历史长度线性相关（见第 3 节）；快照没有回收机制。
 
 ---
@@ -129,9 +129,9 @@ All are `CREATE OR REPLACE`: signatures, return values, error texts and SQLSTATE
 
 ## 3. Before/after comparison
 
-### Growth test (`staging_drills.py growth --config connection.local.json --levels 0 100 1000`)
+### Growth test (`scripts/staging_drills.py growth --config connection.local.json --levels 0 100 1000`)
 
-Each growth commit changes 10 product rows and writes one of 50 files; merges are the median of 3, commits the median of the last 10 commits, and reads the median of 5 `EXPLAIN ANALYZE` runs. The raw results are in [local-results/history-growth/](../local-results/history-growth/). When the test was copied locally, staging's `growth.json` was not overwritten. The note about "TLS connection to the VM" in the result files is fixed text from the script; this time the actual connection was to the local machine.
+Each growth commit changes 10 product rows and writes one of 50 files; merges are the median of 3, commits the median of the last 10 commits, and reads the median of 5 `EXPLAIN ANALYZE` runs. The raw results are in [results/history-growth/](../results/history-growth/). When the test was copied locally, staging's `growth.json` was not overwritten. The note about "TLS connection to the VM" in the result files is fixed text from the script; this time the actual connection was to the local machine.
 
 | Commits | Merge before → after (no policy) → after (policy 100) | Commit before → after → after (policy) | head full-table read before → after → after (policy) |
 |---|---|---|---|
@@ -163,12 +163,12 @@ The results of the three groups of reads are identical item by item (1,300 file 
 |---|---|---|
 | `python run_tests.py`: the 18 original assertions + concurrency, sessions, merge semantics | All passed (`agentdb_test_06f5945e3a67`) | All passed (`agentdb_test_ff98e378fcd4`) |
 | `review_local.py`: restricted role, two interruption windows, all ten branches merged | Passed; merge phase 575 ms, 45 retries | Passed; merge phase 531 ms, 45 retries |
-| `check_merge_migration.py` (004's migration verification) | Passed, 13 cases identical | Passed, 13 cases identical |
+| `scripts/check_merge_migration.py` (004's migration verification) | Passed, 13 cases identical | Passed, 13 cases identical |
 | `unittest discover -s tests` | — | 75 items passed (including the new snapshot policy tests) |
 
-## 4. Migration verification: `check_history_migration.py`
+## 4. Migration verification: `scripts/check_history_migration.py`
 
-[`check_history_migration.py`](../check_history_migration.py); results in [`history-migration-results.json`](../history-migration-results.json) (databases `agentdb_test_histmig_2b0e3f493e`, `agentdb_test_histreg_2b0e3f493e`, `agentdb_test_histnew_2b0e3f493e`).
+[`scripts/check_history_migration.py`](../scripts/check_history_migration.py); results in [`results/history-migration-results.json`](../results/history-migration-results.json) (databases `agentdb_test_histmig_2b0e3f493e`, `agentdb_test_histreg_2b0e3f493e`, `agentdb_test_histnew_2b0e3f493e`).
 
 - Two old-version databases are built with 001–004 from commit 0bf7309, installed the same way as `Connection.install` did at the time.
   - The `histreg` database runs the 18 original assertions and the 13 row-merge cases. These assertions assume the database has only the seed (for example only 1 blob), so it is built separately.
@@ -184,6 +184,6 @@ The results of the three groups of reads are identical item by item (1,300 file 
 
 ## 5. Remaining limitations and next steps
 
-- The S4 growth test on the staging VM has not yet been rerun with the new functions: the migration first needs to be run on the VM's test database, then `staging_drills.py growth --snapshot-interval 100`.
-- The policy needs an executor to run it periodically; currently `maintain_snapshot.py` handles only a single target, `run_due` has no command-line entry point yet, and there is no resident scheduler. Cloud state is still not verified against real cloud services.
+- The S4 growth test on the staging VM has not yet been rerun with the new functions: the migration first needs to be run on the VM's test database, then `scripts/staging_drills.py growth --snapshot-interval 100`.
+- The policy needs an executor to run it periodically; currently `scripts/maintain_snapshot.py` handles only a single target, `run_due` has no command-line entry point yet, and there is no resident scheduler. Cloud state is still not verified against real cloud services.
 - Ancestor traversal is still linear in the length of history (see section 3); snapshots have no reclamation mechanism.

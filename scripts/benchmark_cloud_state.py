@@ -1,7 +1,10 @@
 """Structural read-bound experiment; not a cloud latency or pricing benchmark."""
 import json
 from pathlib import Path
+import sys
 import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from agent_state.engine import Engine
 from agent_state.runtime import Runtime
 from agent_state.storage import MemoryStore

@@ -60,7 +60,7 @@
 python db.py check --config connection.staging.local.json
 python run_tests.py --config connection.staging.local.json
 .\.venv-cloud\Scripts\python.exe review_local.py --config connection.staging.local.json
-python check_merge_migration.py --config connection.staging.local.json
+python scripts/check_merge_migration.py --config connection.staging.local.json
 ```
 
 通过条件见计划的 S1 一行：`check` 显示 `"ssl": true`、`"sslmode": "verify-full"`；三个套件以 `agentdb_staging` 身份全部通过。结果文件注明环境为“预发布 PostgreSQL”，与本机记录分开保存。各套件保留的测试库由用户决定何时清理。
@@ -144,7 +144,7 @@ On the client side: the ten-writer merge in `review_local.py` and `agent_lab.py 
 python db.py check --config connection.staging.local.json
 python run_tests.py --config connection.staging.local.json
 .\.venv-cloud\Scripts\python.exe review_local.py --config connection.staging.local.json
-python check_merge_migration.py --config connection.staging.local.json
+python scripts/check_merge_migration.py --config connection.staging.local.json
 ```
 
 For the pass criteria see the S1 row of the plan: `check` shows `"ssl": true`, `"sslmode": "verify-full"`; the three suites all pass as `agentdb_staging`. The result files note the environment as "staging PostgreSQL" and are kept separately from the local records. The user decides when to clean up the test databases each suite keeps.
