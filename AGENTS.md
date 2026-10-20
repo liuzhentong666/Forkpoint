@@ -1,6 +1,6 @@
 中文 | [English](#english-version)
 
-# AgentDB：Agent 开发与维护约定
+# Forkpoint：Agent 开发与维护约定
 
 适用范围：本目录及子目录。更新日期：2026-10-18。
 
@@ -158,7 +158,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 <a id="english-version"></a>
 
-# AgentDB: Conventions for Agent Development and Maintenance
+# Forkpoint: Conventions for Agent Development and Maintenance
 
 Scope: this directory and its subdirectories. Last updated: 2026-10-18.
 

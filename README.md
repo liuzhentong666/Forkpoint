@@ -1,4 +1,4 @@
-# AgentDB
+# Forkpoint
 
 **Git-style branches for AI agents, inside PostgreSQL.** Each agent works on its own branch, commits code files and table rows together, and merges into `main` only if nobody else's work gets overwritten and your real constraints still hold.
 
@@ -6,11 +6,13 @@
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)
 
+Formerly AgentDB, renamed on 2026-10-20. Database and role names such as `agentdb_demo` and `agentdb_manager` keep the old prefix.
+
 ## Why
 
 When several agents edit the same database, they run into the problems Git solved for developers. One agent overwrites another's change. Another reads data that moved under it halfway through its task. A third changes a pricing rule in code but not the prices that depend on it.
 
-AgentDB adds Git's answers to an ordinary PostgreSQL database:
+Forkpoint adds Git's answers to an ordinary PostgreSQL database:
 
 - **Branches.** An agent forks a branch from a pinned version. Later changes on `main` don't leak into it.
 - **Commits that hold code and data.** A changed file and the changed rows are published in one transaction. If either fails, neither lands.
@@ -64,11 +66,11 @@ That is the output of a real run on PostgreSQL 16.15, with the UUIDs shortened. 
 
 ## Quick start
 
-The fastest way to try it is Docker. One command starts PostgreSQL 16, installs AgentDB and runs the two-agent example:
+The fastest way to try it is Docker. One command starts PostgreSQL 16, installs Forkpoint and runs the two-agent example:
 
 ```bash
-git clone https://github.com/liuzhentong666/agentdb.git
-cd agentdb
+git clone https://github.com/liuzhentong666/Forkpoint.git
+cd Forkpoint
 docker compose up
 ```
 
@@ -135,7 +137,7 @@ Main SQL functions: `vc.head`, `vc.fork`, `vc.pin`, `vc.checkout`, `vc.begin_cha
 
 ## How it compares
 
-| | AgentDB | [Dolt](https://github.com/dolthub/dolt) | [Neon](https://neon.tech) branching |
+| | Forkpoint | [Dolt](https://github.com/dolthub/dolt) | [Neon](https://neon.tech) branching |
 |---|---|---|---|
 | Runs in | Your existing PostgreSQL | Its own database engine (MySQL-compatible; Doltgres for PostgreSQL) | Neon's hosted PostgreSQL |
 | A branch is | A pointer plus the rows changed on it | A branch of the versioned tables | A copy-on-write copy of the whole database |
@@ -143,7 +145,7 @@ Main SQL functions: `vc.head`, `vc.fork`, `vc.pin`, `vc.checkout`, `vc.begin_cha
 | Versions code files too | Yes, in the same commit as the rows | No | No |
 | Maturity | Early: single node, first-phase scale | Mature, used in production | Managed service |
 
-If you need a mature, general-purpose versioned database, use Dolt. AgentDB is for when you want to stay on your own PostgreSQL, and when you want an agent's code change and data change to be one reviewable, mergeable unit. We haven't benchmarked AgentDB against either.
+If you need a mature, general-purpose versioned database, use Dolt. Forkpoint is for when you want to stay on your own PostgreSQL, and when you want an agent's code change and data change to be one reviewable, mergeable unit. We haven't benchmarked Forkpoint against either.
 
 ## Limitations
 

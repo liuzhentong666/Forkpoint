@@ -8,7 +8,7 @@
 
 ## 目标与边界
 
-业务版本仍由现有 Ubuntu WSL PostgreSQL 的 AgentDB 管理。管理 Agent 状态服务的设计是：完整操作事实、检查点和证据写入所选云对象存储，活跃状态放在运行时内存，模型按任务取得有大小上限的上下文。此云端流程尚未真实运行，设计不使用 SQLite、本地状态文件或新增 PostgreSQL ops schema。
+业务版本仍由现有 Ubuntu WSL PostgreSQL 的 Forkpoint 管理。管理 Agent 状态服务的设计是：完整操作事实、检查点和证据写入所选云对象存储，活跃状态放在运行时内存，模型按任务取得有大小上限的上下文。此云端流程尚未真实运行，设计不使用 SQLite、本地状态文件或新增 PostgreSQL ops schema。
 
 全天在线指服务持续运行；模型上下文仍有限。存储量可以增长，但普通恢复不扫描存储桶、不回放全历史。内存缓存可以丢弃，由云端状态恢复。源码、连接配置和测试报告不属于管理任务的持久状态。
 
@@ -93,7 +93,7 @@ Date: 2026-10-16. This document records the original GCS implementation design. 
 
 ## Goals and boundaries
 
-Business versions are still managed by AgentDB on the existing Ubuntu WSL PostgreSQL. The design of the manager Agent state service is: complete operation facts, checkpoints and evidence are written to the selected cloud object storage, active state is kept in runtime memory, and the model gets a size-capped context per task. This cloud flow has not actually run; the design does not use SQLite, local state files or a new PostgreSQL ops schema.
+Business versions are still managed by Forkpoint on the existing Ubuntu WSL PostgreSQL. The design of the manager Agent state service is: complete operation facts, checkpoints and evidence are written to the selected cloud object storage, active state is kept in runtime memory, and the model gets a size-capped context per task. This cloud flow has not actually run; the design does not use SQLite, local state files or a new PostgreSQL ops schema.
 
 Being online all day means the service runs continuously; the model's context is still limited. Storage volume can grow, but ordinary recovery does not scan the storage bucket or replay the full history. The in-memory cache can be discarded and recovered from cloud state. Source code, connection configuration and test reports are not part of the management task's persistent state.
 

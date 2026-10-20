@@ -1,10 +1,10 @@
-# One-command demo: PostgreSQL 16 with AgentDB installed, then the two-agent example.
+# One-command demo: PostgreSQL 16 with Forkpoint installed, then the two-agent example.
 #   docker compose up                                        run it; PostgreSQL keeps running (Ctrl+C stops it)
 #   docker compose exec db psql -U postgres -d agentdb_demo  look around while it runs
 #   docker compose down                                      remove the containers
 # For local experiments only: the password is fixed and no port is published to the host.
 # The database lives in memory, so every start begins from an empty server.
-name: agentdb
+name: forkpoint
 
 services:
   db:
@@ -45,5 +45,5 @@ services:
         set -e
         PGOPTIONS='-c client_min_messages=warning' dropdb --if-exists -h 127.0.0.1 -U postgres agentdb_demo
         python3 db.py install --database agentdb_demo > /dev/null
-        echo "AgentDB installed into database agentdb_demo"
+        echo "Forkpoint installed into database agentdb_demo"
         psql -X -h 127.0.0.1 -U postgres -d agentdb_demo -f examples/two_agents.sql

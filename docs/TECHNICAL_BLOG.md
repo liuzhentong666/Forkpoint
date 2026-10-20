@@ -1,6 +1,6 @@
 中文 | [English](#english-version)
 
-# 让 Agent 的工作可以提交、分支和接手：AgentDB 的第一阶段实现
+# 让 Agent 的工作可以提交、分支和接手：Forkpoint 的第一阶段实现
 
 2026 年 10 月 16 日 · 项目阶段记录；云服务状态、本机审查与真实 GPT 实验补充于 2026 年 10 月 17 日修订。
 
@@ -10,7 +10,7 @@
 
 这三个场景分别要求系统回答：代码和数据能否一起提交？并行实验能否互不干扰？接手的 Agent 能否判断已经做到了哪一步？
 
-AgentDB 的第一阶段围绕这些问题展开：在 PostgreSQL 中实现代码与业务记录的联合版本管理，并设计用可替换的云对象存储保存管理任务的状态、规则和证据；云端部分尚未真实联调。当前目标负载是单张业务表约 4,000 行、10 个并发 Agent。
+Forkpoint 的第一阶段围绕这些问题展开：在 PostgreSQL 中实现代码与业务记录的联合版本管理，并设计用可替换的云对象存储保存管理任务的状态、规则和证据；云端部分尚未真实联调。当前目标负载是单张业务表约 4,000 行、10 个并发 Agent。
 
 版本引擎有现有本机 PostgreSQL 的测试记录；GCS、阿里云 OSS 和 S3 适配器只具备代码与本地测试。用户报告已创建杭州 OSS 桶，但项目未核验其权限、配置和真实读写。当前不安排云服务器采购或部署，本文不将本地结果表述为云存储已验证。
 
@@ -317,13 +317,13 @@ OSS 的 `PutObject` 不支持 `If-Match` / `If-None-Match` 这组条件参数，
 
 最后，DDL 版本化、字段级合并、生产 HTTP 部署、全局任务调度和更多维护执行器都尚未完成。当前版本引擎仍是单节点 PostgreSQL，main 发布使用分支锁。是否需要更深层的分布式设计，应由这些具体路径的负载与失败模式来决定。
 
-AgentDB 下一阶段要继续验证的是：在历史更长、任务更多、故障更复杂的情况下，Agent 仍能以明确的版本提交工作，以有限的上下文理解当前状态，并通过可核验的结果把任务交给下一个执行者。
+Forkpoint 下一阶段要继续验证的是：在历史更长、任务更多、故障更复杂的情况下，Agent 仍能以明确的版本提交工作，以有限的上下文理解当前状态，并通过可核验的结果把任务交给下一个执行者。
 
 ---
 
 <a id="english-version"></a>
 
-# Making Agent Work Committable, Branchable and Hand-off-able: The First-Phase Implementation of AgentDB
+# Making Agent Work Committable, Branchable and Hand-off-able: The First-Phase Implementation of Forkpoint
 
 16 October 2026 · Project phase record; the cloud service status, local review and real GPT experiment additions were revised on 17 October 2026.
 
@@ -333,7 +333,7 @@ One Agent modified the pricing code and at the same time adjusted the prices of 
 
 These three scenarios require the system to answer, respectively: can code and data be committed together? Can parallel experiments avoid interfering with each other? Can the Agent taking over tell how far the work has got?
 
-The first phase of AgentDB is organized around these questions: implement joint version management of code and business records in PostgreSQL, and design the storage of management task state, rules and evidence in replaceable cloud object storage; the cloud part has not yet been integration-tested for real. The current target load is a single business table of about 4,000 rows with 10 concurrent Agents.
+The first phase of Forkpoint is organized around these questions: implement joint version management of code and business records in PostgreSQL, and design the storage of management task state, rules and evidence in replaceable cloud object storage; the cloud part has not yet been integration-tested for real. The current target load is a single business table of about 4,000 rows with 10 concurrent Agents.
 
 The version engine has test records on the existing local PostgreSQL; the GCS, Alibaba Cloud OSS and S3 adapters have only code and local tests. The user reports having created a Hangzhou OSS bucket, but the project has not verified its permissions, configuration or real reads/writes. No cloud server purchase or deployment is currently scheduled, and this article does not describe local results as cloud storage having been verified.
 
@@ -646,4 +646,4 @@ Long-term retention needs a clear lifecycle protocol: which versions must be kep
 
 Finally, DDL versioning, field-level merging, production HTTP deployment, global task scheduling and more maintenance executors are all not yet done. The current version engine is still single-node PostgreSQL, and main publishing uses a branch lock. Whether a deeper distributed design is needed should be decided by the load and failure modes of these specific paths.
 
-What the next phase of AgentDB will continue to verify is: with longer histories, more tasks and more complex failures, Agents can still commit work with explicit versions, understand the current state with a limited context, and hand tasks over to the next executor through verifiable results.
+What the next phase of Forkpoint will continue to verify is: with longer histories, more tasks and more complex failures, Agents can still commit work with explicit versions, understand the current state with a limited context, and hand tasks over to the next executor through verifiable results.

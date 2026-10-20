@@ -1,4 +1,4 @@
-# AgentDB
+# Forkpoint
 
 **在 PostgreSQL 里给 AI Agent 用的 Git 式分支。** 每个 Agent 在自己的分支上工作，把代码文件和表中的行一起提交；只有在不覆盖别人的工作、并且真实约束仍然成立时，才能合入 `main`。
 
@@ -6,11 +6,13 @@
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)
 
+原名 AgentDB，2026-10-20 更名。`agentdb_demo`、`agentdb_manager` 等数据库名和角色名仍沿用旧前缀。
+
 ## 为什么需要它
 
 多个 Agent 同时修改同一个数据库时，会遇到 Git 曾经替开发者解决过的问题：一个 Agent 覆盖了另一个的修改；另一个 Agent 做到一半，读到的数据已经变了；还有一个改了代码里的定价规则，却没有改依赖它的价格。
 
-AgentDB 把 Git 的解法加到普通的 PostgreSQL 数据库上：
+Forkpoint 把 Git 的解法加到普通的 PostgreSQL 数据库上：
 
 - **分支。** Agent 从一个固定版本建分支，`main` 之后的变化不会渗进来。
 - **代码和数据在同一个提交里。** 改动的文件和改动的行在一个事务中发布，任何一步失败，两者都不会生效。
@@ -64,11 +66,11 @@ COMMIT;
 
 ## 快速开始
 
-最快的试用方式是 Docker。一条命令即可启动 PostgreSQL 16、安装 AgentDB 并运行两个 Agent 的示例：
+最快的试用方式是 Docker。一条命令即可启动 PostgreSQL 16、安装 Forkpoint 并运行两个 Agent 的示例：
 
 ```bash
-git clone https://github.com/liuzhentong666/agentdb.git
-cd agentdb
+git clone https://github.com/liuzhentong666/Forkpoint.git
+cd Forkpoint
 docker compose up
 ```
 
@@ -135,7 +137,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 
 ## 与其他方案的比较
 
-| | AgentDB | [Dolt](https://github.com/dolthub/dolt) | [Neon](https://neon.tech) 分支 |
+| | Forkpoint | [Dolt](https://github.com/dolthub/dolt) | [Neon](https://neon.tech) 分支 |
 |---|---|---|---|
 | 运行在 | 你现有的 PostgreSQL | 自己的数据库引擎（兼容 MySQL；Doltgres 面向 PostgreSQL） | Neon 托管的 PostgreSQL |
 | 分支是什么 | 一个指针，加上在分支上改过的行 | 版本化表的一个分支 | 整个数据库的写时复制副本 |
@@ -143,7 +145,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 | 同时管理代码文件 | 是，与行在同一个提交里 | 否 | 否 |
 | 成熟度 | 早期：单节点，第一阶段规模 | 成熟，已用于生产 | 托管服务 |
 
-如果需要成熟、通用的版本化数据库，请用 Dolt。AgentDB 适合两种情况：想继续使用自己的 PostgreSQL；希望 Agent 的代码修改和数据修改成为一个可审查、可合入的整体。我们没有与这两者做过性能对比。
+如果需要成熟、通用的版本化数据库，请用 Dolt。Forkpoint 适合两种情况：想继续使用自己的 PostgreSQL；希望 Agent 的代码修改和数据修改成为一个可审查、可合入的整体。我们没有与这两者做过性能对比。
 
 ## 当前限制
 
