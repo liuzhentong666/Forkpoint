@@ -71,6 +71,13 @@ def check_database(parser, args):
 
 def validate(parser, args):
     """Argument checks a worker action makes before its first SQL statement."""
+    for option in ("revision", "base", "expected"):
+        value = getattr(args, option, None)
+        if value is not None:
+            try:
+                uuid.UUID(value)
+            except ValueError:
+                parser.error(f"--{option} must be a revision UUID")
     if args.action == "read-code":
         if not args.path or not args.revision:
             parser.error("read-code requires path and revision")

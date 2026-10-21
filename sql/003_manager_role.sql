@@ -14,7 +14,7 @@ DO $$ BEGIN
 END $$;
 
 CREATE OR REPLACE FUNCTION vc.snapshot_status(p_revision uuid,p_table uuid) RETURNS jsonb
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
   SELECT jsonb_build_object(
     'revision_exists',EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_revision),
     'table_exists',EXISTS(SELECT 1 FROM vc.tracked_table WHERE id=p_table),

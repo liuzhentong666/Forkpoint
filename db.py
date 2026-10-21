@@ -271,7 +271,7 @@ class Connection:
         self.sql(source, target)
 
     def install_search_path_hardening(self, database=None):
-        """List pg_temp last in every vc SECURITY DEFINER function's search_path (sql/007_search_path_pg_temp.sql)."""
+        """List pg_temp last in the search_path of every vc function that sets one (sql/007_search_path_pg_temp.sql)."""
         target = database_name(database or self.settings["database"])
         source = (ROOT / "sql/007_search_path_pg_temp.sql").read_text(encoding="utf-8")
         self.sql(source, target)

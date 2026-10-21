@@ -42,6 +42,7 @@ OLD_FILES = ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_me
 REPLACED = ("vc._ancestors(uuid)", "vc.rows_at(uuid,uuid)", "vc._file_state(uuid,text)",
             "vc.merge_base(uuid,uuid)", "vc.merge(text,uuid,uuid,text)")
 ADDED = ("vc._merge_base(uuid[],uuid)", "vc.snapshot_due(text,integer)")
+HARDENED = ["search_path=pg_catalog, vc, pg_temp"]
 
 HELPERS = r"""
 CREATE FUNCTION pg_temp.hc(p_branch text,p_files jsonb,p_rows text DEFAULT NULL) RETURNS uuid
@@ -263,6 +264,17 @@ def function_states(owner, signatures):
     """))
 
 
+def load_old_schema(ref, files, newer_file):
+    """The sql/ files of git ref as one script without BEGIN/COMMIT, as Connection.install ran them then."""
+    newer = subprocess.run(["git", "cat-file", "-e", f"{ref}:sql/{newer_file}"], cwd=ROOT, capture_output=True)
+    if newer.returncode == 0:
+        raise SystemExit(f"--old-ref {ref} already contains sql/{newer_file}")
+    def old_file(name):
+        return subprocess.run(["git", "show", f"{ref}:sql/{name}"], cwd=ROOT, check=True,
+                              capture_output=True, text=True, encoding="utf-8").stdout
+    return "\n".join(re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", old_file(name)) for name in files)
+
+
 def without_source(states):
     return {k: {a: b for a, b in v.items() if a != "source_md5"} for k, v in states.items()}
 
@@ -274,13 +286,7 @@ def main():
                         help="git commit whose sql/ predates 005_bounded_history.sql (default 0bf7309)")
     parser.add_argument("--output", type=Path, default=ROOT / "results" / "history-migration-results.json")
     args = parser.parse_args()
-    def old_file(name):
-        return subprocess.run(["git", "show", f"{args.old_ref}:sql/{name}"], cwd=ROOT, check=True,
-                              capture_output=True, text=True, encoding="utf-8").stdout
-    newer = subprocess.run(["git", "cat-file", "-e", f"{args.old_ref}:sql/005_bounded_history.sql"],
-                           cwd=ROOT, capture_output=True)
-    assert newer.returncode != 0, "--old-ref already contains 005_bounded_history.sql"
-    old_schema = "\n".join(re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", old_file(name)) for name in OLD_FILES)
+    old_schema = load_old_schema(args.old_ref, OLD_FILES, "005_bounded_history.sql")
 
     suffix = uuid.uuid4().hex[:10]
     names = dict(history="agentdb_test_histmig_" + suffix, regression="agentdb_test_histreg_" + suffix,
@@ -316,20 +322,21 @@ def main():
         assert fingerprint(connection) == data_before[kind], kind
     functions_after = function_states(history, REPLACED + ADDED)
     assert function_states(regression, REPLACED + ADDED) == functions_after
-    assert without_source({k: functions_after[k] for k in functions_before}) == without_source(functions_before), \
-        (functions_before, functions_after)
+    # 005's definitions list pg_temp last in search_path; every other attribute is unchanged.
+    expected = {k: dict(v, config=HARDENED) for k, v in functions_before.items()}
+    assert without_source({k: functions_after[k] for k in functions_before}) == without_source(expected), \
+        (expected, functions_after)
     assert not functions_after["vc._merge_base(uuid[],uuid)"]["client_can_execute"]
     assert not functions_after["vc.snapshot_due(text,integer)"]["client_can_execute"]
     assert functions_after["vc.snapshot_due(text,integer)"]["manager_can_execute"]
     assert not any(state["public_can_execute"] for state in functions_after.values())
-    print("PASS migration keeps data, history, owner, grants and settings", flush=True)
+    print("PASS migration keeps data, history, owner and grants; search_path gains pg_temp", flush=True)
 
-    # A fresh install also runs the later 007, which lists pg_temp last in these functions' search_path.
-    history.install_search_path_hardening()
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
     fresh = function_states(connect(args, names["fresh"]), REPLACED + ADDED)
-    assert fresh == function_states(history, REPLACED + ADDED), (fresh, functions_after)
+    migrated = function_states(history, REPLACED + ADDED)
+    assert fresh == migrated, (fresh, migrated)
     print("PASS migrated functions equal a fresh install's", flush=True)
 
     observations = compare("reads", observed_old, observe(history))

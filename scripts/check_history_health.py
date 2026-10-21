@@ -17,8 +17,6 @@ Never writes to the project database and never starts or stops the server.
 import argparse
 import json
 from pathlib import Path
-import re
-import subprocess
 import sys
 import uuid
 
@@ -29,7 +27,8 @@ from agent_state.engine import Engine
 from agent_state.maintenance import SnapshotMaintenance
 from agent_state.runtime import Runtime
 from agent_state.storage import MemoryStore
-from check_history_migration import FILE_CASES, HISTORY, compare, function_states, normalized, observe
+from check_history_migration import (FILE_CASES, HISTORY, compare, function_states, load_old_schema, normalized,
+                                     observe)
 from check_merge_migration import fingerprint
 from db import add_connection_arguments
 from review_local import connect, seed
@@ -82,13 +81,7 @@ def main():
                         help="git commit whose sql/ predates 006_history_health.sql (default d5c68b0)")
     parser.add_argument("--output", type=Path, default=ROOT / "results" / "history-health-results.json")
     args = parser.parse_args()
-    def old_file(name):
-        return subprocess.run(["git", "show", f"{args.old_ref}:sql/{name}"], cwd=ROOT, check=True,
-                              capture_output=True, text=True, encoding="utf-8").stdout
-    newer = subprocess.run(["git", "cat-file", "-e", f"{args.old_ref}:sql/006_history_health.sql"],
-                           cwd=ROOT, capture_output=True)
-    assert newer.returncode != 0, "--old-ref already contains 006_history_health.sql"
-    old_schema = "\n".join(re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", old_file(name)) for name in OLD_FILES)
+    old_schema = load_old_schema(args.old_ref, OLD_FILES, "006_history_health.sql")
 
     suffix = uuid.uuid4().hex[:10]
     names = dict(history="agentdb_test_hhmig_" + suffix, fresh="agentdb_test_hhnew_" + suffix)
@@ -118,12 +111,13 @@ def main():
     print("PASS migration keeps data, history and every existing function; vc.history_health is STABLE and "
           "granted to agentdb_manager only", flush=True)
 
-    # A fresh install also runs the later 007, which lists pg_temp last in these functions' search_path.
+    # The existing functions came from the old 005 without pg_temp; 007 brings them to a fresh install's form.
     owner.install_search_path_hardening()
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
     fresh = function_states(connect(args, names["fresh"]), EXISTING + (ADDED,))
-    assert fresh == function_states(owner, EXISTING + (ADDED,)), (fresh, functions_after)
+    migrated = function_states(owner, EXISTING + (ADDED,))
+    assert fresh == migrated, (fresh, migrated)
     print("PASS migrated functions equal a fresh install's", flush=True)
 
     manager = connect(args, names["history"], "agentdb_manager")

@@ -58,7 +58,8 @@ def main():
         return p.returncode, p.stdout, p.stderr
 
     code, out, err = lab("init")
-    assert code == 0, out + err
+    if code:
+        raise SystemExit("agent_lab.py init failed:\n" + out + err)
     setup = json.loads(out)
     database, base = setup["database"], setup["base"]
     print(f"Test database: {database}", flush=True)
@@ -107,10 +108,10 @@ def main():
           FILTER (WHERE NOT EXISTS(SELECT 1 FROM unnest(coalesce(p.proconfig,'{}')) c
                                    WHERE c ~ '^search_path=.*\mpg_temp\s*$')),'[]'))
       FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-      WHERE n.nspname IN ('vc','app','agent') AND p.prosecdef;"""))
-    record("A", "security_definer_functions_search_pg_temp_last",
+      WHERE n.nspname IN ('vc','app','agent') AND (p.prosecdef OR p.proconfig IS NOT NULL);"""))
+    record("A", "functions_with_search_path_search_pg_temp_last",
            definers["total"] > 0 and not definers["not_pg_temp_last"],
-           f"{definers['total']} SECURITY DEFINER functions; without pg_temp last: "
+           f"{definers['total']} functions that are SECURITY DEFINER or set search_path; without pg_temp last: "
            f"{definers['not_pg_temp_last'] or 'none'} (sql/007_search_path_pg_temp.sql)")
 
     # B: what the catalog cannot show, with agentdb_client's own SQL.
@@ -147,7 +148,7 @@ def main():
     lab_reject("branch_with_quote_rejected", gpt, "fork", *target, "--branch", "gpt-x'); SELECT 1; --", "--base", base)
     lab_reject("branch_main_rejected", gpt, "propose", *target, "--branch", "main", "--expected", base,
                "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11")
-    lab_reject("revision_not_uuid_rejected", "badly formed hexadecimal UUID string",
+    lab_reject("revision_not_uuid_rejected", "--revision must be a revision UUID",
                "info", *target, "--revision", "x' OR '1'='1")
     for value in ("NaN", "Infinity", "-1", "100001", "1e6"):
         lab_reject(f"price_{value}_rejected", "Finite nonnegative value up to 100000 required",

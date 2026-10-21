@@ -110,9 +110,11 @@ def main():
         owner.install_merge_batch(database)
     data_after, function_after = fingerprint(owner), function_state(owner)
     assert data_after == data_before, (data_before, data_after)
-    assert function_after == function_before, (function_before, function_after)
+    # 004's definition lists pg_temp last in search_path; every other attribute is unchanged.
+    expected = dict(function_before, config=["search_path=pg_catalog, vc, pg_temp"])
+    assert function_after == expected, (expected, function_after)
     assert source_of_merge(owner) == merge_body(new_core)
-    print("PASS migration keeps data, history, owner, grants and settings", flush=True)
+    print("PASS migration keeps data, history, owner and grants; search_path gains pg_temp", flush=True)
 
     cases_new = run_tests.merge_semantics()
     assert cases_new == cases_old, json.dumps(dict(old=cases_old, new=cases_new), indent=1)

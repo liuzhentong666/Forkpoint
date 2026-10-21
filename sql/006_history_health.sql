@@ -10,7 +10,7 @@
 -- inside it. Its cost is one ancestor walk plus one first-parent walk.
 BEGIN;
 CREATE OR REPLACE FUNCTION vc.history_health(p_branch text DEFAULT 'main') RETURNS jsonb
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE h uuid := vc.head(p_branch); started timestamptz; reachable bigint; walk_ms numeric; result jsonb;
 BEGIN
   -- The same walk vc.merge makes over the target's ancestors.

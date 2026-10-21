@@ -11,7 +11,7 @@ DO $guard$ BEGIN
   END IF;
 END $guard$;
 CREATE OR REPLACE FUNCTION vc.merge(p_target text,p_source uuid,p_expected uuid,p_author text DEFAULT 'agent')
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE base_id uuid; ctx vc.work_tx; t record; d record;
         file_path text; old_file jsonb; source_file jsonb; target_file jsonb;
 BEGIN

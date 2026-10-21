@@ -13,15 +13,13 @@ Never writes to the project database and never starts or stops the server.
 import argparse
 import json
 from pathlib import Path
-import re
-import subprocess
 import sys
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from check_history_migration import function_states
+from check_history_migration import function_states, load_old_schema
 from check_merge_migration import fingerprint
 from db import add_connection_arguments
 from review_local import connect, seed
@@ -44,13 +42,7 @@ def main():
                         help="git commit whose sql/ predates 007_search_path_pg_temp.sql (default a7e60d9)")
     parser.add_argument("--output", type=Path, default=ROOT / "results" / "search-path-migration-results.json")
     args = parser.parse_args()
-    def old_file(name):
-        return subprocess.run(["git", "show", f"{args.old_ref}:sql/{name}"], cwd=ROOT, check=True,
-                              capture_output=True, text=True, encoding="utf-8").stdout
-    newer = subprocess.run(["git", "cat-file", "-e", f"{args.old_ref}:sql/007_search_path_pg_temp.sql"],
-                           cwd=ROOT, capture_output=True)
-    assert newer.returncode != 0, "--old-ref already contains 007_search_path_pg_temp.sql"
-    old_schema = "\n".join(re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", old_file(name)) for name in OLD_FILES)
+    old_schema = load_old_schema(args.old_ref, OLD_FILES, "007_search_path_pg_temp.sql")
 
     suffix = uuid.uuid4().hex[:10]
     names = dict(migrated="agentdb_test_spmig_" + suffix, fresh="agentdb_test_spnew_" + suffix)
@@ -64,8 +56,8 @@ def main():
     functions = signatures(owner)
     data_before = fingerprint(owner)
     states_before = function_states(owner, functions)
-    definers = sorted(name for name, state in states_before.items() if state["security_definer"])
-    assert definers and all(states_before[name]["config"] == BEFORE for name in definers), states_before
+    with_path = sorted(name for name, state in states_before.items() if state["config"])
+    assert with_path and all(states_before[name]["config"] == BEFORE for name in with_path), states_before
 
     for _ in range(2):  # rerunnable
         owner.install_search_path_hardening()
@@ -73,10 +65,10 @@ def main():
     assert signatures(owner) == functions
     states_after = function_states(owner, functions)
     for name in functions:
-        expected = dict(states_before[name], config=AFTER) if name in definers else states_before[name]
+        expected = dict(states_before[name], config=AFTER) if name in with_path else states_before[name]
         assert states_after[name] == expected, (name, states_before[name], states_after[name])
     print(f"PASS migration keeps data, history and {len(functions)} functions; only the search_path of "
-          f"{len(definers)} SECURITY DEFINER functions changed", flush=True)
+          f"{len(with_path)} functions that set one changed", flush=True)
 
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
@@ -88,14 +80,14 @@ def main():
     result = dict(databases=names, postgresql=details["server_version"], old_ref=args.old_ref,
                   migration="sql/007_search_path_pg_temp.sql via Connection.install_search_path_hardening "
                             "(db.py install-search-path-hardening)",
-                  migration_runs=2, functions_checked=len(functions), security_definer_functions=definers,
+                  migration_runs=2, functions_checked=len(functions), functions_with_search_path=with_path,
                   search_path_before=BEFORE, search_path_after=AFTER, data_and_history_unchanged=True,
                   other_function_attributes_unchanged=True, functions_equal_fresh_install=True,
                   real_cloud_verified=False,
                   note=("Local dedicated test databases on the existing PostgreSQL server; the project database "
                         "was not touched."))
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({k: v for k, v in result.items() if k != "security_definer_functions"}, indent=2))
+    print(json.dumps({k: v for k, v in result.items() if k != "functions_with_search_path"}, indent=2))
 
 
 if __name__ == "__main__":

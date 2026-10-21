@@ -1,19 +1,20 @@
 {
   "databases": {
-    "migrated": "agentdb_test_spmig_16cbcb775e",
-    "fresh": "agentdb_test_spnew_16cbcb775e"
+    "migrated": "agentdb_test_spmig_6d79266150",
+    "fresh": "agentdb_test_spnew_6d79266150"
   },
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "old_ref": "a7e60d9",
   "migration": "sql/007_search_path_pg_temp.sql via Connection.install_search_path_hardening (db.py install-search-path-hardening)",
   "migration_runs": 2,
   "functions_checked": 32,
-  "security_definer_functions": [
+  "functions_with_search_path": [
     "vc._ancestors(uuid)",
     "vc._apply_main(uuid,jsonb,jsonb)",
     "vc._capture_main()",
     "vc._context()",
     "vc._file_state(uuid,text)",
+    "vc._immutable()",
     "vc._merge_base(uuid[],uuid)",
     "vc._overlay_write()",
     "vc._pk(uuid,jsonb)",
@@ -33,6 +34,7 @@
     "vc.merge_base(uuid,uuid)",
     "vc.pin(uuid)",
     "vc.read_file(uuid,text)",
+    "vc.register_table(regclass)",
     "vc.rows_at(uuid,uuid)",
     "vc.snapshot_due(text,integer)",
     "vc.snapshot_status(uuid,uuid)",

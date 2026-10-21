@@ -101,7 +101,7 @@ INSERT INTO vc.branch VALUES ('main', '00000000-0000-0000-0000-000000000001',
                              '00000000-0000-0000-0000-000000000001');
 
 CREATE FUNCTION vc._immutable() RETURNS trigger
-LANGUAGE plpgsql SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN RAISE EXCEPTION 'Published version data is immutable' USING ERRCODE='55000'; END $$;
 DO $$ DECLARE t text; BEGIN
   FOREACH t IN ARRAY ARRAY['changeset','parent','blob','path_change','row_change',
@@ -112,7 +112,7 @@ DO $$ DECLARE t text; BEGIN
 END $$;
 
 CREATE FUNCTION vc.head(p_branch text DEFAULT 'main') RETURNS uuid
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE result uuid;
 BEGIN
   SELECT head INTO result FROM vc.branch WHERE name=p_branch;
@@ -121,7 +121,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.table_id(p_table regclass) RETURNS uuid
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE result uuid;
 BEGIN
   SELECT id INTO result FROM vc.tracked_table WHERE relation=p_table;
@@ -130,14 +130,14 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.fork(p_name text, p_revision uuid) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN
   INSERT INTO vc.branch VALUES(p_name,p_revision,p_revision);
   RETURN p_revision;
 END $$;
 
 CREATE FUNCTION vc.checkout(p_branch text) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE result uuid := vc.head(p_branch);
 BEGIN
   IF EXISTS(SELECT 1 FROM vc.work_tx WHERE tx=txid_current()) THEN
@@ -148,7 +148,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.pin(p_revision uuid) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_revision) THEN
     RAISE EXCEPTION 'Unknown revision';
@@ -162,7 +162,7 @@ END $$;
 
 CREATE FUNCTION vc.begin_change(p_branch text, p_expected uuid,
                                p_author text DEFAULT 'agent', p_message text DEFAULT '')
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE current_head uuid; result uuid := gen_random_uuid();
 BEGIN
   IF EXISTS(SELECT 1 FROM vc.work_tx WHERE tx=txid_current()) THEN
@@ -181,7 +181,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._unfinished() RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN
   IF EXISTS(SELECT 1 FROM vc.work_tx WHERE tx=NEW.tx) THEN
     RAISE EXCEPTION 'finish_change() is required before COMMIT' USING ERRCODE='23514';
@@ -192,7 +192,7 @@ CREATE CONSTRAINT TRIGGER finish_required AFTER INSERT ON vc.work_tx
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION vc._unfinished();
 
 CREATE FUNCTION vc._context() RETURNS vc.work_tx
-LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE result vc.work_tx;
 BEGIN
   SELECT * INTO result FROM vc.work_tx WHERE tx=txid_current();
@@ -201,14 +201,14 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._pk(p_table uuid, p_row jsonb) RETURNS jsonb
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
   SELECT jsonb_object_agg(k,p_row->k)
   FROM vc.tracked_table t, unnest(t.pk_columns) AS k WHERE t.id=p_table
 $$;
 
 CREATE FUNCTION vc.rows_at(p_revision uuid,p_table uuid)
 RETURNS TABLE(pk jsonb,doc jsonb)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_revision) OR
      NOT EXISTS(SELECT 1 FROM vc.tracked_table WHERE id=p_table) THEN
@@ -233,7 +233,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.visible_rows(p_table uuid) RETURNS TABLE(pk jsonb,doc jsonb)
-LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE base_id uuid; current_tx bigint := txid_current();
 BEGIN
   SELECT base INTO base_id FROM vc.work_tx WHERE tx=current_tx;
@@ -251,7 +251,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._stage(p_table uuid,p_pk jsonb,p_before jsonb,p_after jsonb) RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE ctx vc.work_tx := vc._context();
 BEGIN
   INSERT INTO vc.pending_row VALUES(ctx.tx,p_table,p_pk,p_before,p_after)
@@ -261,7 +261,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._capture_main() RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE ctx vc.work_tx := vc._context(); tid uuid := TG_ARGV[0]::uuid;
         old_doc jsonb; new_doc jsonb; old_pk jsonb; new_pk jsonb;
 BEGIN
@@ -278,7 +278,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._overlay_write() RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE ctx vc.work_tx := vc._context(); tid uuid := TG_ARGV[0]::uuid;
         old_doc jsonb; new_doc jsonb; old_pk jsonb; new_pk jsonb;
 BEGIN
@@ -307,7 +307,7 @@ END $$;
 
 -- Owner-only registration. Only empty ordinary tables, fixed schema, no generated/identity columns.
 CREATE FUNCTION vc.register_table(p_relation regclass) RETURNS uuid
-LANGUAGE plpgsql SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE tid uuid; keys text[]; description jsonb; nonempty boolean; view_name text;
 BEGIN
   IF (SELECT relkind FROM pg_class WHERE oid=p_relation)<>'r' THEN
@@ -342,7 +342,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._file_state(p_revision uuid,p_path text) RETURNS jsonb
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
   WITH RECURSIVE lineage(id,depth) AS (
     SELECT p_revision,0 UNION ALL SELECT p.parent,l.depth+1 FROM lineage l
     JOIN vc.parent p ON p.child=l.id AND p.ordinal=1
@@ -353,7 +353,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
 $$;
 
 CREATE FUNCTION vc.write_file(p_path text,p_content bytea,p_executable boolean DEFAULT false)
-RETURNS bytea LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+RETURNS bytea LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE ctx vc.work_tx := vc._context(); digest bytea; state jsonb;
 BEGIN
   IF p_path IS NULL OR p_path='' OR p_path LIKE '/%' OR position(E'\\' IN p_path)>0
@@ -373,7 +373,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.read_file(p_revision uuid,p_path text) RETURNS bytea
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE state jsonb;
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_revision) THEN
@@ -384,7 +384,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.finish_change() RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE ctx vc.work_tx := vc._context(); constraint_list text;
 BEGIN
   IF ctx.branch='main' THEN
@@ -415,7 +415,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.materialize(p_revision uuid,p_table uuid) RETURNS bigint
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE total bigint;
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended(p_revision::text||p_table::text,0));
@@ -429,14 +429,14 @@ END $$;
 
 CREATE FUNCTION vc.diff_rows(p_before uuid,p_after uuid,p_table uuid)
 RETURNS TABLE(pk jsonb,before_row jsonb,after_row jsonb)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
   SELECT coalesce(a.pk,b.pk),a.doc,b.doc
   FROM vc.rows_at(p_before,p_table) a FULL JOIN vc.rows_at(p_after,p_table) b USING(pk)
   WHERE a.doc IS DISTINCT FROM b.doc
 $$;
 
 CREATE FUNCTION vc._ancestors(p_start uuid) RETURNS TABLE(id uuid)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
   WITH RECURSIVE a(id) AS (
     SELECT p_start UNION SELECT p.parent FROM a JOIN vc.parent p ON p.child=a.id
   ) SELECT a.id FROM a
@@ -444,7 +444,7 @@ $$;
 
 CREATE FUNCTION vc.diff_files(p_before uuid,p_after uuid)
 RETURNS TABLE(path text,before_state jsonb,after_state jsonb)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN
   IF (SELECT count(*) FROM vc.changeset WHERE id IN(p_before,p_after)) <
      (CASE WHEN p_before=p_after THEN 1 ELSE 2 END) THEN RAISE EXCEPTION 'Unknown revision'; END IF;
@@ -455,7 +455,7 @@ END $$;
 
 CREATE FUNCTION vc.history(p_revision uuid,p_limit integer DEFAULT 50)
 RETURNS TABLE(id uuid,parents uuid[],author text,message text,created_at timestamptz)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN
   IF p_limit NOT BETWEEN 1 AND 1000 THEN RAISE EXCEPTION 'History limit must be 1..1000'; END IF;
   IF NOT EXISTS(SELECT 1 FROM vc.changeset c WHERE c.id=p_revision) THEN RAISE EXCEPTION 'Unknown revision'; END IF;
@@ -468,7 +468,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.merge_base(p_a uuid,p_b uuid) RETURNS uuid
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE candidates uuid[];
 BEGIN
   WITH common AS (SELECT id FROM vc._ancestors(p_a) INTERSECT SELECT id FROM vc._ancestors(p_b))
@@ -481,7 +481,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._apply_main(p_table uuid,p_pk jsonb,p_after jsonb) RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE t vc.tracked_table; predicate text; key_list text; assignments text;
 BEGIN
   SELECT * INTO STRICT t FROM vc.tracked_table WHERE id=p_table;
@@ -501,7 +501,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc.merge(p_target text,p_source uuid,p_expected uuid,p_author text DEFAULT 'agent')
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE base_id uuid; ctx vc.work_tx; t record; d record;
         file_path text; old_file jsonb; source_file jsonb; target_file jsonb;
 BEGIN

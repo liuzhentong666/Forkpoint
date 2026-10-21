@@ -1,5 +1,5 @@
 {
-  "database": "agentdb_test_mergemig_21ad82e33c",
+  "database": "agentdb_test_mergemig_a21623c815",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "old_ref": "8aeb3d7",
   "migration": "sql/004_merge_batch.sql via Connection.install_merge_batch (db.py install-merge-batch)",
@@ -15,7 +15,7 @@
     ],
     "owner": "postgres",
     "config": [
-      "search_path=pg_catalog, vc"
+      "search_path=pg_catalog, vc, pg_temp"
     ],
     "volatility": "v",
     "security_definer": true,
@@ -30,12 +30,12 @@
       "merge_commits": 1
     },
     "orders": "d41d8cd98f00b204e9800998ecf8427e",
-    "parents": "eda442015d3212361c41f251dfa14427",
-    "branches": "e3377a35443e44aea3ea07cdcfa49fd5",
+    "parents": "6f661c02ab4d721037ed23781e5cd50c",
+    "branches": "6f687b2886f7e15055e2ab6b5d50ce09",
     "products": "aee55dc96719b0722f80c7e9623841a0",
-    "changesets": "1abcd68f37782dd18ead4086f9a5b42d",
-    "row_changes": "838ba7dddfaaf0917f881265cdf5319b",
-    "path_changes": "af4dd17c05c7747ea8cabd4a4976a6cc",
+    "changesets": "2d3d0a10324e50a45d18c8d8dc2c509e",
+    "row_changes": "a7108dd42e1aec5c313cef0c1fb55f51",
+    "path_changes": "5bbb27321b61f115e5248f8ddc8823dc",
     "snapshot_rows": 4000
   },
   "merge_cases": 13,

@@ -75,7 +75,7 @@ python db.py install
 | 004 | `python db.py install-merge-batch` | `vc.merge` 每张表只调用一次 `vc.rows_at`；已安装 005 的库会拒绝执行，以免还原 005 的 `vc.merge` | `scripts/check_merge_migration.py` |
 | 005 | `python db.py install-bounded-history` | 历史遍历不再随全部历史长度变慢，新增只读快照策略 `vc.snapshot_due`（见 [历史增长](HISTORY_GROWTH.md)） | `scripts/check_history_migration.py` |
 | 006 | `python db.py install-history-health` | 新增只读的 `vc.history_health(branch)`，仅授权给 `agentdb_manager` | `scripts/check_history_health.py` |
-| 007 | `python db.py install-search-path-hardening` | `vc` 中全部 SECURITY DEFINER 函数的 search_path 末尾加上 `pg_temp`；须最后执行，重跑上面任何一条命令后都要再跑一次 | `scripts/check_search_path_migration.py` |
+| 007 | `python db.py install-search-path-hardening` | `vc` 中所有设置了 search_path 的函数末尾加上 `pg_temp`；用于升级此前的安装，上面各条迁移的定义已自带 `pg_temp`，重跑它们不会撤销 | `scripts/check_search_path_migration.py` |
 
 核验脚本都在新建的旧版测试库上执行迁移并逐项比较，不触碰项目库。
 
@@ -189,7 +189,7 @@ Upgrade an existing install in this order. Each command can be rerun and changes
 | 004 | `python db.py install-merge-batch` | `vc.merge` calls `vc.rows_at` once per table; refuses to run on a database that already has 005, so 005's `vc.merge` is not reverted | `scripts/check_merge_migration.py` |
 | 005 | `python db.py install-bounded-history` | History walks no longer slow down with total history length, plus the read-only snapshot policy `vc.snapshot_due` (see [History growth](HISTORY_GROWTH.md)) | `scripts/check_history_migration.py` |
 | 006 | `python db.py install-history-health` | The read-only `vc.history_health(branch)`, granted only to `agentdb_manager` | `scripts/check_history_health.py` |
-| 007 | `python db.py install-search-path-hardening` | `pg_temp` at the end of the search_path of every SECURITY DEFINER function in `vc`; run it last, and again after rerunning any command above | `scripts/check_search_path_migration.py` |
+| 007 | `python db.py install-search-path-hardening` | `pg_temp` at the end of the search_path of every function in `vc` that sets one; upgrades earlier installations, and the definitions in the migrations above already include `pg_temp`, so rerunning them does not undo it | `scripts/check_search_path_migration.py` |
 
 Each check script migrates a freshly created old-version test database and compares the results item by item; none of them touches the project database.
 

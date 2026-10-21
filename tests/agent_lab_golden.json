@@ -31,9 +31,10 @@
   "stdout": ""
  },
  "fork_bad_uuid": {
-  "exit_code": 1,
+  "exit_code": 2,
   "statements": [],
-  "stderr_last_line": "ValueError: badly formed hexadecimal UUID string",
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: --base must be a revision UUID\n",
+  "stderr_last_line": "agent_lab.py: error: --base must be a revision UUID",
   "stdout": ""
  },
  "info": {

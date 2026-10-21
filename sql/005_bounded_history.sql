@@ -18,7 +18,7 @@
 --   commits. Snapshots stay derived data (vc.materialize, unchanged).
 BEGIN;
 CREATE OR REPLACE FUNCTION vc._ancestors(p_start uuid) RETURNS TABLE(id uuid)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
   WITH RECURSIVE a(id) AS (
     SELECT p_start UNION SELECT p.parent FROM a CROSS JOIN LATERAL (
       SELECT p.parent FROM vc.parent p WHERE p.child=a.id OFFSET 0) p
@@ -27,7 +27,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION vc.rows_at(p_revision uuid,p_table uuid)
 RETURNS TABLE(pk jsonb,doc jsonb)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_revision) OR
      NOT EXISTS(SELECT 1 FROM vc.tracked_table WHERE id=p_table) THEN
@@ -53,7 +53,7 @@ BEGIN
 END $$;
 
 CREATE OR REPLACE FUNCTION vc._file_state(p_revision uuid,p_path text) RETURNS jsonb
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
   -- The nearest first-parent ancestor that recorded the path decides its state;
   -- the walk ends there. found marks that changeset; at most one row has it.
   WITH RECURSIVE lineage(id,found) AS (
@@ -73,7 +73,7 @@ $$;
 -- vc.merge_base given the ancestors of its first argument, so that vc.merge can
 -- reuse the walk it already made.
 CREATE OR REPLACE FUNCTION vc._merge_base(p_a_ancestors uuid[],p_b uuid) RETURNS uuid
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE candidates uuid[];
 BEGIN
   WITH common AS (SELECT unnest(p_a_ancestors) AS id INTERSECT SELECT id FROM vc._ancestors(p_b))
@@ -87,13 +87,13 @@ END $$;
 REVOKE ALL ON FUNCTION vc._merge_base(uuid[],uuid) FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION vc.merge_base(p_a uuid,p_b uuid) RETURNS uuid
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 BEGIN
   RETURN vc._merge_base(ARRAY(SELECT id FROM vc._ancestors(p_a)),p_b);
 END $$;
 
 CREATE OR REPLACE FUNCTION vc.merge(p_target text,p_source uuid,p_expected uuid,p_author text DEFAULT 'agent')
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE base_id uuid; ctx vc.work_tx; t record; d record;
         file_path text; old_file jsonb; source_file jsonb; target_file jsonb;
         target_ancestors uuid[]; ours uuid[]; theirs uuid[]; a uuid; b uuid; meet uuid;
@@ -189,7 +189,7 @@ END $$;
 -- p_interval commits plus the commits since the last check.
 CREATE OR REPLACE FUNCTION vc.snapshot_due(p_branch text DEFAULT 'main',p_interval integer DEFAULT 100)
 RETURNS TABLE(revision uuid,table_id uuid)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE h uuid := vc.head(p_branch);
 BEGIN
   IF p_interval IS NULL OR p_interval NOT BETWEEN 1 AND 100000 THEN
