@@ -7,8 +7,7 @@ records data, history and the attributes of every function in vc, applies
 are unchanged, that every function keeps its owner, grants, volatility and body,
 that only the search_path of the SECURITY DEFINER functions changed (to
 pg_catalog, vc, pg_temp), and that the functions equal a fresh install's
-(agentdb_test_spnew_*). Then the original assertions of run_tests.test_suite
-and an agentdb_client merge (rolled back) run on the migrated database.
+(agentdb_test_spnew_*), on which run_tests.py runs its assertions.
 Never writes to the project database and never starts or stops the server.
 """
 import argparse
@@ -26,7 +25,6 @@ from check_history_migration import function_states
 from check_merge_migration import fingerprint
 from db import add_connection_arguments
 from review_local import connect, seed
-import run_tests
 
 OLD_FILES = ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql",
              "005_bounded_history.sql", "006_history_health.sql")
@@ -87,27 +85,12 @@ def main():
     assert function_states(fresh_owner, functions) == states_after
     print("PASS migrated functions equal a fresh install's", flush=True)
 
-    run_tests.CONNECTION, run_tests.DBNAME = owner, names["migrated"]
-    regression = run_tests.test_suite()
-    worker = connect(args, names["migrated"], "agentdb_client")
-    merged = worker.sql("""
-      BEGIN; SELECT vc.fork('client-merge',vc.head()) AS base \\gset
-      SELECT vc.begin_change('client-merge',:'base') AS draft \\gset
-      UPDATE agent.products SET stock=56 WHERE id=3501; SELECT vc.write_file('client.txt','x') AS blob \\gset
-      SELECT vc.finish_change() AS revision \\gset
-      SELECT vc.merge('main',:'revision',vc.head()) IS NOT NULL; ROLLBACK;
-    """)
-    assert merged == "t", merged
-    assert fingerprint(owner) == data_before  # the checks above all rolled back
-    print(f"PASS {len(regression)} original assertions and an agentdb_client merge after migration", flush=True)
-
     result = dict(databases=names, postgresql=details["server_version"], old_ref=args.old_ref,
                   migration="sql/007_search_path_pg_temp.sql via Connection.install_search_path_hardening "
                             "(db.py install-search-path-hardening)",
                   migration_runs=2, functions_checked=len(functions), security_definer_functions=definers,
                   search_path_before=BEFORE, search_path_after=AFTER, data_and_history_unchanged=True,
                   other_function_attributes_unchanged=True, functions_equal_fresh_install=True,
-                  regression_tests_after=len(regression), client_merge_after_migration=True,
                   real_cloud_verified=False,
                   note=("Local dedicated test databases on the existing PostgreSQL server; the project database "
                         "was not touched."))

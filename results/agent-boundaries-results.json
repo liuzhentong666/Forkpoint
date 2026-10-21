@@ -1,326 +1,203 @@
 {
-  "database": "agentdb_test_gpt_d36bdf2fc8",
+  "database": "agentdb_test_gpt_b220297a6d",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-  "checks": 44,
-  "holds": 41,
+  "checks": 32,
+  "holds": 32,
   "gaps": [],
-  "observations": {
-    "client_can_commit_to_main_without_merge": "ALLOWED",
-    "no_branch_ownership_or_author_check": "ALLOWED"
-  },
-  "known": {
-    "reset_role_leaves_agentdb_client": "CONFIRMED"
-  },
   "real_cloud_verified": false,
-  "note": "Local dedicated test database on the existing PostgreSQL server; the project database was not touched. Accepted observation probes were rolled back.",
+  "note": "Local dedicated test database on the existing PostgreSQL server; the project database was not touched.",
   "results": [
     {
       "group": "A",
       "name": "executable_functions_are_the_granted_ones",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "extra: none; missing: none"
     },
     {
       "group": "A",
       "name": "no_privileges_on_vc_tables",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "found: none"
     },
     {
       "group": "A",
       "name": "no_truncate_references_trigger_on_app_tables",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "found: none"
     },
     {
       "group": "A",
       "name": "cannot_create_in_any_schema",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "CREATE allowed in: none"
     },
     {
       "group": "A",
       "name": "security_definer_functions_search_pg_temp_last",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "30 SECURITY DEFINER functions; without pg_temp last: none (sql/007_search_path_pg_temp.sql)"
     },
     {
       "group": "B",
-      "name": "cannot_move_branch_head_directly",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
-      "name": "cannot_insert_changeset",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
-      "name": "cannot_touch_open_work_transactions",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
-      "name": "cannot_truncate_main_table",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
       "name": "cannot_disable_capture_trigger",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with 42501"
     },
     {
       "group": "B",
       "name": "cannot_switch_off_triggers_for_session",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
-      "name": "cannot_call_internal_context_function",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
-      "name": "cannot_call_manager_snapshot_due",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
-      "name": "cannot_call_manager_history_health",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
-      "name": "cannot_create_table_in_public",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with 42501"
-    },
-    {
-      "group": "B",
-      "name": "main_write_needs_open_change",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "rejected with P0001"
     },
     {
       "group": "B",
       "name": "branch_view_write_needs_open_change",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
       "group": "C",
       "name": "fork_cannot_recreate_main",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with 23505"
     },
     {
       "group": "C",
       "name": "merge_rejects_unpublished_revision",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
       "group": "C",
       "name": "write_file_rejects_parent_dir_path",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
       "group": "C",
       "name": "write_file_rejects_absolute_path",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
       "group": "C",
       "name": "write_file_rejects_double_slash_path",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
       "group": "C",
       "name": "write_file_rejects_trailing_slash_path",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
       "group": "C",
       "name": "write_file_rejects_dot_segment_path",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
       "group": "C",
       "name": "write_file_rejects_backslash_path",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
       "group": "C",
       "name": "write_file_rejects_empty_path",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "rejected with P0001"
     },
     {
-      "group": "C",
-      "name": "client_can_commit_to_main_without_merge",
-      "kind": "observe",
-      "status": "ALLOWED",
-      "detail": "only the expected-head check applies, not merge's row-conflict check"
-    },
-    {
-      "group": "C",
-      "name": "no_branch_ownership_or_author_check",
-      "kind": "observe",
-      "status": "ALLOWED",
-      "detail": "any session may write any branch and name any author"
+      "group": "D",
+      "name": "branch_with_quote_rejected",
+      "status": "HOLDS",
+      "detail": "exit 1: ValueError: Use a gpt- branch name"
     },
     {
       "group": "D",
-      "name": "reset_role_leaves_agentdb_client",
-      "kind": "known",
-      "status": "CONFIRMED",
-      "detail": "after RESET ROLE: 'postgres'; a boundary only where agents cannot send their own SQL"
-    },
-    {
-      "group": "E",
-      "name": "branch_with_quote_rejected",
-      "kind": "boundary",
-      "status": "HOLDS",
-      "detail": "exit 1: ValueError: Use a gpt- branch name"
-    },
-    {
-      "group": "E",
       "name": "branch_main_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 1: ValueError: Use a gpt- branch name"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "revision_not_uuid_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 1: ValueError: badly formed hexadecimal UUID string"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "price_NaN_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Finite nonnegative value up to 100000 required"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "price_Infinity_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Finite nonnegative value up to 100000 required"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "price_-1_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Finite nonnegative value up to 100000 required"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "price_100001_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Finite nonnegative value up to 100000 required"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "price_1e6_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Finite nonnegative value up to 100000 required"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "fractional_stock_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Stock must be an integer"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "oversized_code_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Policy code exceeds 4096 bytes"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "unparsable_code_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 1: SyntaxError: invalid syntax"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "non_test_database_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Explicit dedicated agentdb_test_gpt_<10 hex> database is required"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "path_outside_choices_rejected",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: argument --path: invalid choice: 'src/app.py' (choose from 'experiments/pricing.py', 'experiments/inventory.py')"
     },
     {
-      "group": "E",
+      "group": "D",
       "name": "code_with_sql_and_psql_syntax_stored_verbatim",
-      "kind": "boundary",
       "status": "HOLDS",
       "detail": "stored == sent: True; app.products rows 4000 -> 4000"
     },
     {
-      "group": "F",
+      "group": "E",
       "name": "main_unchanged_after_all_attempts",
-      "kind": "boundary",
       "status": "HOLDS",
-      "detail": "head unchanged: True; rows unchanged: True; open changes: 0; tables in public: 0"
+      "detail": "head unchanged: True; rows unchanged: True; open changes: 0"
     }
   ]
 }

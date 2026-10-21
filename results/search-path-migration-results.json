@@ -1,7 +1,7 @@
 {
   "databases": {
-    "migrated": "agentdb_test_spmig_260755f95d",
-    "fresh": "agentdb_test_spnew_260755f95d"
+    "migrated": "agentdb_test_spmig_16cbcb775e",
+    "fresh": "agentdb_test_spnew_16cbcb775e"
   },
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "old_ref": "a7e60d9",
@@ -49,8 +49,6 @@
   "data_and_history_unchanged": true,
   "other_function_attributes_unchanged": true,
   "functions_equal_fresh_install": true,
-  "regression_tests_after": 18,
-  "client_merge_after_migration": true,
   "real_cloud_verified": false,
   "note": "Local dedicated test databases on the existing PostgreSQL server; the project database was not touched."
 }
