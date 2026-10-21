@@ -141,7 +141,8 @@ def main():
     def lab_reject(name, reason, *argv):
         code, out, err = lab(*argv)
         last = (err.strip().splitlines() or [""])[-1]
-        record("D", name, code != 0 and reason in out + err,
+        # A rejection is an argument error (exit 2) before any SQL, never an uncaught exception.
+        record("D", name, code == 2 and "Traceback" not in err and reason in out + err,
                f"exit {code}: {last[:160]}" if code else f"ACCEPTED: {out[-200:]!r}")
 
     gpt = "Use a gpt- branch name"
@@ -150,14 +151,15 @@ def main():
                "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11")
     lab_reject("revision_not_uuid_rejected", "--revision must be a revision UUID",
                "info", *target, "--revision", "x' OR '1'='1")
-    for value in ("NaN", "Infinity", "-1", "100001", "1e6"):
+    lab_reject("fork_without_base_rejected", "fork requires --base", "fork", *target, "--branch", "gpt-x-1")
+    for value in ("NaN", "Infinity", "-1", "100001", "1e6", "abc"):
         lab_reject(f"price_{value}_rejected", "Finite nonnegative value up to 100000 required",
                    *proposal, "--field", "price", "--value", value, "--code", "PRICE = 1")
     lab_reject("fractional_stock_rejected", "Stock must be an integer",
                *proposal, "--field", "stock", "--value", "1.5", "--code", "STOCK = 1")
     lab_reject("oversized_code_rejected", "Policy code exceeds 4096 bytes",
                *proposal, "--field", "price", "--value", "11", "--code", "# " + "x" * 4100)
-    lab_reject("unparsable_code_rejected", "SyntaxError",
+    lab_reject("unparsable_code_rejected", "Policy code is not valid Python",
                *proposal, "--field", "price", "--value", "11", "--code", "def (:")
     lab_reject("non_test_database_rejected", "dedicated agentdb_test_gpt_<10 hex> database is required",
                "info", "--database", "agentdb")

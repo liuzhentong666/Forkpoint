@@ -6,7 +6,7 @@ it is not an OS sandbox or a substitute for an independently authenticated login
 import argparse
 import ast
 import copy
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import json
 import os
 from pathlib import Path
@@ -78,6 +78,16 @@ def validate(parser, args):
                 uuid.UUID(value)
             except ValueError:
                 parser.error(f"--{option} must be a revision UUID")
+    needs = {"fork": ("branch", "base"), "propose": ("branch", "expected"), "diff": ("base", "revision"),
+             "merge": ("revision", "expected")}.get(args.action, ())
+    missing = [f"--{name}" for name in needs if getattr(args, name) is None]
+    if missing:
+        parser.error(f"{args.action} requires {' and '.join(missing)}")
+    if "branch" in needs:
+        try:
+            branch(args.branch)
+        except ValueError as error:
+            parser.error(str(error))
     if args.action == "read-code":
         if not args.path or not args.revision:
             parser.error("read-code requires path and revision")
@@ -86,8 +96,14 @@ def validate(parser, args):
             parser.error("propose requires actor, field, value and code")
         if len(args.code.encode()) > 4096:
             parser.error("Policy code exceeds 4096 bytes")
-        ast.parse(args.code)
-        value = Decimal(args.value)
+        try:
+            ast.parse(args.code)
+        except (SyntaxError, ValueError) as error:
+            parser.error(f"Policy code is not valid Python: {getattr(error, 'msg', error)}")
+        try:
+            value = Decimal(args.value)
+        except InvalidOperation:
+            value = Decimal("NaN")
         if not value.is_finite() or not 0 <= value <= 100000:
             parser.error("Finite nonnegative value up to 100000 required")
         if args.field == "stock" and value != value.to_integral_value():

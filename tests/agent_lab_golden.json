@@ -25,9 +25,10 @@
   "stdout": "{\n  \"branch\": \"gpt-a-1\",\n  \"head\": \"33333333-3333-3333-3333-333333333333\"\n}\n"
  },
  "fork_bad_branch": {
-  "exit_code": 1,
+  "exit_code": 2,
   "statements": [],
-  "stderr_last_line": "ValueError: Use a gpt- branch name",
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Use a gpt- branch name\n",
+  "stderr_last_line": "agent_lab.py: error: Use a gpt- branch name",
   "stdout": ""
  },
  "fork_bad_uuid": {
@@ -35,6 +36,13 @@
   "statements": [],
   "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: --base must be a revision UUID\n",
   "stderr_last_line": "agent_lab.py: error: --base must be a revision UUID",
+  "stdout": ""
+ },
+ "fork_missing_base": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: fork requires --base\n",
+  "stderr_last_line": "agent_lab.py: error: fork requires --base",
   "stdout": ""
  },
  "info": {
@@ -109,6 +117,13 @@
   "stderr_last_line": "agent_lab.py: error: propose requires actor, field, value and code",
   "stdout": ""
  },
+ "propose_not_a_number": {
+  "exit_code": 2,
+  "statements": [],
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Finite nonnegative value up to 100000 required\n",
+  "stderr_last_line": "agent_lab.py: error: Finite nonnegative value up to 100000 required",
+  "stdout": ""
+ },
  "propose_range": {
   "exit_code": 2,
   "statements": [],
@@ -124,9 +139,10 @@
   "stdout": ""
  },
  "propose_syntax": {
-  "exit_code": 1,
+  "exit_code": 2,
   "statements": [],
-  "stderr_last_line": "SyntaxError: invalid syntax",
+  "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Policy code is not valid Python: invalid syntax\n",
+  "stderr_last_line": "agent_lab.py: error: Policy code is not valid Python: invalid syntax",
   "stdout": ""
  },
  "propose_too_large": {

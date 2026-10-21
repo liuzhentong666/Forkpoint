@@ -1,8 +1,8 @@
 {
-  "database": "agentdb_test_gpt_4a4d7cc16b",
+  "database": "agentdb_test_gpt_c0f3ce2570",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-  "checks": 32,
-  "holds": 32,
+  "checks": 34,
+  "holds": 34,
   "gaps": [],
   "real_cloud_verified": false,
   "note": "Local dedicated test database on the existing PostgreSQL server; the project database was not touched.",
@@ -113,19 +113,25 @@
       "group": "D",
       "name": "branch_with_quote_rejected",
       "status": "HOLDS",
-      "detail": "exit 1: ValueError: Use a gpt- branch name"
+      "detail": "exit 2: agent_lab.py: error: Use a gpt- branch name"
     },
     {
       "group": "D",
       "name": "branch_main_rejected",
       "status": "HOLDS",
-      "detail": "exit 1: ValueError: Use a gpt- branch name"
+      "detail": "exit 2: agent_lab.py: error: Use a gpt- branch name"
     },
     {
       "group": "D",
       "name": "revision_not_uuid_rejected",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: --revision must be a revision UUID"
+    },
+    {
+      "group": "D",
+      "name": "fork_without_base_rejected",
+      "status": "HOLDS",
+      "detail": "exit 2: agent_lab.py: error: fork requires --base"
     },
     {
       "group": "D",
@@ -159,6 +165,12 @@
     },
     {
       "group": "D",
+      "name": "price_abc_rejected",
+      "status": "HOLDS",
+      "detail": "exit 2: agent_lab.py: error: Finite nonnegative value up to 100000 required"
+    },
+    {
+      "group": "D",
       "name": "fractional_stock_rejected",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: Stock must be an integer"
@@ -173,7 +185,7 @@
       "group": "D",
       "name": "unparsable_code_rejected",
       "status": "HOLDS",
-      "detail": "exit 1: SyntaxError: invalid syntax"
+      "detail": "exit 2: agent_lab.py: error: Policy code is not valid Python: invalid syntax"
     },
     {
       "group": "D",
