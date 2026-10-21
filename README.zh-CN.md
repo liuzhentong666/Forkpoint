@@ -168,12 +168,12 @@ agent_lab.py          实验中 GPT Agent 使用的工具命令行
 agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
 smoke_cloud.py        云端状态服务冒烟测试（尚未运行）
 compose.yaml          一条命令的 Docker 演示
-sql/                  版本引擎，按 001–006 顺序安装
+sql/                  版本引擎，按 001–007 顺序安装
 examples/             可运行的 SQL 示例
 scripts/              基准测试、迁移检查、预发布演练
 results/              文档中各项数字对应的原始结果
 agent_state/          管理 Agent 状态服务与存储适配器
-experiments/          预登记的 GPT 实验：运行器、评分、日志审计
+experiments/          预登记的实验：GPT 重复实验与读集校验实验
 deploy/               预发布虚拟机配置和暂缓的 ECS 部署包
 docs/                 安装、设计、验证记录、技术博客
 tests/                单元测试
@@ -185,6 +185,7 @@ tests/                单元测试
 - [技术博客](docs/TECHNICAL_BLOG.md)：架构，以及两个真实 GPT Agent 带来的发现
 - [设计说明](docs/DESIGN_REVIEW.md)：版本模型以及对原计划的修订
 - [GPT 重复实验](docs/GPT_REPEAT_EXPERIMENT.md)：预登记十轮，保留失败样本
+- [读集校验实验](docs/READSET_EXPERIMENT.md)：在 75 次预登记的合成运行中比较读集校验与陈旧 head 检查，并完整重复一次
 - [历史增长](docs/HISTORY_GROWTH.md) 与 [合入耗时分解](docs/MERGE_BENCHMARK.md)
 - [预发布 S1](docs/STAGING_S1_RESULTS.md) 与 [S4/S5 演练](docs/STAGING_S4_S5.md)：TLS 接入、增长、备份、断电、断网
 - [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md) 与 [AGENTS.md](AGENTS.md)：在本仓库中工作的 Agent 须遵守的约定

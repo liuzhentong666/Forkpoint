@@ -168,12 +168,12 @@ agent_lab.py          the tool CLI the GPT agents used in the experiments
 agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
 smoke_cloud.py        cloud state-service smoke test (not run yet)
 compose.yaml          the one-command Docker demo
-sql/                  the version engine, installed in order 001–006
+sql/                  the version engine, installed in order 001–007
 examples/             runnable SQL examples
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs
 agent_state/          manager-agent state service and storage adapters
-experiments/          pre-registered GPT experiment: runner, scoring, log audit
+experiments/          pre-registered experiments: GPT repeat rounds and read-set validation
 deploy/               staging VM setup and the on-hold ECS bundle
 docs/                 setup, design, validation records, technical blog
 tests/                unit tests
@@ -185,6 +185,7 @@ tests/                unit tests
 - [Technical blog](docs/TECHNICAL_BLOG.md): architecture and what two real GPT agents taught us
 - [Design notes](docs/DESIGN_REVIEW.md): the version model and revisions to the original plan
 - [GPT repeat experiment](docs/GPT_REPEAT_EXPERIMENT.md): ten pre-registered rounds, failures kept
+- [Read-set experiment](docs/READSET_EXPERIMENT.md): read-set validation vs. the stale-head check in 75 pre-registered synthetic runs, replicated
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut
 - [Manager agent protocol](docs/MANAGER_AGENT_PROTOCOL.md) and [AGENTS.md](AGENTS.md): conventions for agents that work on this repo
