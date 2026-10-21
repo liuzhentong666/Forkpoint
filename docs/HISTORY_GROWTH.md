@@ -71,7 +71,7 @@
 
 ## 4. 迁移核验：`scripts/check_history_migration.py`
 
-[`scripts/check_history_migration.py`](../scripts/check_history_migration.py)，结果见 [`results/history-migration-results.json`](../results/history-migration-results.json)（库 `agentdb_test_histmig_9d96382eef`、`agentdb_test_histreg_9d96382eef`、`agentdb_test_histnew_9d96382eef`；2026-10-21 在 005 的定义加入 `pg_temp` 后重跑，结论除 search_path 外与首次运行（库后缀 `2b0e3f493e`）相同，首次运行的结果文件已被覆盖）。
+[`scripts/check_history_migration.py`](../scripts/check_history_migration.py)，结果见 [`results/history-migration-results.json`](../results/history-migration-results.json)（库 `agentdb_test_histmig_6ca42128eb`、`agentdb_test_histreg_6ca42128eb`、`agentdb_test_histnew_6ca42128eb`；2026-10-21 在 005 的定义加入 `pg_temp` 后重跑，结论除 search_path 外与首次运行（库后缀 `2b0e3f493e`）相同，首次运行的结果文件已被覆盖）。
 
 - 用提交 0bf7309 的 001–004 建两个旧版库，安装方式与当时的 `Connection.install` 相同。
   - `histreg` 库运行 18 项原断言和 13 个行合入情形。这些断言假定库中只有 seed（例如只有 1 个 blob），所以单独建库。
@@ -168,7 +168,7 @@ The results of the three groups of reads are identical item by item (1,300 file 
 
 ## 4. Migration verification: `scripts/check_history_migration.py`
 
-[`scripts/check_history_migration.py`](../scripts/check_history_migration.py); results in [`results/history-migration-results.json`](../results/history-migration-results.json) (databases `agentdb_test_histmig_9d96382eef`, `agentdb_test_histreg_9d96382eef`, `agentdb_test_histnew_9d96382eef`; rerun on 2026-10-21 after 005's definitions gained `pg_temp`, with conclusions identical to the first run (database suffix `2b0e3f493e`) except for search_path; the first run's result file was overwritten).
+[`scripts/check_history_migration.py`](../scripts/check_history_migration.py); results in [`results/history-migration-results.json`](../results/history-migration-results.json) (databases `agentdb_test_histmig_6ca42128eb`, `agentdb_test_histreg_6ca42128eb`, `agentdb_test_histnew_6ca42128eb`; rerun on 2026-10-21 after 005's definitions gained `pg_temp`, with conclusions identical to the first run (database suffix `2b0e3f493e`) except for search_path; the first run's result file was overwritten).
 
 - Two old-version databases are built with 001–004 from commit 0bf7309, installed the same way as `Connection.install` did at the time.
   - The `histreg` database runs the 18 original assertions and the 13 row-merge cases. These assertions assume the database has only the seed (for example only 1 blob), so it is built separately.
