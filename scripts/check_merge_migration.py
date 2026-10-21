@@ -135,7 +135,7 @@ def main():
                   migration="sql/004_merge_batch.sql via Connection.install_merge_batch (db.py install-merge-batch)",
                   migration_runs=2, regression_tests_before=len(regression_old),
                   regression_tests_after=len(regression_new), data_and_history_unchanged=True,
-                  function_attributes_unchanged=True, function=function_after, before=data_before,
+                  function_attributes_unchanged_except_search_path=True, function=function_after, before=data_before,
                   merge_cases=len(cases_new), merge_outcomes_identical=True, client_merge_after_migration=True,
                   real_cloud_verified=False,
                   note="Local dedicated test database on the existing PostgreSQL server; the project database was not touched.")

@@ -1,8 +1,8 @@
 {
   "databases": {
-    "history": "agentdb_test_histmig_547200fc7b",
-    "regression": "agentdb_test_histreg_547200fc7b",
-    "fresh": "agentdb_test_histnew_547200fc7b"
+    "history": "agentdb_test_histmig_9d96382eef",
+    "regression": "agentdb_test_histreg_9d96382eef",
+    "fresh": "agentdb_test_histnew_9d96382eef"
   },
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "old_ref": "0bf7309",
@@ -11,7 +11,10 @@
   "regression_tests_before": 18,
   "regression_tests_after": 18,
   "data_and_history_unchanged": true,
-  "function_attributes_unchanged": true,
+  "function_attributes_unchanged_except_search_path": true,
+  "search_path_after": [
+    "search_path=pg_catalog, vc, pg_temp"
+  ],
   "functions_equal_fresh_install": true,
   "client_merge_after_migration": true,
   "functions": {
@@ -140,12 +143,12 @@
         "merge_commits": 6
       },
       "orders": "855d3268902eb349f6bbfb584c09a877",
-      "parents": "4d4a43e2ff5ee1c0d8d0d136fc4f9500",
-      "branches": "59a1a37743e4b1b9083568a114d69e23",
+      "parents": "05351297aa1ca7712c954f277003cac4",
+      "branches": "4d60177f59334835287de3037666df42",
       "products": "87dabd1fa76e3c7fdad9949ba5ab8b80",
-      "changesets": "c4a8d177c493fc41fef5b88cef8fde03",
-      "row_changes": "1f3bd9d669b67d2b4a1c8d9309671bc5",
-      "path_changes": "a31907aa54dd44ba17e79d2b4c9c23fd",
+      "changesets": "ee9254b749138039eed0f630cf6dc37a",
+      "row_changes": "663d1e62583115e9a3445f86d2cf36b2",
+      "path_changes": "e449711c797035e928ef717e1e796369",
       "snapshot_rows": 8000
     },
     "regression": {
@@ -155,12 +158,12 @@
         "merge_commits": 0
       },
       "orders": "d41d8cd98f00b204e9800998ecf8427e",
-      "parents": "daaf1437f0a7a4645c5e2f9be77e1a4f",
-      "branches": "f92d1f90a6c1aac7151cc6aed555526d",
+      "parents": "f8549447e544e01022b5b197e4592dfa",
+      "branches": "103ae1058a399b02efa50c4e8c2f1629",
       "products": "605f0ce8859b05763b76e6598ca0d641",
-      "changesets": "f9b29eabb3ffbc62f2d5f77ea2b4ae98",
-      "row_changes": "ffec4ee4ef811650107e7394241f0576",
-      "path_changes": "432e4f6e59af903af05f0f252f19f8e4",
+      "changesets": "128d81a6124a78893e3cc52060d1312d",
+      "row_changes": "c5559ccb9dd60a974b85d87c041bdb9d",
+      "path_changes": "9dca793f806473d511a0b4672785fc2f",
       "snapshot_rows": 4000
     }
   },
@@ -186,12 +189,12 @@
     "interval": 5,
     "targets": [
       {
-        "revision": "5a1810d4-4edf-48c9-afc9-e16104246ecc",
-        "table_id": "819fdd79-db79-4f6f-8076-f5ccd70c7998"
+        "revision": "b197b13a-0fb0-4714-81b8-533dee4e77ee",
+        "table_id": "cc98b4cc-0932-49f6-8982-05a75ff9f7e2"
       },
       {
-        "revision": "5a1810d4-4edf-48c9-afc9-e16104246ecc",
-        "table_id": "ad666bac-8d9f-44e6-8099-973746a676d1"
+        "revision": "b197b13a-0fb0-4714-81b8-533dee4e77ee",
+        "table_id": "d288f400-75e5-4f96-bce1-0e80acddcde3"
       }
     ],
     "materialized": 2,

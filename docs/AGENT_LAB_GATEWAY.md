@@ -38,14 +38,14 @@
 
 ## 行为保持的核验
 
-- **黄金样本**：改动前用脚本化的 worker 运行原 `agent_lab.py` 的 20 个场景（各动作成功与失败、参数错误、陈旧 head、断言失败），记录 stdout、退出码、stderr 以及发出的每条 SQL，存为 [tests/agent_lab_golden.json](../tests/agent_lab_golden.json)。无网关路径与网关路径都必须与之一致（traceback 只比较最后一行）。
+- **黄金样本**：改动前用脚本化的 worker 运行原 `agent_lab.py` 的 20 个场景（各动作成功与失败、参数错误、陈旧 head、断言失败），记录 stdout、退出码、stderr 以及发出的每条 SQL，存为 [tests/agent_lab_golden.json](../tests/agent_lab_golden.json)。之后补充的场景使总数达到 23 个；2026-10-21 起非法分支、缺少的版本参数、无法解析的代码和非数字取值在发出 SQL 前以退出码 2 的参数错误拒绝，对应样本已重新生成。无网关路径与网关路径都必须与之一致（traceback 只比较最后一行）。
 - **单元测试**：[tests/test_agent_lab_gateway.py](../tests/test_agent_lab_gateway.py) 共 11 项，覆盖：未运行、变量已设置但文件不存在、陈旧文件这三种情况均回到原路径；网关二次检查参数、令牌、`init` 和 fingerprint 不一致；两个并发调用使用两个 Session，之后复用；繁忙时拒绝；请求发出后断开时只报告结果未知且只发送一次；空闲后关闭 Session、退出并删除文件；不会接管已有的约会文件；以及各项上限。另做了三次变异检查（改输出缩进、去掉网关侧检查、在出错后补发请求），测试均能发现。
 - **全套**：`.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests` 共 64 项通过；`experiments/gpt_repeat` 的计分测试通过。
 - **Windows RST**：起初 401 回复在读取请求体之前发出，连续 15 轮测试中有 3 轮客户端收到 `ConnectionAbortedError`，原因是在 Windows 上关闭仍有未读数据的套接字会发送 RST，回复因此丢失。改为先读请求体后，连续 25 轮 0 失败。`agent_state/server.py` 同样在读取请求体之前就回复 401，本次没有修改。
 
 ## 本机真实 PostgreSQL 对比
 
-`python scripts/compare_agent_lab_gateway.py` 用同一串 20 次调用（init、fork、propose、diff、read-code、陈旧 expected 的 propose、merge 成功/40001/整行冲突、verify 失败与成功、非法分支、参数错误）分别跑两个新建测试库：一个逐次起进程，一个经网关。网关以 `--idle-timeout 10` 启动，最后自行退出。[结果](../results/agent-lab-gateway-results.json) 记录了源文件哈希，以及运行期间源文件是否被改动过。
+`python scripts/compare_agent_lab_gateway.py` 用同一串 20 次调用（init、fork、propose、diff、read-code、陈旧 expected 的 propose、merge 成功/40001/整行冲突、verify 失败与成功、非法分支、参数错误）分别跑两个新建测试库：一个逐次起进程，一个经网关。网关以 `--idle-timeout 10` 启动，最后自行退出。[结果](../results/agent-lab-gateway-results.json) 记录了源文件哈希，以及运行期间源文件是否被改动过。下表为 2026-10-18 的运行；结果文件现为 2026-10-21 参数检查改动后的重跑（20 次输出仍全部相同，中位 680 ms / 458 ms，合计 14.02 s / 9.28 s），库名见该文件。
 
 | 本机，2026-10-18 | 逐次起进程 | 经网关 |
 |---|---:|---:|
@@ -107,14 +107,14 @@ The client starts a new process for every call, so it imports as few modules as 
 
 ## Verification that behavior is preserved
 
-- **Golden samples**: before the change, a scripted worker ran 20 scenarios of the original `agent_lab.py` (success and failure of each action, argument errors, stale head, assertion failures), recording stdout, exit code, stderr and every SQL statement issued, saved as [tests/agent_lab_golden.json](../tests/agent_lab_golden.json). Both the no-gateway path and the gateway path must match it (for tracebacks only the last line is compared).
+- **Golden samples**: before the change, a scripted worker ran 20 scenarios of the original `agent_lab.py` (success and failure of each action, argument errors, stale head, assertion failures), recording stdout, exit code, stderr and every SQL statement issued, saved as [tests/agent_lab_golden.json](../tests/agent_lab_golden.json). Scenarios added later bring the total to 23; since 2026-10-21 invalid branches, missing revision options, unparsable code and non-numeric values are rejected before any SQL as argument errors with exit code 2, and the affected samples were regenerated. Both the no-gateway path and the gateway path must match it (for tracebacks only the last line is compared).
 - **Unit tests**: [tests/test_agent_lab_gateway.py](../tests/test_agent_lab_gateway.py) has 11 items in total, covering: not running, variable set but file missing, and stale file, all three falling back to the original path; the gateway re-checking arguments, the token, `init` and fingerprint mismatches; two concurrent calls using two Sessions, which are then reused; rejection when busy; when disconnected after the request is sent, only reporting outcome unknown and sending only once; closing Sessions, exiting and deleting the file after idling; not taking over an existing rendezvous file; and each of the limits. Three mutation checks were also done (changing output indentation, removing the gateway-side checks, re-sending the request after an error), and the tests caught all of them.
 - **Full suite**: `.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests` passed 64 items in total; the scoring tests of `experiments/gpt_repeat` passed.
 - **Windows RST**: at first the 401 reply was sent before reading the request body, and in 3 of 15 consecutive test rounds the client received `ConnectionAbortedError`, because on Windows closing a socket that still has unread data sends an RST, so the reply was lost. After changing to read the request body first, 25 consecutive rounds had 0 failures. `agent_state/server.py` likewise replies 401 before reading the request body; it was not modified this time.
 
 ## Comparison on the real local PostgreSQL
 
-`python scripts/compare_agent_lab_gateway.py` runs the same sequence of 20 calls (init, fork, propose, diff, read-code, propose with a stale expected, merge success/40001/whole-row conflict, verify failure and success, invalid branch, argument error) against two newly created test databases: one spawning a process per call, one through the gateway. The gateway is started with `--idle-timeout 10` and exits on its own at the end. The [results](../results/agent-lab-gateway-results.json) record the source file hashes, and whether the source files were changed during the run.
+`python scripts/compare_agent_lab_gateway.py` runs the same sequence of 20 calls (init, fork, propose, diff, read-code, propose with a stale expected, merge success/40001/whole-row conflict, verify failure and success, invalid branch, argument error) against two newly created test databases: one spawning a process per call, one through the gateway. The gateway is started with `--idle-timeout 10` and exits on its own at the end. The [results](../results/agent-lab-gateway-results.json) record the source file hashes, and whether the source files were changed during the run. The table below is the 2026-10-18 run; the results file now holds the rerun after the 2026-10-21 argument-check change (all 20 outputs still identical, medians 680 ms / 458 ms, totals 14.02 s / 9.28 s), with its database names in the file.
 
 | Local, 2026-10-18 | Spawn per call | Through gateway |
 |---|---:|---:|

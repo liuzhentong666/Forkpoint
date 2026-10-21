@@ -15,7 +15,7 @@
 
 ## 2. 改动
 
-全部为 `CREATE OR REPLACE`：签名、返回值、错误文本与 SQLSTATE、所有者、SECURITY DEFINER、search_path 和授权都不变。新安装在 001–004 之后执行 005；旧安装由数据库所有者执行 `python db.py install-bounded-history`，可以重复执行。`001_core.sql` 中的同名函数是旧定义，以 005 为准。
+全部为 `CREATE OR REPLACE`：签名、返回值、错误文本与 SQLSTATE、所有者、SECURITY DEFINER 和授权都不变；search_path 由 `pg_catalog, vc` 改为 `pg_catalog, vc, pg_temp`（与 007 相同，见 [SETUP](SETUP.md)）。新安装在 001–004 之后执行 005；旧安装由数据库所有者执行 `python db.py install-bounded-history`，可以重复执行。`001_core.sql` 中的同名函数是旧定义，以 005 为准。
 
 1. **父边逐步走索引**（`_ancestors`、`rows_at`、`_file_state`、`snapshot_due`）：递归步改为 `CROSS JOIN LATERAL (SELECT p.parent FROM vc.parent p WHERE p.child=… OFFSET 0)`。`OFFSET 0` 阻止子查询被展开成普通连接，每步因此是一次参数化的索引探测，不依赖统计信息。遍历的停止条件与输出集合不变。
 2. **`vc._file_state` 找到即停**：递归时为每个 changeset 标记“是否记录了该路径”，在第一个记录了该路径的第一父祖先处停止，取该处的状态。从未被任何 changeset 记录的路径不做遍历，直接返回 NULL。返回值与原来一致：删除仍为 NULL，可执行标记仍取自那条记录。提交的成本因此取决于该路径上次改动距今多远，而不是全部历史长度。
@@ -71,14 +71,14 @@
 
 ## 4. 迁移核验：`scripts/check_history_migration.py`
 
-[`scripts/check_history_migration.py`](../scripts/check_history_migration.py)，结果见 [`results/history-migration-results.json`](../results/history-migration-results.json)（库 `agentdb_test_histmig_2b0e3f493e`、`agentdb_test_histreg_2b0e3f493e`、`agentdb_test_histnew_2b0e3f493e`）。
+[`scripts/check_history_migration.py`](../scripts/check_history_migration.py)，结果见 [`results/history-migration-results.json`](../results/history-migration-results.json)（库 `agentdb_test_histmig_9d96382eef`、`agentdb_test_histreg_9d96382eef`、`agentdb_test_histnew_9d96382eef`；2026-10-21 在 005 的定义加入 `pg_temp` 后重跑，结论除 search_path 外与首次运行（库后缀 `2b0e3f493e`）相同，首次运行的结果文件已被覆盖）。
 
 - 用提交 0bf7309 的 001–004 建两个旧版库，安装方式与当时的 `Connection.install` 相同。
   - `histreg` 库运行 18 项原断言和 13 个行合入情形。这些断言假定库中只有 seed（例如只有 1 个 blob），所以单独建库。
   - `histmig` 库提交一段真实形态的历史：main 上 24 个提交，改动、删除、恢复文件并切换可执行标记，同时改行；表快照建在中途；分支有文件和行；main 合入分支后再合回 main；有分支的分支；还有 criss-cross（两个合并基）。
 - 迁移前记录 1,991 项读取结果：每个版本 × 每个路径的 `_file_state` 和 `read_file`；每条父边及各分支 head 两两之间的 `diff_files`；每条父边的 `diff_rows`；每个版本的 `_ancestors` 与 `rows_at`；各 head 与每个版本之间的 `merge_base`，包括报错。另在回滚的事务中运行 17 个文件合入情形：单边修改、双边修改不同或相同、一边删除一边修改、双边删除、仅改可执行标记、多个文件冲突、行已应用后文件冲突整体回滚、合入分支、长期分支先合入 main 再合回、已合入、criss-cross、来源不存在、来源是目标的后代。
 - 执行 `install_bounded_history` 两次后：
-  - 业务数据与历史表的哈希不变；被替换函数的所有者、SECURITY DEFINER、配置、ACL 和执行权限不变；
+  - 业务数据与历史表的哈希不变；被替换函数的所有者、SECURITY DEFINER、ACL 和执行权限不变，search_path 末尾加上 `pg_temp`、其余配置不变；
   - 迁移后的函数与新安装（`histnew`）逐项相同，包括函数体哈希；
   - 1,991 项读取与 30 个合入结果（17 个文件、13 个行）与旧函数相同；
   - 18 项原断言再次通过；`agentdb_client` 仍能合入。
@@ -110,7 +110,7 @@ The database is `agentdb_test_growth_67afbbec40`, kept from the baseline growth 
 
 ## 2. Changes
 
-All are `CREATE OR REPLACE`: signatures, return values, error texts and SQLSTATEs, owners, SECURITY DEFINER, search_path and grants are unchanged. New installations run 005 after 001–004; on old installations the database owner runs `python db.py install-bounded-history`, which can be run repeatedly. The functions with the same names in `001_core.sql` are the old definitions, and 005 takes precedence.
+All are `CREATE OR REPLACE`: signatures, return values, error texts and SQLSTATEs, owners, SECURITY DEFINER and grants are unchanged; search_path changes from `pg_catalog, vc` to `pg_catalog, vc, pg_temp` (as 007 sets it, see [SETUP](SETUP.md)). New installations run 005 after 001–004; on old installations the database owner runs `python db.py install-bounded-history`, which can be run repeatedly. The functions with the same names in `001_core.sql` are the old definitions, and 005 takes precedence.
 
 1. **Parent edges walked step by step through the index** (`_ancestors`, `rows_at`, `_file_state`, `snapshot_due`): the recursive step is changed to `CROSS JOIN LATERAL (SELECT p.parent FROM vc.parent p WHERE p.child=… OFFSET 0)`. `OFFSET 0` prevents the subquery from being flattened into an ordinary join, so each step is a parameterized index probe, independent of statistics. The traversal's stop condition and output set are unchanged.
 2. **`vc._file_state` stops when found**: during recursion each changeset is marked with "whether it recorded this path", and the traversal stops at the first first-parent ancestor that recorded the path, taking the state there. A path never recorded by any changeset is not traversed and NULL is returned directly. The return values are the same as before: a deletion is still NULL, and the executable flag is still taken from that record. The cost of a commit therefore depends on how long ago that path was last changed, not on the whole length of history.
@@ -168,14 +168,14 @@ The results of the three groups of reads are identical item by item (1,300 file 
 
 ## 4. Migration verification: `scripts/check_history_migration.py`
 
-[`scripts/check_history_migration.py`](../scripts/check_history_migration.py); results in [`results/history-migration-results.json`](../results/history-migration-results.json) (databases `agentdb_test_histmig_2b0e3f493e`, `agentdb_test_histreg_2b0e3f493e`, `agentdb_test_histnew_2b0e3f493e`).
+[`scripts/check_history_migration.py`](../scripts/check_history_migration.py); results in [`results/history-migration-results.json`](../results/history-migration-results.json) (databases `agentdb_test_histmig_9d96382eef`, `agentdb_test_histreg_9d96382eef`, `agentdb_test_histnew_9d96382eef`; rerun on 2026-10-21 after 005's definitions gained `pg_temp`, with conclusions identical to the first run (database suffix `2b0e3f493e`) except for search_path; the first run's result file was overwritten).
 
 - Two old-version databases are built with 001–004 from commit 0bf7309, installed the same way as `Connection.install` did at the time.
   - The `histreg` database runs the 18 original assertions and the 13 row-merge cases. These assertions assume the database has only the seed (for example only 1 blob), so it is built separately.
   - The `histmig` database commits a realistically shaped history: 24 commits on main, changing, deleting and restoring files and toggling the executable flag, while also changing rows; a table snapshot is built midway; branches have files and rows; main merges a branch and then it is merged back into main; there are branches of branches; and there is also a criss-cross (two merge bases).
 - Before the migration, 1,991 read results are recorded: `_file_state` and `read_file` for every version × every path; `diff_files` for every parent edge and between each pair of branch heads; `diff_rows` for every parent edge; `_ancestors` and `rows_at` for every version; `merge_base` between each head and every version, including errors. In addition, 17 file merge cases are run in rolled-back transactions: one-sided change, two-sided changes that differ or are the same, delete on one side and change on the other, deletes on both sides, executable flag change only, multiple file conflicts, file conflict after rows were applied rolling back as a whole, merging a branch, a long-lived branch merged into main first and then back, already merged, criss-cross, nonexistent source, source being a descendant of the target.
 - After running `install_bounded_history` twice:
-  - The hashes of business data and history tables are unchanged; the owner, SECURITY DEFINER, configuration, ACL and execute permissions of the replaced functions are unchanged;
+  - The hashes of business data and history tables are unchanged; the owner, SECURITY DEFINER, ACL and execute permissions of the replaced functions are unchanged, and their search_path gains a trailing `pg_temp` with no other configuration change;
   - The migrated functions are identical item by item to a new installation (`histnew`), including function body hashes;
   - The 1,991 reads and the 30 merge results (17 file, 13 row) are the same as with the old functions;
   - The 18 original assertions pass again; `agentdb_client` can still merge.
