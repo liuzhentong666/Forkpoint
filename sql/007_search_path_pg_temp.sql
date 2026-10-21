@@ -1,0 +1,32 @@
+-- Rerunnable migration for existing installations (and the last step of a fresh
+-- install): every SECURITY DEFINER function in vc searches pg_temp last.
+-- Apply as the existing database owner; ALTER FUNCTION keeps owner, grants and body.
+--
+-- These functions run with the owner's rights and were created with
+-- search_path=pg_catalog,vc. A temporary schema left out of search_path is
+-- searched first for relation names, agentdb_client may create temporary
+-- tables, and vc.finish_change and vc._apply_main name pg_constraint,
+-- pg_namespace and pg_attribute without a schema. Listing pg_temp last is the
+-- fix the PostgreSQL manual gives under "Writing SECURITY DEFINER Functions
+-- Safely". scripts/check_agent_boundaries.py checks it on a fresh install.
+--
+-- Run it after 001-006. 003, 005 and 006 recreate functions with CREATE OR
+-- REPLACE, which resets their search_path, so rerun this file after rerunning
+-- any of them. A function with any other search_path stops the migration
+-- before anything changes.
+BEGIN;
+DO $harden$
+DECLARE f regprocedure;
+BEGIN
+  IF EXISTS(SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname='vc' AND p.prosecdef AND p.proconfig IS DISTINCT FROM '{"search_path=pg_catalog, vc"}'
+              AND p.proconfig IS DISTINCT FROM '{"search_path=pg_catalog, vc, pg_temp"}') THEN
+    RAISE EXCEPTION 'A SECURITY DEFINER function in vc has an unexpected search_path; nothing was changed';
+  END IF;
+  FOR f IN SELECT p.oid::regprocedure FROM pg_catalog.pg_proc p
+           JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+           WHERE n.nspname='vc' AND p.prosecdef ORDER BY 1 LOOP
+    EXECUTE format('ALTER FUNCTION %s SET search_path = pg_catalog, vc, pg_temp', f);
+  END LOOP;
+END $harden$;
+COMMIT;

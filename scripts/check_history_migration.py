@@ -12,7 +12,8 @@ ancestor sets, merge bases and rows_at at every revision, plus the outcome of
 row and file merge cases (rolled back). Then it applies
 `db.py install-bounded-history` twice and checks that data, history, function
 owner/grants/settings and every recorded outcome are unchanged, that the
-functions equal those of a fresh install (agentdb_test_histnew_*), and that the
+functions, with the later 007 applied as well, equal those of a fresh install
+(agentdb_test_histnew_*), and that the
 snapshot policy (vc.snapshot_due through SnapshotMaintenance.run_due as
 agentdb_manager) only adds derived snapshots without changing any outcome.
 Never writes to the project database and never starts or stops the server.
@@ -323,10 +324,12 @@ def main():
     assert not any(state["public_can_execute"] for state in functions_after.values())
     print("PASS migration keeps data, history, owner, grants and settings", flush=True)
 
+    # A fresh install also runs the later 007, which lists pg_temp last in these functions' search_path.
+    history.install_search_path_hardening()
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
     fresh = function_states(connect(args, names["fresh"]), REPLACED + ADDED)
-    assert fresh == functions_after, (fresh, functions_after)
+    assert fresh == function_states(history, REPLACED + ADDED), (fresh, functions_after)
     print("PASS migrated functions equal a fresh install's", flush=True)
 
     observations = compare("reads", observed_old, observe(history))

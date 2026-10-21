@@ -7,7 +7,8 @@ criss-cross, table snapshots). It records data, history, every read and merge
 outcome of that checker, and the attributes of the existing functions; applies
 `db.py install-history-health` twice; and checks that nothing changed, that
 vc.history_health is STABLE, executable by agentdb_manager only, equal to a
-fresh install's (agentdb_test_hhnew_*), and that its numbers match independent
+fresh install's (agentdb_test_hhnew_*) once the later 007 is applied as well,
+and that its numbers match independent
 queries on every branch (commits_since_snapshot also against vc.snapshot_due).
 Finally SnapshotMaintenance.check_history (MemoryStore) runs as agentdb_manager
 twice, the second run publishing nothing, and the data is still unchanged.
@@ -117,10 +118,12 @@ def main():
     print("PASS migration keeps data, history and every existing function; vc.history_health is STABLE and "
           "granted to agentdb_manager only", flush=True)
 
+    # A fresh install also runs the later 007, which lists pg_temp last in these functions' search_path.
+    owner.install_search_path_hardening()
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
     fresh = function_states(connect(args, names["fresh"]), EXISTING + (ADDED,))
-    assert fresh == functions_after, (fresh, functions_after)
+    assert fresh == function_states(owner, EXISTING + (ADDED,)), (fresh, functions_after)
     print("PASS migrated functions equal a fresh install's", flush=True)
 
     manager = connect(args, names["history"], "agentdb_manager")

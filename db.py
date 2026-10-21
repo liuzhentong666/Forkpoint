@@ -240,7 +240,7 @@ class Connection:
         # All schema files install in one transaction, including the shared roles.
         statements = []
         for filename in ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql",
-                         "005_bounded_history.sql", "006_history_health.sql"):
+                         "005_bounded_history.sql", "006_history_health.sql", "007_search_path_pg_temp.sql"):
             source = (ROOT / "sql" / filename).read_text(encoding="utf-8")
             source = re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", source)
             statements.append(source)
@@ -268,6 +268,12 @@ class Connection:
         """Add the read-only vc.history_health check to an existing installation (sql/006_history_health.sql)."""
         target = database_name(database or self.settings["database"])
         source = (ROOT / "sql/006_history_health.sql").read_text(encoding="utf-8")
+        self.sql(source, target)
+
+    def install_search_path_hardening(self, database=None):
+        """List pg_temp last in every vc SECURITY DEFINER function's search_path (sql/007_search_path_pg_temp.sql)."""
+        target = database_name(database or self.settings["database"])
+        source = (ROOT / "sql/007_search_path_pg_temp.sql").read_text(encoding="utf-8")
         self.sql(source, target)
 
 
@@ -453,7 +459,8 @@ class Session:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("check", "install", "install-manager", "install-merge-batch",
-                                           "install-bounded-history", "install-history-health"))
+                                           "install-bounded-history", "install-history-health",
+                                           "install-search-path-hardening"))
     add_connection_arguments(parser)
     args = parser.parse_args()
     try:
@@ -482,6 +489,9 @@ def main():
         elif args.action == "install-history-health":
             connection.install_history_health()
             details["history_health_installed_in"] = connection.settings["database"]
+        elif args.action == "install-search-path-hardening":
+            connection.install_search_path_hardening()
+            details["search_path_hardening_installed_in"] = connection.settings["database"]
         print(json.dumps(details, indent=2))
     except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"{error}\n")
