@@ -138,9 +138,13 @@ xr.merge_validated(p_target text, p_source uuid, p_reads jsonb, p_author text) R
 | `experiments/readset/test_readset_oracle.py` | 单元测试，含构造的陈旧/新鲜历史；不连数据库 |
 | `experiments/readset/audit_calls.py` | 只用 `calls.jsonl` 重算每项计数并与 `results.json` 比较；不连数据库 |
 | `experiments/readset/audit_sql.py` | 在 `--keep-databases` 保留的运行库中，只用 vc 历史重新推导陈旧提交与规则违反 |
+| `experiments/readset/test_readset_sql.py` | `xr` 函数的契约测试；自建并在结束时删除 `agentdb_test_xrcontract_*` 库 |
+| `experiments/readset/check_mutations.py` | 在临时副本中做单行变异，确认测试会失败；`--sql` 时还变异 `readset.sql`（需要数据库） |
 
 ```bash
 python -m unittest discover -s experiments/readset -p test_readset_oracle.py -v
+python -m unittest discover -s experiments/readset -p test_readset_sql.py -v
+python experiments/readset/check_mutations.py --sql
 python experiments/readset/run_readset.py
 python experiments/readset/audit_calls.py results/readset/<run>
 python experiments/readset/audit_sql.py <directory of a --keep-databases run>
@@ -242,6 +246,32 @@ head 组的“校验”只是记录一次时间戳，并不校验。合入阶段
 ### 后续（尚未开始）
 
 各条标准均已满足；按本文，读集校验成为版本引擎的候选改动，须作为单独的行为变更，带自己的测试与迁移。在此之前，先把校验改为增量方式：借助 `vc.row_change(table_id, pk, changeset)` 索引，只检查基线与 head 之间改过读键的提交，使校验耗时不再随表的大小增长，然后重新测量。真实 Agent 漏报的频率仍未知，属于第二阶段，需要单独的协议，并经用户同意使用模型额度。
+
+## 测试记录与已知问题（2026-10-21）
+
+对照模块重构框架（作者的本地文档，不在本仓库中）补做的检查：
+
+- **基线**：在 a32e61f 上运行现有套件，全部通过：`run_tests.py` 21 项（含原 18 项断言，以及十写入者竞争中 1 个成功、9 个陈旧 head），`tests/` 79 项，`experiments/gpt_repeat` 7 项，`review_local.py` 全部检查（十个分支全部合入、45 次陈旧 head 重试、锁超时与两个中断窗口）。本实验的两次提交没有改动这些套件涉及的任何文件，所以这也就是改动之前的基线。
+- **变异检查**（`check_mutations.py`）：第一次用 30 处单行变异检查原有的 17 个单元测试，只拦下 13 处，未达到框架第一阶段的门槛。补上边界值、判定标准、时钟检查、原始记录重算的测试，以及一个黄金样本测试（用已登记运行的 `results.json` 核对 750 个写入者由种子决定的读集与浏览行）之后，31 个单元测试拦下全部 30 处。`--sql` 再对 `readset.sql` 做 5 处变异，13 个契约测试全部拦下。合计 35 处，0 处存活。
+- **契约测试**（`test_readset_sql.py`，13 项）：在专用库中以 `agentdb_client` 身份记录 `xr` 函数的现有行为：首个合入不做校验；读键变化报 RS001，DETAIL 含基线值与当前值，main 不动；读键未变时即使 main 已前进也能合入；改后又改回不算冲突；空读集跳过校验；写写冲突仍由 `vc.merge` 报 P0001；读冲突先于写冲突报告；`xr.merge_head` 保留 40001；未知分支被拒；排队超过 lock_timeout 报 55P03 且 main 不变；三个函数都是 SECURITY DEFINER、search_path 固定、只有 `agentdb_client` 可执行。
+
+已知问题。这里只记录，不在本次修改；若读集校验进入版本引擎，须在那次单独的改动中先修复：
+
+1. 格式错误的 `p_reads`（不是对象、为 NULL、值不是数组）报 P0001，而 P0001 也是 `vc.merge` 行/文件冲突的错误码，调用方无法仅凭 SQLSTATE 区分输入错误与冲突，`run_readset.py` 会把它当作冲突去重新判断。应改用 22023（invalid_parameter_value）。
+2. `p_reads` 中不存在的表 id 在 main 未前进时被静默忽略（基线等于 head，什么也不校验），main 前进后才报 P0001 “Unknown revision or table”；不是 uuid 的键报 22P02。应在开头就按 `vc.tracked_table` 校验表 id。
+3. 先取锁、后校验的顺序没有契约测试覆盖：`vc.merge` 本身也会取同一把锁，只有并发竞态才会暴露。目前的证据是实验中 W1 rs_declared 的重新判断为 0。
+
+## 回滚方案
+
+本实验没有修改现有代码、数据格式或项目数据库，各部分可以单独撤销：
+
+| 部分 | 撤销方法 | 核对 |
+|---|---|---|
+| 提交（4db8267 及之后） | `git revert` 对应提交；被改动的现有文件只有 `.gitignore`（新增 4 行）与 `AGENTS.md`（新增表格行与说明） | `git diff 8537cbb -- sql db.py agent_lab.py agent_lab_gateway.py review_local.py run_tests.py agent_state tests scripts` 为空（2026-10-21 已核对） |
+| `experiments/readset/` | `git revert`，或删除该目录；目录外没有代码导入它 | 在该目录、本文与 `results/` 之外，只有 `AGENTS.md` 与 `.gitignore` 提到 readset（2026-10-21 已核对） |
+| `xr` schema | 只存在于 `agentdb_test_readset_*` 测试库（契约测试的 `agentdb_test_xrcontract_*` 库在测试结束时删除）；`db.py install` 不安装它。用 `DROP DATABASE … WITH (FORCE)` 删除这些库 | 项目库 `agentdb` 中没有 `xr` schema（2026-10-21 已核对） |
+| 结果 | 删除 `results/readset/<运行>/`；`results.json` 已提交，`calls.jsonl` 只在本机 | — |
+| 将来进入版本引擎 | 尚未开始。若采纳，将作为新迁移（008）提交；其回滚方法（恢复 005 中的 `vc.merge` 定义、删除新增函数）须在应用前写明并测试 | — |
 
 ---
 
@@ -386,9 +416,13 @@ Real Agents take part through `agent_lab.py`: the merge tool requires `relied_on
 | `experiments/readset/test_readset_oracle.py` | unit tests, including the constructed stale/fresh history; no database |
 | `experiments/readset/audit_calls.py` | rebuilds every count from `calls.jsonl` alone and compares it with `results.json`; no database |
 | `experiments/readset/audit_sql.py` | re-derives stale commits and rule violations from vc history alone, in run databases kept with `--keep-databases` |
+| `experiments/readset/test_readset_sql.py` | contract tests for the `xr` functions; builds an `agentdb_test_xrcontract_*` database and drops it at the end |
+| `experiments/readset/check_mutations.py` | one-line mutations in a temporary copy, to confirm the tests fail; `--sql` also mutates `readset.sql` (needs the database) |
 
 ```bash
 python -m unittest discover -s experiments/readset -p test_readset_oracle.py -v
+python -m unittest discover -s experiments/readset -p test_readset_sql.py -v
+python experiments/readset/check_mutations.py --sql
 python experiments/readset/run_readset.py
 python experiments/readset/audit_calls.py results/readset/<run>
 python experiments/readset/audit_sql.py <directory of a --keep-databases run>
@@ -490,3 +524,29 @@ The replication and both checks agree with the results above; the conclusions an
 ### Next steps (not started)
 
 All criteria passed, so by this document read-set validation becomes a candidate change to the version engine, to be made as a separate behavior change with its own tests and migration. Before that, validation should become incremental: check only the commits between base and head that changed a read key, using the `vc.row_change(table_id, pk, changeset)` index, so its cost no longer grows with table size; then measure again. How often real Agents under-report their dependencies is still unknown; that is phase 2, which needs its own protocol and the user's approval to use model quota.
+
+## Test record and known issues (2026-10-21)
+
+Checks added against the module refactoring framework (the author's local document, not in this repository):
+
+- **Baseline**: the existing suites, run on a32e61f, all pass: `run_tests.py` 21 items (including the original 18 assertions, and 1 winner with 9 stale heads in the ten-writer race), `tests/` 79 tests, `experiments/gpt_repeat` 7 tests, and every `review_local.py` check (all ten branches merged, 45 stale-head retries, the lock timeout and both interruption windows). The experiment's two commits changed none of the files these suites cover, so this is also the baseline from before the change.
+- **Mutation check** (`check_mutations.py`): the first pass ran 30 one-line mutations against the original 17 unit tests and only 13 were caught, short of the framework's phase 1 gate. After adding tests for boundary values, the criteria, the clock check and the raw-log recount, plus a golden-master test (the seeded read sets and browsed rows of all 750 writers, checked against the registered run's `results.json`), the 31 unit tests catch all 30. `--sql` adds 5 mutations of `readset.sql`, and the 13 contract tests catch all of them. 35 mutations in total, 0 survived.
+- **Contract tests** (`test_readset_sql.py`, 13 tests): run as `agentdb_client` in a dedicated database, they record what the `xr` functions do now: the first merge validates nothing; a changed read key raises RS001 with the base and current values in its DETAIL, and main does not move; an unchanged read key merges even after main has moved; a row changed and changed back is not a conflict; an empty read set skips validation; a write-write conflict is still P0001 from `vc.merge`; a read conflict is reported before a write conflict; `xr.merge_head` keeps 40001; an unknown branch is refused; queuing past lock_timeout gives 55P03 and leaves main unchanged; all three functions are SECURITY DEFINER with a pinned search_path, executable only by `agentdb_client`.
+
+Known issues, recorded but not fixed here; if read-set validation goes into the version engine, they are fixed first, in that separate change:
+
+1. A malformed `p_reads` (not an object, NULL, or a value that is not an array) raises P0001, which is also `vc.merge`'s row/file conflict code, so a caller cannot tell bad input from a conflict by SQLSTATE; `run_readset.py` would treat it as a conflict and rethink. It should use 22023 (invalid_parameter_value).
+2. An unknown table id in `p_reads` is ignored silently while main has not moved (base equals head, so nothing is validated), and raises P0001 "Unknown revision or table" once main has moved; a key that is not a uuid raises 22P02. Table ids should be checked against `vc.tracked_table` up front.
+3. No contract test covers taking main's lock before validating: `vc.merge` takes the same lock itself, so only a concurrent race would show the difference. The evidence so far is the experiment's 0 rethinks in W1 rs_declared.
+
+## Rollback plan
+
+The experiment changed no existing code, data format or project database, so each part can be undone on its own:
+
+| Part | How to undo | Check |
+|---|---|---|
+| Commits (4db8267 and later) | `git revert` them; the only existing files they touch are `.gitignore` (4 added lines) and `AGENTS.md` (added table rows and notes) | `git diff 8537cbb -- sql db.py agent_lab.py agent_lab_gateway.py review_local.py run_tests.py agent_state tests scripts` is empty (checked 2026-10-21) |
+| `experiments/readset/` | `git revert`, or delete the directory; no code outside it imports it | outside that directory, this document and `results/`, only `AGENTS.md` and `.gitignore` mention readset (checked 2026-10-21) |
+| `xr` schema | exists only in `agentdb_test_readset_*` test databases (the contract tests' `agentdb_test_xrcontract_*` database is dropped when they finish); `db.py install` never installs it. Drop those databases with `DROP DATABASE … WITH (FORCE)` | the project database `agentdb` has no `xr` schema (checked 2026-10-21) |
+| Results | delete `results/readset/<run>/`; `results.json` is committed, `calls.jsonl` exists only on this machine | — |
+| A future engine change | not started. If adopted, it comes as a new migration (008) whose rollback (restoring 005's definition of `vc.merge` and dropping the new function) is written down and tested before it is applied | — |
