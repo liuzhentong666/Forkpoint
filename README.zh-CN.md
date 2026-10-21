@@ -99,7 +99,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 |---|---|---|
 | **代码与数据一起提交** | 文件、行变更和 changeset 在一个 PostgreSQL 事务中发布，任何一步失败都整体回滚 | [run_tests.py](run_tests.py) 中的 `code_and_native_data_publish_atomically` |
 | **分支几乎零成本** | 建分支不复制行，也不复制文件（实测新增行历史 0 条） | [验证记录](docs/VALIDATION.md) |
-| **Agent 能据此行动的错误** | `40001` 旧 head → 重读后重试 · `P0001` 合入冲突 → 重新提案 · `55P03` 等锁超时 → 稍后重试 | 10 个连接竞争同一个旧 head：1 个成功，9 个被拒绝 |
+| **Agent 能据此行动的错误** | `40001` 旧 head → 重读后重试 · `P0001` 合入冲突 → 重新提案 · `55P03` 等锁超时 → 稍后重试 · `RS001` 读冲突 → 重读这些行后重新判断 | 10 个连接竞争同一个旧 head：1 个成功，9 个被拒绝；写偏斜被拒见 [run_tests.py](run_tests.py) |
 | **由真实约束把关 `main`** | 合入以普通 SQL 作用在真实表上，UNIQUE、外键和 CHECK 约束照常生效 | [run_tests.py](run_tests.py) 中的三项约束违规用例 |
 | **历史变长后依然快** | `main` 上有 2,000 个提交时：一次 10 行合入 181 ms，一次提交约 20 ms（修复前为 50.7 s 和 499 ms） | [S4/S5 报告第 7 节](docs/STAGING_S4_S5.md) |
 | **经过故障演练** | 断电后 201 个已确认的提交全部保留，没有半个提交；备份恢复 13 项指纹一致；失联客户端持有的锁约 60 s 内释放 | [S4/S5 报告](docs/STAGING_S4_S5.md) |
@@ -133,7 +133,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 - 忘记调用 `finish_change()` 时，`COMMIT` 失败，表的修改一并回滚。
 - 同一次修改中对一行的多次更新只保留最初的 before 和最终的 after；插入后再删除会相互抵消。
 
-主要 SQL 函数：`vc.head`、`vc.fork`、`vc.pin`、`vc.checkout`、`vc.begin_change`、`vc.finish_change`、`vc.write_file`、`vc.read_file`、`vc.diff_rows`、`vc.diff_files`、`vc.history`、`vc.merge`、`vc.register_table`。完整设计与取舍见 [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md)。
+主要 SQL 函数：`vc.head`、`vc.fork`、`vc.pin`、`vc.checkout`、`vc.begin_change`、`vc.finish_change`、`vc.write_file`、`vc.read_file`、`vc.diff_rows`、`vc.diff_files`、`vc.history`、`vc.merge`、`vc.merge_validated`、`vc.register_table`。完整设计与取舍见 [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md)。
 
 ## 与其他方案的比较
 
@@ -151,7 +151,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 
 - **固定 schema。** 还没有 DDL 分支或迁移合并。
 - **整行冲突。** 两个 Agent 修改同一行的不同列仍会冲突，尚不支持逐列合并。
-- **不推断跨行规则。** 原生约束会被检查；像“订单量不能超过库存”这样的规则需要单独实现。
+- **不推断跨行规则。** 原生约束会被检查；像“订单量不能超过库存”这样的规则，可用 `vc.merge_validated` 合入并给出决定读过的行，这些行在建分支后被改过时合入会被拒绝（写偏斜）。
 - **分支可以暂时无效。** UNIQUE 和外键只在合入 `main` 时检查。
 - **读取需要回放历史。** 分支视图由历史加快照解析，用不到表自身的索引，因此需要维护任务按 `vc.snapshot_due` 生成快照。
 - **单节点、单租户。** 没有复制、配额或租户隔离；同一分支的写入串行执行，所有合入 `main` 的操作都要取得 `main` 的锁。
@@ -168,7 +168,7 @@ agent_lab.py          实验中 GPT Agent 使用的工具命令行
 agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
 smoke_cloud.py        云端状态服务冒烟测试（尚未运行）
 compose.yaml          一条命令的 Docker 演示
-sql/                  版本引擎，按 001–007 顺序安装
+sql/                  版本引擎，按 001–008 顺序安装
 examples/             可运行的 SQL 示例
 scripts/              基准测试、迁移检查、预发布演练
 results/              文档中各项数字对应的原始结果

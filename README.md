@@ -99,7 +99,7 @@ SELECT vc.register_table('app.products');   -- agents write through agent.produc
 |---|---|---|
 | **Code and data commit together** | Files, row changes and the changeset are published in one PostgreSQL transaction; any failure rolls back all of it | `code_and_native_data_publish_atomically` in [run_tests.py](run_tests.py) |
 | **Branches are cheap** | Forking copies no rows and no files (0 new row-history entries measured) | [Validation record](docs/VALIDATION.md) |
-| **Errors an agent can act on** | `40001` stale head → re-read and retry · `P0001` merge conflict → re-propose · `55P03` lock timeout → wait and retry | 10 connections racing on one stale head: 1 succeeded, 9 rejected |
+| **Errors an agent can act on** | `40001` stale head → re-read and retry · `P0001` merge conflict → re-propose · `55P03` lock timeout → wait and retry · `RS001` read conflict → re-read those rows and decide again | 10 connections racing on one stale head: 1 succeeded, 9 rejected; write skew refused in [run_tests.py](run_tests.py) |
 | **Real constraints guard `main`** | Merges run as ordinary SQL against the real tables, so UNIQUE, foreign keys and CHECK constraints apply | three constraint-violation cases in [run_tests.py](run_tests.py) |
 | **Stays fast as history grows** | With 2,000 commits on `main`: a 10-row merge takes 181 ms and a commit about 20 ms (50.7 s and 499 ms before the history fix) | [S4/S5 report, section 7](docs/STAGING_S4_S5.md) |
 | **Failure-drilled** | A power cut kept all 201 acknowledged commits and no partial one; backup and restore matched on 13 fingerprints; a vanished client's lock is freed in about 60 s | [S4/S5 report](docs/STAGING_S4_S5.md) |
@@ -133,7 +133,7 @@ Guarantees enforced by the database:
 - If you forget `finish_change()`, `COMMIT` fails and the table changes roll back.
 - Repeated updates to a row in one change collapse to one before/after pair. An insert followed by a delete cancels out.
 
-Main SQL functions: `vc.head`, `vc.fork`, `vc.pin`, `vc.checkout`, `vc.begin_change`, `vc.finish_change`, `vc.write_file`, `vc.read_file`, `vc.diff_rows`, `vc.diff_files`, `vc.history`, `vc.merge`, `vc.register_table`. The full design and the trade-offs are in [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md).
+Main SQL functions: `vc.head`, `vc.fork`, `vc.pin`, `vc.checkout`, `vc.begin_change`, `vc.finish_change`, `vc.write_file`, `vc.read_file`, `vc.diff_rows`, `vc.diff_files`, `vc.history`, `vc.merge`, `vc.merge_validated`, `vc.register_table`. The full design and the trade-offs are in [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md).
 
 ## How it compares
 
@@ -151,7 +151,7 @@ If you need a mature, general-purpose versioned database, use Dolt. Forkpoint is
 
 - **Fixed schema.** No DDL branching or migration merging yet.
 - **Whole-row conflicts.** Two agents changing different columns of the same row still conflict; there is no per-column merge.
-- **Cross-row rules aren't inferred.** Native constraints are checked; a rule like "orders can't exceed stock" needs its own check.
+- **Cross-row rules aren't inferred.** Native constraints are checked; for a rule like "orders can't exceed stock", merge with `vc.merge_validated` and the rows the decision read, and the merge is refused if they changed since the branch was forked (write skew).
 - **Branches may be temporarily invalid.** UNIQUE and foreign keys are checked only when merging into `main`.
 - **Reads replay history.** Branch views resolve from history plus snapshots, not the table's own indexes, so a maintenance job should create snapshots (`vc.snapshot_due` says when).
 - **Single node and single tenant.** There is no replication, quota or tenant isolation. Writes to one branch are serialized, and every merge into `main` takes `main`'s lock.
@@ -168,7 +168,7 @@ agent_lab.py          the tool CLI the GPT agents used in the experiments
 agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
 smoke_cloud.py        cloud state-service smoke test (not run yet)
 compose.yaml          the one-command Docker demo
-sql/                  the version engine, installed in order 001–007
+sql/                  the version engine, installed in order 001–008
 examples/             runnable SQL examples
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs

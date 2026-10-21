@@ -223,7 +223,9 @@ head 组的“校验”只是记录一次时间戳，并不校验。合入阶段
 - 保护效果完全取决于读集。按 0.5 的概率漏报，两次合计放过了 70 个冲突中的 35 个；具体放过哪一个，取决于哪个写入者第二个合入，由时序决定。记录全部读取是安全的，但浏览行与其他写入者的写入重叠时会多拒。
 - 重复运行与两项核查都与上述结果一致；第 3 条标准的说明不变。
 
-### 后续（尚未开始）
+### 后续
+
+已于 2026-10-21 完成：迁移 008 把读集校验作为 `vc.merge_validated` 加入版本引擎，按键增量查找代替整表回放，并修复下面已知问题中的第 1、2 条（见 [安装与升级](SETUP.md)）；以下为当时写下的计划。
 
 各条标准均已满足；按本文，读集校验成为版本引擎的候选改动，须作为单独的行为变更，带自己的测试与迁移。在此之前，先把校验改为增量方式：借助 `vc.row_change(table_id, pk, changeset)` 索引，只检查基线与 head 之间改过读键的提交，使校验耗时不再随表的大小增长，然后重新测量。真实 Agent 漏报的频率仍未知，属于第二阶段，需要单独的协议，并经用户同意使用模型额度。
 
@@ -481,7 +483,9 @@ Neither check uses the harness's own counters or `oracle.py`:
 - The protection is exactly as good as the read set. Omitting each dependency with probability 0.5 let 35 of 70 conflicts through over both runs; which ones depends on which writer merges second, and timing decides that. Recording every read was safe but over-rejected whenever browsed rows overlapped another writer's writes.
 - The replication and both checks agree with these results; the caveat on criterion 3 stands.
 
-### Next steps (not started)
+### Next steps
+
+Done on 2026-10-21: migration 008 adds read-set validation to the version engine as `vc.merge_validated`, with per-key lookups instead of whole-table replay, and fixes known issues 1 and 2 below (see [Setup and upgrades](SETUP.md)); the plan as written before follows.
 
 All criteria passed, so by this document read-set validation becomes a candidate change to the version engine, to be made as a separate behavior change with its own tests and migration. Before that, validation should become incremental: check only the commits between base and head that changed a read key, using the `vc.row_change(table_id, pk, changeset)` index, so its cost no longer grows with table size; then measure again. How often real Agents under-report their dependencies is still unknown; that is phase 2, which needs its own protocol and the user's approval to use model quota.
 
