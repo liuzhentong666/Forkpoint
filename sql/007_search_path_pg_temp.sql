@@ -1,5 +1,5 @@
--- Rerunnable migration for existing installations (and the last step of a fresh
--- install): every function in vc that sets a search_path searches pg_temp last.
+-- Rerunnable migration for existing installations (a fresh install runs it after
+-- 006): every function in vc that sets a search_path searches pg_temp last.
 -- Apply as the existing database owner; ALTER FUNCTION keeps owner, grants and body.
 --
 -- These functions run with the owner's rights and were created with

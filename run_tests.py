@@ -425,7 +425,8 @@ def read_set_merge():
     Kept apart from test_suite(), which the migration checks also run on installs
     that predate 008. Each case runs as agentdb_client in a transaction that is
     rolled back, except the comparison with vc.rows_at, which calls an owner-only
-    function. Rows 3201-3212, 9201 and 9301 are used only here.
+    function. Rows 3201-3214, 9201 and 9301 are used only here; the last case,
+    a race between two sessions, commits for real and leaves main two merges on.
     """
     results = []
 
@@ -489,7 +490,9 @@ def read_set_merge():
          + "ASSERT text_value LIKE 'Row conflict:%' AND vc.head()=t, text_value;")
 
     malformed = ["[]", None, '{"products":[{"id":1}]}', '{"00000000-0000-0000-0000-0000000000aa":[{"id":1}]}',
-                 '{"TID":{"id":1}}', '{"TID":[1]}', '{"TID":[{"sku":"sku-1"}]}', '{"TID":[{"id":1,"sku":"sku-1"}]}']
+                 '{"TID":{"id":1}}', '{"TID":[1]}', '{"TID":[{"sku":"sku-1"}]}', '{"TID":[{"id":1,"sku":"sku-1"}]}',
+                 # The right column but not the value history records: each would match no row.
+                 '{"TID":[{"id":"3204"}]}', '{"TID":[{"id":null}]}', '{"TID":[{"id":1.5}]}', '{"TID":[{"id":"abc"}]}']
     literal = "ARRAY[" + ",".join("NULL" if m is None else f"'{m}'" for m in malformed) + "]::text[]"
     test("malformed_read_sets_are_refused_before_merging",
          proposal("r", "mf", "UPDATE agent.products SET stock=45 WHERE id=3201;") + f"""
@@ -506,7 +509,68 @@ def read_set_merge():
          proposal("r", "am", "UPDATE agent.products SET stock=45 WHERE id=3204;")
          + f"""t:=vc.merge_validated('main',r,{reads(3205)},'am');
            ASSERT vc.merge_validated('main',r,{reads(3205)},'am')=t AND vc.head()=t;""")
+
+    # The read set stands in for the expected head, so an empty one declares that
+    # the decision read nothing: it merges after main moved, like head_blind.
+    test("an_empty_read_set_merges_without_a_head_check",
+         proposal("r", "er-a", "UPDATE agent.products SET stock=45 WHERE id=3206;")
+         + proposal("s", "er-b", "UPDATE agent.products SET stock=45 WHERE id=3207;")
+         + """t:=vc.merge_validated('main',r,'{}'::jsonb,'er-a');
+           t:=vc.merge_validated('main',s,'{}'::jsonb,'er-b');
+           ASSERT vc.merge_base(t,s)=s AND vc.merge_base(t,r)=r;""")
+
+    results.append(read_set_race())
+    print("PASS " + results[-1]["name"], flush=True)
     return results
+
+
+def read_set_race():
+    """Two crossing read sets merged at the same time: the head lock comes before the check.
+
+    A merges and holds main's lock (sleeping inside its transaction); B, started
+    then, must wait for A's commit and refuse with RS001 against A's head. Checking
+    before the lock would instead validate B against the old head and fail later
+    with 40001, or merge both, so this case pins the order.
+    """
+    start = time.perf_counter()
+    base = sql("SELECT vc.head();")
+    revision = {}
+    for name, row in (("rsc-a", 3213), ("rsc-b", 3214)):
+        revision[name] = sql(f"""SET ROLE agentdb_client;
+          SELECT vc.fork('{name}','{base}') AS head \\gset
+          BEGIN;
+          SELECT vc.begin_change('{name}','{base}') AS draft \\gset
+          UPDATE agent.products SET stock=45 WHERE id={row};
+          SELECT vc.finish_change() AS revision \\gset
+          COMMIT;
+          SELECT :'revision';""")
+    tag = "rsc-a holds main " + uuid.uuid4().hex[:8]
+    holder = ThreadPoolExecutor(max_workers=1).submit(CONNECTION.execute, f"""
+      BEGIN; SET LOCAL ROLE agentdb_client;
+      SELECT vc.merge_validated('main','{revision["rsc-a"]}',{reads(3214)},'rsc-a');
+      SELECT pg_sleep(3) /* {tag} */;
+      COMMIT;""", DBNAME)
+    deadline = time.monotonic() + 30
+    while sql(f"SELECT count(*) FROM pg_stat_activity WHERE state='active' AND query LIKE '%{tag}%' "
+              f"AND pid<>pg_backend_pid() AND query NOT LIKE '%pg_stat_activity%';") != "1":
+        if holder.done() or time.monotonic() > deadline:
+            raise AssertionError("A never held main's lock: " + str(holder.result().stderr if holder.done() else "timeout"))
+        time.sleep(0.05)
+    waited = time.perf_counter()
+    second = CONNECTION.execute(f"""
+      BEGIN; SET LOCAL ROLE agentdb_client;
+      SELECT vc.merge_validated('main','{revision["rsc-b"]}',{reads(3213)},'rsc-b');
+      COMMIT;""", DBNAME)
+    waited_ms = (time.perf_counter()-waited)*1000
+    first = holder.result()
+    assert first.returncode == 0, first.stderr
+    assert second.returncode != 0 and "RS001" in second.stderr, (second.returncode, second.stderr)
+    head = sql("SELECT vc.head();")
+    assert sql(f"SELECT vc.merge_base('{head}','{revision['rsc-a']}')='{revision['rsc-a']}' "
+               f"AND vc.merge_base('{head}','{revision['rsc-b']}')<>'{revision['rsc-b']}';") == "t"
+    assert sql("SELECT string_agg(stock::text,',' ORDER BY id) FROM app.products WHERE id IN (3213,3214);") == "45,100"
+    return {"name": "crossing_read_sets_at_the_same_time_refuse_the_second", "passed": True,
+            "ms": round((time.perf_counter()-start)*1000, 2), "second_waited_ms": round(waited_ms, 2)}
 
 
 def session():

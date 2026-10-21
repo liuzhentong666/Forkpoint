@@ -76,7 +76,7 @@ python db.py install
 | 005 | `python db.py install-bounded-history` | 历史遍历不再随全部历史长度变慢，新增只读快照策略 `vc.snapshot_due`（见 [历史增长](HISTORY_GROWTH.md)） | `scripts/check_history_migration.py` |
 | 006 | `python db.py install-history-health` | 新增只读的 `vc.history_health(branch)`，仅授权给 `agentdb_manager` | `scripts/check_history_health.py` |
 | 007 | `python db.py install-search-path-hardening` | `vc` 中所有设置了 search_path 的函数末尾加上 `pg_temp`；用于升级此前的安装，上面各条迁移的定义已自带 `pg_temp`，重跑它们不会撤销 | `scripts/check_search_path_migration.py` |
-| 008 | `python db.py install-read-set-merge` | 新增 `vc.merge_validated`：按决定读过的行校验合入，这些行变过则报 RS001 拒绝（写偏斜）；不改动已有函数 | `run_tests.py`（读集合入的一组测试） |
+| 008 | `python db.py install-read-set-merge` | 新增 `vc.merge_validated`：按决定读过的行校验合入，这些行变过则报 RS001 拒绝（写偏斜）；读集代替 head 检查，空读集表示决定没有读任何行；不改动已有函数；回滚方法见该文件开头 | `run_tests.py`（读集合入的一组测试） |
 
 核验脚本都在新建的旧版测试库上执行迁移并逐项比较，不触碰项目库。
 
@@ -191,7 +191,7 @@ Upgrade an existing install in this order. Each command can be rerun and changes
 | 005 | `python db.py install-bounded-history` | History walks no longer slow down with total history length, plus the read-only snapshot policy `vc.snapshot_due` (see [History growth](HISTORY_GROWTH.md)) | `scripts/check_history_migration.py` |
 | 006 | `python db.py install-history-health` | The read-only `vc.history_health(branch)`, granted only to `agentdb_manager` | `scripts/check_history_health.py` |
 | 007 | `python db.py install-search-path-hardening` | `pg_temp` at the end of the search_path of every function in `vc` that sets one; upgrades earlier installations, and the definitions in the migrations above already include `pg_temp`, so rerunning them does not undo it | `scripts/check_search_path_migration.py` |
-| 008 | `python db.py install-read-set-merge` | `vc.merge_validated`: a merge checked against the rows its decision read, refused with RS001 when they changed (write skew); no existing function changes | `run_tests.py` (its read-set merge tests) |
+| 008 | `python db.py install-read-set-merge` | `vc.merge_validated`: a merge checked against the rows its decision read, refused with RS001 when they changed (write skew); the read set replaces the head check, and an empty one declares that the decision read nothing; no existing function changes; the rollback is at the top of the file | `run_tests.py` (its read-set merge tests) |
 
 Each check script migrates a freshly created old-version test database and compares the results item by item; none of them touches the project database.
 

@@ -1,8 +1,8 @@
 {
   "databases": {
-    "history": "agentdb_test_histmig_9d96382eef",
-    "regression": "agentdb_test_histreg_9d96382eef",
-    "fresh": "agentdb_test_histnew_9d96382eef"
+    "history": "agentdb_test_histmig_6ca42128eb",
+    "regression": "agentdb_test_histreg_6ca42128eb",
+    "fresh": "agentdb_test_histnew_6ca42128eb"
   },
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "old_ref": "0bf7309",
@@ -143,12 +143,12 @@
         "merge_commits": 6
       },
       "orders": "855d3268902eb349f6bbfb584c09a877",
-      "parents": "05351297aa1ca7712c954f277003cac4",
-      "branches": "4d60177f59334835287de3037666df42",
+      "parents": "80bd938c15702c0a72564b8ce9fc0231",
+      "branches": "2fd3dc5f95ab6ecae2677e5a5290fcaf",
       "products": "87dabd1fa76e3c7fdad9949ba5ab8b80",
-      "changesets": "ee9254b749138039eed0f630cf6dc37a",
-      "row_changes": "663d1e62583115e9a3445f86d2cf36b2",
-      "path_changes": "e449711c797035e928ef717e1e796369",
+      "changesets": "60ff54c1d3b4008840748e72f5b9a7b8",
+      "row_changes": "c6b82c96a0d8142f544f1ff9afe7efcb",
+      "path_changes": "0a2ada2add6bb7e01e7713d4a68f0823",
       "snapshot_rows": 8000
     },
     "regression": {
@@ -158,12 +158,12 @@
         "merge_commits": 0
       },
       "orders": "d41d8cd98f00b204e9800998ecf8427e",
-      "parents": "f8549447e544e01022b5b197e4592dfa",
-      "branches": "103ae1058a399b02efa50c4e8c2f1629",
+      "parents": "970e383250c0076553a9413a0d4ba68c",
+      "branches": "47efedf9c68e0b3d3482e769a93e5862",
       "products": "605f0ce8859b05763b76e6598ca0d641",
-      "changesets": "128d81a6124a78893e3cc52060d1312d",
-      "row_changes": "c5559ccb9dd60a974b85d87c041bdb9d",
-      "path_changes": "9dca793f806473d511a0b4672785fc2f",
+      "changesets": "ec75f6a233582e6050a277aab4dddc01",
+      "row_changes": "a1c553ecbf741cbc6756d460272a37c8",
+      "path_changes": "f7a322ad68b224d7db35a24ebf8ad5d1",
       "snapshot_rows": 4000
     }
   },
@@ -189,12 +189,12 @@
     "interval": 5,
     "targets": [
       {
-        "revision": "b197b13a-0fb0-4714-81b8-533dee4e77ee",
-        "table_id": "cc98b4cc-0932-49f6-8982-05a75ff9f7e2"
+        "revision": "c72fa6ee-dc86-4721-91a5-05047189d7ef",
+        "table_id": "71c5af56-3038-4dfc-8060-21575b38b7f4"
       },
       {
-        "revision": "b197b13a-0fb0-4714-81b8-533dee4e77ee",
-        "table_id": "d288f400-75e5-4f96-bce1-0e80acddcde3"
+        "revision": "c72fa6ee-dc86-4721-91a5-05047189d7ef",
+        "table_id": "b4aff1ba-d0fa-45d4-8156-b16dde6d5d11"
       }
     ],
     "materialized": 2,

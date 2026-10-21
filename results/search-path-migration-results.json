@@ -1,7 +1,7 @@
 {
   "databases": {
-    "migrated": "agentdb_test_spmig_6d79266150",
-    "fresh": "agentdb_test_spnew_6d79266150"
+    "migrated": "agentdb_test_spmig_9b9140084f",
+    "fresh": "agentdb_test_spnew_9b9140084f"
   },
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "old_ref": "a7e60d9",

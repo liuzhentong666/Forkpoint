@@ -1,0 +1,120 @@
+{
+  "recorded_at_utc": "2026-10-21T14:43:32+00:00",
+  "database": "agentdb_test_rsbench_8c04561215",
+  "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "repeats": 7,
+  "products": 4000,
+  "setup": "review_local seed with a snapshot; main grows by one row change per commit; source forked at the seed changes one row; read rows are never changed, so every check passes",
+  "cases": [
+    {
+      "commits_since_snapshot": 10,
+      "read_keys": 1,
+      "median_ms": {
+        "check": 1.142,
+        "merge": 46.086,
+        "diff_rows": 23.425,
+        "head_only": 0.48,
+        "validated": 48.154,
+        "check_share_of_merge": 0.025
+      }
+    },
+    {
+      "commits_since_snapshot": 10,
+      "read_keys": 10,
+      "median_ms": {
+        "check": 1.418,
+        "merge": 47.947,
+        "diff_rows": 26.623,
+        "head_only": 0.705,
+        "validated": 49.631,
+        "check_share_of_merge": 0.03
+      }
+    },
+    {
+      "commits_since_snapshot": 10,
+      "read_keys": 100,
+      "median_ms": {
+        "check": 4.467,
+        "merge": 48.29,
+        "diff_rows": 23.135,
+        "head_only": 2.219,
+        "validated": 55.859,
+        "check_share_of_merge": 0.093
+      }
+    },
+    {
+      "commits_since_snapshot": 100,
+      "read_keys": 1,
+      "median_ms": {
+        "check": 1.151,
+        "merge": 49.186,
+        "diff_rows": 26.657,
+        "head_only": 0.574,
+        "validated": 47.559,
+        "check_share_of_merge": 0.023
+      }
+    },
+    {
+      "commits_since_snapshot": 100,
+      "read_keys": 10,
+      "median_ms": {
+        "check": 1.513,
+        "merge": 53.344,
+        "diff_rows": 25.674,
+        "head_only": 0.898,
+        "validated": 49.0,
+        "check_share_of_merge": 0.028
+      }
+    },
+    {
+      "commits_since_snapshot": 100,
+      "read_keys": 100,
+      "median_ms": {
+        "check": 6.351,
+        "merge": 47.334,
+        "diff_rows": 26.176,
+        "head_only": 3.534,
+        "validated": 59.288,
+        "check_share_of_merge": 0.134
+      }
+    },
+    {
+      "commits_since_snapshot": 1000,
+      "read_keys": 1,
+      "median_ms": {
+        "check": 3.093,
+        "merge": 53.103,
+        "diff_rows": 28.861,
+        "head_only": 1.784,
+        "validated": 58.383,
+        "check_share_of_merge": 0.058
+      }
+    },
+    {
+      "commits_since_snapshot": 1000,
+      "read_keys": 10,
+      "median_ms": {
+        "check": 3.504,
+        "merge": 56.379,
+        "diff_rows": 30.034,
+        "head_only": 2.615,
+        "validated": 64.429,
+        "check_share_of_merge": 0.062
+      }
+    },
+    {
+      "commits_since_snapshot": 1000,
+      "read_keys": 100,
+      "median_ms": {
+        "check": 16.528,
+        "merge": 57.705,
+        "diff_rows": 28.261,
+        "head_only": 13.077,
+        "validated": 79.566,
+        "check_share_of_merge": 0.286
+      }
+    }
+  ],
+  "real_cloud_verified": false,
+  "note": "Local dedicated test database on the existing PostgreSQL server; server-side clock_timestamp() medians; the project database was not touched."
+}

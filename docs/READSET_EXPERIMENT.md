@@ -225,7 +225,7 @@ head 组的“校验”只是记录一次时间戳，并不校验。合入阶段
 
 ### 后续
 
-已于 2026-10-21 完成：迁移 008 把读集校验作为 `vc.merge_validated` 加入版本引擎，按键增量查找代替整表回放，并修复下面已知问题中的第 1、2 条（见 [安装与升级](SETUP.md)）；以下为当时写下的计划。
+已于 2026-10-21 完成：迁移 008 把读集校验作为 `vc.merge_validated` 加入版本引擎，按键增量查找代替整表回放，并修复下面已知问题中的第 1、2 条（见 [安装与升级](SETUP.md)）。之后的审查又修复了三处：键的值必须与历史记录的主键完全一致（如整数 id 写成 `"3204"` 原先会被当作未变而放行，现报 22023）；合并基为 NULL 时仍做校验；`run_tests.py` 新增两个会话的竞态用例，覆盖下面的第 3 条（把 `FOR UPDATE` 去掉的变异会被它拦下，第二个合入改报 40001）。实现的耗时用 `scripts/benchmark_read_set_merge.py` 重新测量（[结果](../results/read-set-merge-benchmark.json)）：4,000 行、快照后 10–1,000 个提交、1–100 个读键时，校验本身中位 1.142–16.528 ms，为同次 `vc.merge` 的 2–29%。测量中发现 `_rows_at_keys` 的默认行数估计（1,000 行）使校验查询的估算代价超过 `jit_above_cost`，每次调用都被 JIT 编译，空读集也多出约 10 ms；已用 `ROWS 10` 修正。下面计划中的增量方式没有实现：校验分别回放基线与 head 的第一父链，只查 head 约占一半，按上述耗时不值得为此增加复杂度。以下为当时写下的计划。
 
 各条标准均已满足；按本文，读集校验成为版本引擎的候选改动，须作为单独的行为变更，带自己的测试与迁移。在此之前，先把校验改为增量方式：借助 `vc.row_change(table_id, pk, changeset)` 索引，只检查基线与 head 之间改过读键的提交，使校验耗时不再随表的大小增长，然后重新测量。真实 Agent 漏报的频率仍未知，属于第二阶段，需要单独的协议，并经用户同意使用模型额度。
 
@@ -243,17 +243,19 @@ head 组的“校验”只是记录一次时间戳，并不校验。合入阶段
 2. `p_reads` 中不存在的表 id 在 main 未前进时被静默忽略（基线等于 head，什么也不校验），main 前进后才报 P0001 “Unknown revision or table”；不是 uuid 的键报 22P02。应在开头就按 `vc.tracked_table` 校验表 id。
 3. 先取锁、后校验的顺序没有契约测试覆盖：`vc.merge` 本身也会取同一把锁，只有并发竞态才会暴露。目前的证据是实验中 W1 rs_declared 的重新判断为 0。
 
+以上三条已在 008 中处理：1、2 由开头的 22023 校验修复，3 由 `run_tests.py` 的 `crossing_read_sets_at_the_same_time_refuse_the_second` 覆盖。
+
 ## 回滚方案
 
 本实验没有修改现有代码、数据格式或项目数据库，各部分可以单独撤销：
 
 | 部分 | 撤销方法 | 核对 |
 |---|---|---|
-| 提交（4db8267 及之后） | `git revert` 对应提交；被改动的现有文件只有 `.gitignore`（新增 4 行）与 `AGENTS.md`（新增表格行与说明） | `git diff 8537cbb -- sql db.py agent_lab.py agent_lab_gateway.py review_local.py run_tests.py agent_state tests scripts` 为空（2026-10-21 已核对） |
+| 实验提交（4db8267–176572b） | `git revert` 对应提交；被改动的现有文件只有 `.gitignore`（新增 4 行）与 `AGENTS.md`（新增表格行与说明） | `git diff 8537cbb 176572b -- sql db.py agent_lab.py agent_lab_gateway.py review_local.py run_tests.py agent_state tests scripts` 为空（2026-10-21 已核对）；之后的 008 提交改动了这些路径，见最后一行 |
 | `experiments/readset/` | `git revert`，或删除该目录；目录外没有代码导入它 | 在该目录、本文与 `results/` 之外，只有 `AGENTS.md` 与 `.gitignore` 提到 readset（2026-10-21 已核对） |
 | `xr` schema | 用 `DROP DATABASE … WITH (FORCE)` 删除 `agentdb_test_readset_*` 测试库；契约测试的库在测试结束时已删除 | 项目库 `agentdb` 中没有 `xr` schema（2026-10-21 已核对） |
 | 结果 | 删除 `results/readset/<运行>/` | — |
-| 将来进入版本引擎 | 尚未开始。若采纳，将作为新迁移（008）提交；其回滚方法（恢复 005 中的 `vc.merge` 定义、删除新增函数）须在应用前写明并测试 | — |
+| 版本引擎（迁移 008） | 008 只新增函数、不改 `vc.merge`，无数据需要恢复，经它完成的合入是普通的 `vc.merge` 提交。以数据库所有者执行 `BEGIN; DROP FUNCTION vc.merge_validated(text,uuid,jsonb,text); DROP FUNCTION vc._rows_at_keys(uuid,uuid,jsonb[]); COMMIT;`，再撤销 008 的提交（b1b9505 及之后） | 2026-10-21 在新安装（`agentdb_test_rsback_4c2886203a`）上执行：vc 函数由 34 个变为 32 个，其余 32 个属性不变；重新执行 008 后 34 个与新安装一致 |
 
 ---
 
@@ -485,7 +487,7 @@ Neither check uses the harness's own counters or `oracle.py`:
 
 ### Next steps
 
-Done on 2026-10-21: migration 008 adds read-set validation to the version engine as `vc.merge_validated`, with per-key lookups instead of whole-table replay, and fixes known issues 1 and 2 below (see [Setup and upgrades](SETUP.md)); the plan as written before follows.
+Done on 2026-10-21: migration 008 adds read-set validation to the version engine as `vc.merge_validated`, with per-key lookups instead of whole-table replay, and fixes known issues 1 and 2 below (see [Setup and upgrades](SETUP.md)). A later review fixed three more points: a key's values must equal the primary key exactly as history records it (an integer id written as `"3204"` used to pass as unchanged; it now raises 22023); a NULL merge base is still checked; and `run_tests.py` gained a two-session race that covers known issue 3 below (a mutation that drops `FOR UPDATE` is caught by it: the second merge then reports 40001). The implementation was measured with `scripts/benchmark_read_set_merge.py` ([results](../results/read-set-merge-benchmark.json)): with 4,000 rows, 10–1,000 commits since the snapshot and 1–100 read keys, the check itself takes a median 1.142–16.528 ms, 2–29% of the same `vc.merge`. The measurement found that `_rows_at_keys`'s default row estimate (1,000) put the check's estimated cost above `jit_above_cost`, so every call was JIT-compiled, about 10 ms more even for an empty read set; `ROWS 10` fixes that. The incremental check planned below was not built: the check replays the first-parent lineage at the base and at the head, the head alone is about half, and at these times it does not justify the added complexity. The plan as written before follows.
 
 All criteria passed, so by this document read-set validation becomes a candidate change to the version engine, to be made as a separate behavior change with its own tests and migration. Before that, validation should become incremental: check only the commits between base and head that changed a read key, using the `vc.row_change(table_id, pk, changeset)` index, so its cost no longer grows with table size; then measure again. How often real Agents under-report their dependencies is still unknown; that is phase 2, which needs its own protocol and the user's approval to use model quota.
 
@@ -503,14 +505,16 @@ Known issues, recorded but not fixed here; if read-set validation goes into the 
 2. An unknown table id in `p_reads` is ignored silently while main has not moved (base equals head, so nothing is validated), and raises P0001 "Unknown revision or table" once main has moved; a key that is not a uuid raises 22P02. Table ids should be checked against `vc.tracked_table` up front.
 3. No contract test covers taking main's lock before validating: `vc.merge` takes the same lock itself, so only a concurrent race would show the difference. The evidence so far is the experiment's 0 rethinks in W1 rs_declared.
 
+All three are handled in 008: 1 and 2 by its up-front 22023 checks, 3 by `crossing_read_sets_at_the_same_time_refuse_the_second` in `run_tests.py`.
+
 ## Rollback plan
 
 The experiment changed no existing code, data format or project database, so each part can be undone on its own:
 
 | Part | How to undo | Check |
 |---|---|---|
-| Commits (4db8267 and later) | `git revert` them; the only existing files they touch are `.gitignore` (4 added lines) and `AGENTS.md` (added table rows and notes) | `git diff 8537cbb -- sql db.py agent_lab.py agent_lab_gateway.py review_local.py run_tests.py agent_state tests scripts` is empty (checked 2026-10-21) |
+| Experiment commits (4db8267–176572b) | `git revert` them; the only existing files they touch are `.gitignore` (4 added lines) and `AGENTS.md` (added table rows and notes) | `git diff 8537cbb 176572b -- sql db.py agent_lab.py agent_lab_gateway.py review_local.py run_tests.py agent_state tests scripts` is empty (checked 2026-10-21); the later 008 commits do change these paths, see the last row |
 | `experiments/readset/` | `git revert`, or delete the directory; no code outside it imports it | outside that directory, this document and `results/`, only `AGENTS.md` and `.gitignore` mention readset (checked 2026-10-21) |
 | `xr` schema | drop the `agentdb_test_readset_*` test databases with `DROP DATABASE … WITH (FORCE)`; the contract tests' database is already dropped when they finish | the project database `agentdb` has no `xr` schema (checked 2026-10-21) |
 | Results | delete `results/readset/<run>/` | — |
-| A future engine change | not started. If adopted, it comes as a new migration (008) whose rollback (restoring 005's definition of `vc.merge` and dropping the new function) is written down and tested before it is applied | — |
+| Version engine (migration 008) | 008 only adds functions and leaves `vc.merge` unchanged, so there is no data to restore, and merges made through it are ordinary `vc.merge` commits. As the database owner run `BEGIN; DROP FUNCTION vc.merge_validated(text,uuid,jsonb,text); DROP FUNCTION vc._rows_at_keys(uuid,uuid,jsonb[]); COMMIT;`, then revert 008's commits (b1b9505 and later) | run on 2026-10-21 on a fresh install (`agentdb_test_rsback_4c2886203a`): the vc functions went from 34 to 32 with the other 32 unchanged; after reapplying 008 all 34 equal a fresh install's |

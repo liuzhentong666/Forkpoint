@@ -56,15 +56,25 @@ def rule_violations(stock, bundles, minimum):
 
 
 def collect_parent_rows(db, table_id, landed):
-    """For each landed merge commit, the dependency rows at its first parent (main just before it)."""
-    pairs = [(item["merge_commit"], key) for item in landed for key in item["used"]]
-    if not pairs:
+    """For each landed merge commit, the dependency rows at its first parent (main just before it).
+
+    One vc.rows_at replay per merge commit covers all of its keys; a key with no
+    row there is still listed, with doc null.
+    """
+    keys = {}
+    for item in landed:
+        keys.setdefault(item["merge_commit"], set()).update(int(key) for key in item["used"])
+    keys = {commit: wanted for commit, wanted in keys.items() if wanted}
+    if not keys:
         return {}
-    values = ",".join(f"('{commit}'::uuid,{int(key)})" for commit, key in pairs)
+    values = ",".join(f"('{commit}'::uuid,ARRAY[{','.join(str(k) for k in sorted(wanted))}])"
+                      for commit, wanted in keys.items())
     rows = json.loads(db.sql(f"""
-      SELECT coalesce(json_agg(json_build_object('commit',x.c,'key',x.k,
-        'doc',(SELECT r.doc FROM vc.rows_at(p.parent,'{table_id}') r WHERE r.pk=jsonb_build_object('id',x.k)))),'[]')
-      FROM (VALUES {values}) x(c,k) JOIN vc.parent p ON p.child=x.c AND p.ordinal=1;"""))
+      SELECT coalesce(json_agg(json_build_object('commit',x.c,'key',k.k,'doc',found.docs->(k.k::text))),'[]')
+      FROM (VALUES {values}) x(c,ks) JOIN vc.parent p ON p.child=x.c AND p.ordinal=1
+      CROSS JOIN LATERAL (SELECT jsonb_object_agg(r.pk->>'id',r.doc) AS docs FROM vc.rows_at(p.parent,'{table_id}') r
+                          WHERE r.pk=ANY(ARRAY(SELECT jsonb_build_object('id',i) FROM unnest(x.ks) i))) found
+      CROSS JOIN LATERAL unnest(x.ks) k(k);"""))
     result = {}
     for row in rows:
         result.setdefault(row["commit"], {})[row["key"]] = row["doc"]

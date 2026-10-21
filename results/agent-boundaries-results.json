@@ -1,5 +1,5 @@
 {
-  "database": "agentdb_test_gpt_c0f3ce2570",
+  "database": "agentdb_test_gpt_05015a62fc",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "checks": 34,
   "holds": 34,
@@ -35,7 +35,7 @@
       "group": "A",
       "name": "functions_with_search_path_search_pg_temp_last",
       "status": "HOLDS",
-      "detail": "32 functions that are SECURITY DEFINER or set search_path; without pg_temp last: none (sql/007_search_path_pg_temp.sql)"
+      "detail": "34 functions that are SECURITY DEFINER or set search_path; without pg_temp last: none (sql/007_search_path_pg_temp.sql)"
     },
     {
       "group": "B",
