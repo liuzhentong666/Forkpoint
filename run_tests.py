@@ -400,6 +400,115 @@ def merge_semantics():
     return cases
 
 
+def reads(*ids):
+    """SQL for a p_reads value naming app.products rows by id."""
+    keys = ",".join(f"jsonb_build_object('id',{i})" for i in ids)
+    return f"jsonb_build_object(vc.table_id('app.products')::text,jsonb_build_array({keys}))"
+
+
+def proposal(var, branch, statement):
+    """SQL that commits statement on a new branch forked from b and keeps the revision in var."""
+    return (f"PERFORM vc.fork('{branch}',b); PERFORM vc.begin_change('{branch}',b);\n"
+            f"{statement}\n{var}:=vc.finish_change();\n")
+
+
+def refused(call, code, detail=False):
+    """SQL that requires call to fail with SQLSTATE code, keeping its DETAIL or message in text_value."""
+    item = "PG_EXCEPTION_DETAIL" if detail else "MESSAGE_TEXT"
+    return (f"BEGIN\n  PERFORM {call};\n  RAISE EXCEPTION 'Expected SQLSTATE {code}' USING ERRCODE='XX000';\n"
+            f"EXCEPTION WHEN SQLSTATE '{code}' THEN GET STACKED DIAGNOSTICS text_value={item};\nEND;\n")
+
+
+def read_set_merge():
+    """vc.merge_validated (sql/008_read_set_merge.sql): merges that refuse write skew.
+
+    Kept apart from test_suite(), which the migration checks also run on installs
+    that predate 008. Each case runs as agentdb_client in a transaction that is
+    rolled back, except the comparison with vc.rows_at, which calls an owner-only
+    function. Rows 3201-3212, 9201 and 9301 are used only here.
+    """
+    results = []
+
+    def test(name, body, role=True):
+        start = time.perf_counter()
+        transaction("b:=vc.head();\n" + body, role=role)
+        results.append({"name": name, "passed": True, "ms": round((time.perf_counter()-start)*1000, 2)})
+        print("PASS " + name, flush=True)
+
+    keys = "ARRAY['{\"id\":3201}','{\"id\":3202}','{\"id\":3203}','{\"id\":9201}','{\"id\":999999}']::jsonb[]"
+    test("rows_at_keys_matches_rows_at", proposal("r", "rk", """
+        UPDATE agent.products SET price=61 WHERE id=3201; DELETE FROM agent.products WHERE id=3202;
+        INSERT INTO agent.products VALUES(9201,'rk-9201','rk',1,1);""") + f"""
+      FOR n IN 1..2 LOOP  -- the second pass reads r from its own snapshot
+        FOREACH s IN ARRAY ARRAY[b,r] LOOP
+          ASSERT (SELECT jsonb_agg(jsonb_build_array(k.pk,k.doc) ORDER BY k.pk::text)
+                  FROM vc._rows_at_keys(s,vc.table_id('app.products'),{keys}) k) IS NOT DISTINCT FROM
+                 (SELECT jsonb_agg(jsonb_build_array(a.pk,a.doc) ORDER BY a.pk::text)
+                  FROM vc.rows_at(s,vc.table_id('app.products')) a WHERE a.pk=ANY({keys})), s::text;
+        END LOOP;
+        PERFORM vc.materialize(r,vc.table_id('app.products'));
+      END LOOP;""", role=False)
+
+    test("write_skew_is_refused_with_the_changed_rows",
+         proposal("r", "ws-a", "UPDATE agent.products SET stock=45 WHERE id=3204;")
+         + proposal("s", "ws-b", "UPDATE agent.products SET stock=45 WHERE id=3205;")
+         + f"t:=vc.merge_validated('main',r,{reads(3205)},'ws-a');\n"
+         + refused(f"vc.merge_validated('main',s,{reads(3204)},'ws-b')", "RS001", detail=True)
+         + """ASSERT vc.head()=t AND (SELECT stock FROM app.products WHERE id=3205)=100;
+           ASSERT jsonb_array_length(text_value::jsonb)=1
+             AND text_value::jsonb @> '[{"key":{"id":3204},"base":{"stock":100},"now":{"stock":45}}]', text_value;""")
+
+    test("unchanged_reads_merge_although_main_moved",
+         proposal("r", "un-a", "UPDATE agent.products SET stock=45 WHERE id=3206;")
+         + proposal("s", "un-b", "UPDATE agent.products SET stock=45 WHERE id=3207;")
+         + f"t:=vc.merge_validated('main',r,{reads(3208)},'un-a');\n"
+         + refused("vc.merge('main',s,b,'un-b')", "40001")  # what the stale-head check does with it
+         + f"""t:=vc.merge_validated('main',s,{reads(3208)},'un-b');
+           ASSERT vc.head()=t AND vc.merge_base(t,r)=r AND vc.merge_base(t,s)=s;
+           ASSERT (SELECT sum(stock) FROM app.products WHERE id IN (3206,3207))=90;""")
+
+    test("a_row_changed_and_changed_back_is_not_a_conflict",
+         proposal("s", "cb", "UPDATE agent.products SET stock=45 WHERE id=3209;") + """
+           PERFORM vc.begin_change('main',vc.head()); UPDATE app.products SET stock=50 WHERE id=3210; PERFORM vc.finish_change();
+           PERFORM vc.begin_change('main',vc.head()); UPDATE app.products SET stock=100 WHERE id=3210; PERFORM vc.finish_change();
+           """ + f"t:=vc.merge_validated('main',s,{reads(3210)},'cb');\nASSERT vc.merge_base(t,s)=s;")
+
+    test("a_row_inserted_since_the_base_conflicts_with_a_read_of_its_absence",
+         proposal("r", "ab-a", "INSERT INTO agent.products VALUES(9301,'sku-9301','late',1,1);")
+         + proposal("s", "ab-b", "UPDATE agent.products SET stock=45 WHERE id=3211;")
+         + "t:=vc.merge_validated('main',r,'{}'::jsonb,'ab-a');\n"
+         + refused(f"vc.merge_validated('main',s,{reads(9301)},'ab-b')", "RS001", detail=True)
+         + """ASSERT (text_value::jsonb)->0->'base'='null'::jsonb
+             AND (text_value::jsonb)->0->'now'->>'name'='late', text_value;""")
+
+    test("write_write_conflicts_stay_p0001",
+         proposal("r", "ww-a", "UPDATE agent.products SET stock=45 WHERE id=3212;")
+         + proposal("s", "ww-b", "UPDATE agent.products SET stock=30 WHERE id=3212;")
+         + "t:=vc.merge_validated('main',r,'{}'::jsonb,'ww-a');\n"
+         + refused("vc.merge_validated('main',s,'{}'::jsonb,'ww-b')", "P0001")
+         + "ASSERT text_value LIKE 'Row conflict:%' AND vc.head()=t, text_value;")
+
+    malformed = ["[]", None, '{"products":[{"id":1}]}', '{"00000000-0000-0000-0000-0000000000aa":[{"id":1}]}',
+                 '{"TID":{"id":1}}', '{"TID":[1]}', '{"TID":[{"sku":"sku-1"}]}', '{"TID":[{"id":1,"sku":"sku-1"}]}']
+    literal = "ARRAY[" + ",".join("NULL" if m is None else f"'{m}'" for m in malformed) + "]::text[]"
+    test("malformed_read_sets_are_refused_before_merging",
+         proposal("r", "mf", "UPDATE agent.products SET stock=45 WHERE id=3201;") + f"""
+           FOREACH text_value IN ARRAY {literal} LOOP
+             BEGIN
+               PERFORM vc.merge_validated('main',r,replace(text_value,'TID',vc.table_id('app.products')::text)::jsonb,'mf');
+               RAISE EXCEPTION 'Accepted %',text_value USING ERRCODE='XX000';
+             EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+             END;
+           END LOOP;
+           ASSERT vc.head()=b;""")
+
+    test("an_already_merged_source_returns_the_head",
+         proposal("r", "am", "UPDATE agent.products SET stock=45 WHERE id=3204;")
+         + f"""t:=vc.merge_validated('main',r,{reads(3205)},'am');
+           ASSERT vc.merge_validated('main',r,{reads(3205)},'am')=t AND vc.head()=t;""")
+    return results
+
+
 def session():
     """A long-lived Session must behave like one fresh psql process per call."""
     sql("CREATE TABLE public.session_probe(id int PRIMARY KEY);")
@@ -506,7 +615,7 @@ def main():
         tests = test_suite()
         result = dict(postgresql=sql("SHOW server_version;"), database=DBNAME, connection=details,
                       tests=tests, concurrency=concurrency(), session=session(),
-                      merge_semantics=merge_semantics(),
+                      merge_semantics=merge_semantics(), read_set_merge=read_set_merge(),
                       native_products=int(sql("SELECT count(*) FROM app.products;")),
                       unfinished_transactions=int(sql("SELECT count(*) FROM vc.work_tx;")))
         assert result["native_products"] == 4000

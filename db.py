@@ -240,7 +240,8 @@ class Connection:
         # All schema files install in one transaction, including the shared roles.
         statements = []
         for filename in ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql",
-                         "005_bounded_history.sql", "006_history_health.sql", "007_search_path_pg_temp.sql"):
+                         "005_bounded_history.sql", "006_history_health.sql", "007_search_path_pg_temp.sql",
+                         "008_read_set_merge.sql"):
             source = (ROOT / "sql" / filename).read_text(encoding="utf-8")
             source = re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", source)
             statements.append(source)
@@ -274,6 +275,12 @@ class Connection:
         """List pg_temp last in the search_path of every vc function that sets one (sql/007_search_path_pg_temp.sql)."""
         target = database_name(database or self.settings["database"])
         source = (ROOT / "sql/007_search_path_pg_temp.sql").read_text(encoding="utf-8")
+        self.sql(source, target)
+
+    def install_read_set_merge(self, database=None):
+        """Add vc.merge_validated, merges that refuse write skew (sql/008_read_set_merge.sql)."""
+        target = database_name(database or self.settings["database"])
+        source = (ROOT / "sql/008_read_set_merge.sql").read_text(encoding="utf-8")
         self.sql(source, target)
 
 
@@ -460,7 +467,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("check", "install", "install-manager", "install-merge-batch",
                                            "install-bounded-history", "install-history-health",
-                                           "install-search-path-hardening"))
+                                           "install-search-path-hardening", "install-read-set-merge"))
     add_connection_arguments(parser)
     args = parser.parse_args()
     try:
@@ -492,6 +499,9 @@ def main():
         elif args.action == "install-search-path-hardening":
             connection.install_search_path_hardening()
             details["search_path_hardening_installed_in"] = connection.settings["database"]
+        elif args.action == "install-read-set-merge":
+            connection.install_read_set_merge()
+            details["read_set_merge_installed_in"] = connection.settings["database"]
         print(json.dumps(details, indent=2))
     except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"{error}\n")

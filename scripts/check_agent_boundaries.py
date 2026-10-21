@@ -26,12 +26,13 @@ sys.path.insert(0, str(ROOT))
 from db import FLAGS, Connection, sqlstate
 
 GENESIS = "00000000-0000-0000-0000-000000000001"
-# 002_demo_app.sql grants agentdb_client exactly these.
+# 002_demo_app.sql grants agentdb_client exactly these, and 008_read_set_merge.sql adds vc.merge_validated.
 GRANTED = {"vc.head(text)", "vc.table_id(regclass)", "vc.fork(text,uuid)", "vc.checkout(text)", "vc.pin(uuid)",
            "vc.begin_change(text,uuid,text,text)", "vc.finish_change()", "vc.rows_at(uuid,uuid)",
            "vc.visible_rows(uuid)", "vc.write_file(text,bytea,boolean)", "vc.read_file(uuid,text)",
            "vc.materialize(uuid,uuid)", "vc.diff_rows(uuid,uuid,uuid)", "vc.diff_files(uuid,uuid)",
-           "vc.history(uuid,integer)", "vc.merge_base(uuid,uuid)", "vc.merge(text,uuid,uuid,text)"}
+           "vc.history(uuid,integer)", "vc.merge_base(uuid,uuid)", "vc.merge(text,uuid,uuid,text)",
+           "vc.merge_validated(text,uuid,jsonb,text)"}
 STATE = """SELECT json_build_object('main',vc.head(),
   'products',(SELECT count(*) FROM app.products),
   'checksum',(SELECT md5(string_agg(p::text,',' ORDER BY id)) FROM app.products p),

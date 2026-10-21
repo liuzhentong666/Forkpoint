@@ -6,8 +6,9 @@ records data, history and the attributes of every function in vc, applies
 `db.py install-search-path-hardening` twice, and checks that data and history
 are unchanged, that every function keeps its owner, grants, volatility and body,
 that only the search_path of the SECURITY DEFINER functions changed (to
-pg_catalog, vc, pg_temp), and that the functions equal a fresh install's
-(agentdb_test_spnew_*), on which run_tests.py runs its assertions.
+pg_catalog, vc, pg_temp), and that the functions, once the later migrations are
+applied too, equal a fresh install's (agentdb_test_spnew_*), on which run_tests.py
+runs its assertions.
 Never writes to the project database and never starts or stops the server.
 """
 import argparse
@@ -70,11 +71,15 @@ def main():
     print(f"PASS migration keeps data, history and {len(functions)} functions; only the search_path of "
           f"{len(with_path)} functions that set one changed", flush=True)
 
+    # 008 only adds functions; a fresh install has them, so bring this database level first.
+    owner.install_read_set_merge()
+    current = signatures(owner)
+    assert set(functions) <= set(current) and function_states(owner, functions) == states_after
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
     fresh_owner = connect(args, names["fresh"])
-    assert signatures(fresh_owner) == functions
-    assert function_states(fresh_owner, functions) == states_after
+    assert signatures(fresh_owner) == current
+    assert function_states(fresh_owner, current) == function_states(owner, current)
     print("PASS migrated functions equal a fresh install's", flush=True)
 
     result = dict(databases=names, postgresql=details["server_version"], old_ref=args.old_ref,
