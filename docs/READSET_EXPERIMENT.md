@@ -2,7 +2,7 @@
 
 # 读集校验与陈旧 head 检查：实验设计
 
-状态（2026-10-21）：设计稿，在编写任何代码之前固定。本文内容尚未实现，也未运行。**仅为本机合成负载**：脚本写入者，不是大模型 Agent；不代表生产容量，不访问任何云服务。
+状态：2026-10-21 在编写任何代码之前登记（提交 4db8267），同日实现并运行，结果见下文。**仅为本机合成负载**：脚本写入者，不是大模型 Agent；不代表生产容量，不访问任何云服务。
 
 ## 问题
 
@@ -155,47 +155,47 @@ python experiments/readset/audit_sql.py <directory of a --keep-databases run>
 - 计时：合入脚本先调用 `xr.lock_main` 取得 main 的锁，它返回取锁时刻（同 `scripts/benchmark_merge.py` 先取锁的做法）；之后合入函数再取锁即为空操作。RS001 回滚后会话设置随之消失，所以由错误的 HINT 携带校验结束时刻。
 - 所有组的写入者读取相同的依赖行和 20 行浏览行，各组只在发送的读集上不同。写入者以 `agentdb_client` 身份连接，各用一个 `db.Session`。
 - 默认输出目录为 `results/readset/<前缀>/`。每次运行的库在核验记录后删除（`--keep-databases` 则保留），模板库保留。
-- 正式运行之前，2026-10-21 做过一次冒烟运行（种子 1，共 15 次），只用于检查脚本本身，15 次核验全部通过。它不计入实验，输出没有放进仓库。`--seeds`、`--workloads`、`--arms` 选出的子集在结果中标记为 `complete_schedule=false`。
+- `--seeds`、`--workloads`、`--arms` 选出的子集在结果中标记为 `complete_schedule=false`，不计入实验。
 
 结果追加到本文；上面的预测与标准在运行后不修改。
 
-## 结果（2026-10-21，75 次）
+## 结果（2026-10-21）
 
-运行 `readset_df002d50`：UTC 10:49:36 开始，10:53:53 结束（4 分 17 秒）。PostgreSQL 16.15（Ubuntu WSL，unix socket，READ COMMITTED，fsync 与 synchronous_commit 开启），客户端 Windows 11（26200）、Python 3.10.11、22 个逻辑 CPU。模板历史：3 个 changeset、4,010 条行变更、1 个路径。
+所有运行使用同一机器与设置：PostgreSQL 16.15（Ubuntu WSL，unix socket，READ COMMITTED，fsync 与 synchronous_commit 开启），客户端 Windows 11（26200）、Python 3.10.11、22 个逻辑 CPU。模板历史：3 个 changeset、4,010 条行变更、1 个路径。每个 `results.json` 含每个写入者的提案、读集、带服务端时间戳的每次合入尝试，以及运行时各实验源文件的 SHA-256，下文所有计数与耗时都能从中重算；逐字记录全部 SQL 的 `calls.jsonl`（登记运行为 7.7 MB）只留在本机，已加入 .gitignore。
 
-原始结果：[`results/readset/readset_df002d50/results.json`](../results/readset/readset_df002d50/results.json)，含每个写入者的提案、读集、带服务端时间戳的每次合入尝试，以及运行时各实验源文件的 SHA-256。逐字记录全部 SQL 的 `calls.jsonl`（7.7 MB）只留在本机，已加入 .gitignore；下文所有计数与耗时都能从 results.json 重算。模板库 `agentdb_test_readset_df002d50_tpl` 保留，75 个运行库在核验后已删除。
+| 运行 | 时间（UTC） | 内容 | 结果 |
+|---|---|---|---|
+| 冒烟，`readset_8e903d65` | 登记运行之前 | 种子 1，15 次，只检查脚本本身；不计入，输出未放入仓库 | 15 次核验全部通过 |
+| 登记运行，[`readset_df002d50`](../results/readset/readset_df002d50/results.json) | 10:49:36–10:53:53 | 登记的安排，75 次；`complete_schedule` 为 true | 75 次核验全部通过；没有失败的写入者，没有锁超时，没有合入调用被排除在计时之外 |
+| 重复运行，[`readset_038dfeaa`](../results/readset/readset_038dfeaa/results.json) | 11:08:58–11:12:57 | 同一安排再跑一次，检验可靠性；`readset.sql`、`run_readset.py`、`oracle.py` 的 SHA-256 与登记运行相同，只有本文不同（其中已加入结果） | 75 次核验全部通过；没有失败的写入者，没有锁超时；10 次合入调用（s2-W1-rs_undercite 7 次，s4-W2-rs_tracked 3 次）因服务端与客户端时钟相差超过 10 ms 而不计入耗时 |
+| SQL 核查，`readset_a3702d78` | 11:13:40–11:14:23 | 种子 1，W2 与 W3，全部五组，`--keep-databases`；不计入，输出未放入仓库 | 10 次核验全部通过；运行库保留，供 `audit_sql.py` 使用 |
 
-`complete_schedule` 为 true。75 次运行的核验全部通过；没有失败的写入者，没有锁超时，也没有因时钟不一致而被排除在计时之外的合入调用。
+### 实测计数
 
-### 预测与实测
-
-下表按种子 1–5 列出实测值；预测见上文“预测”一节。
+按种子 1–5 列出；重复运行与登记运行不同时，其值写在“/”之后。预测见上文“预测”一节。
 
 | 负载 | 指标 | head_blind | head_rethink | rs_declared | rs_undercite | rs_tracked |
 |---|---|---|---|---|---|---|
-| W1 | 40001 重交 | 45 ×5 | 0 | 0 | 0 | 0 |
-| W1 | 重新判断 | 0 | 45 ×5，全部无效 | 0 | 0 | 6,4,5,7,6，全部无效 |
+| W1 | 40001 重交 | 45 ×5 / 36,45,45,45,45 | 0 | 0 | 0 | 0 |
+| W1 | 重新判断 | 0 | 45 ×5，全部无效 | 0 | 0 | 6,4,5,7,6 / 5,7,5,7,8，全部无效 |
 | W2 | 40001 重交 | 45 ×5 | 0 | 0 | 0 | 0 |
-| W2 | 规则违反 = 陈旧提交 | 5 ×5 | 0 | 0 | 3,3,2,2,3（平均 2.6，预测 2.5） | 0 |
-| W2 | 重新判断（有效） | 0 | 25 ×5（各 5 次有效） | 5 ×5（全部有效） | 2,2,3,3,2（= 5 − 违反数） | 5 ×5（全部有效） |
-| W3 | 40001 重交 | 45,45,42,45,45 | 0 | 0 | 0 | 0 |
-| W3 | 规则违反 = 陈旧提交 | 2 ×5 | 0 | 0 | 0,0,2,1,2（平均 1.0，预测 1） | 0 |
-| W3 | 重新判断（有效） | 0 | 31,31,37,33,34（各 2 次有效） | 2 ×5（全部有效） | 2,2,0,1,0（= 2 − 违反数） | 3,4,3,9,8（各 2 次有效） |
+| W2 | 规则违反 = 陈旧提交 | 5 ×5 | 0 | 0 | 3,3,2,2,3（平均 2.6）/ 4,4,3,1,2（平均 2.8）；预测 2.5 | 0 |
+| W2 | 重新判断（有效） | 0 | 25 ×5（各 5 次有效） | 5 ×5（全部有效） | 2,2,3,3,2 / 1,1,2,4,3（= 5 − 违反数） | 5 ×5（全部有效） |
+| W3 | 40001 重交 | 45,45,42,45,45 / 45 ×5 | 0 | 0 | 0 | 0 |
+| W3 | 规则违反 = 陈旧提交 | 2 ×5 | 0 | 0 | 0,0,2,1,2（平均 1.0）/ 0,0,1,1,1（平均 0.6）；预测 1 | 0 |
+| W3 | 重新判断（有效） | 0 | 31,31,37,33,34 / 35,36,33,31,33（各 2 次有效） | 2 ×5（全部有效） | 2,2,0,1,0 / 2,2,1,1,1（= 2 − 违反数） | 3,4,3,9,8 / 5,4,5,5,5（各 2 次有效） |
 
-逐次预测在 5 次运行中全部成立；两个平均值实测为 2.6 和 1.0。每次 W2、W3 运行中，从 vc 历史判定的陈旧提交数都等于从最终数据得出的规则违反数，这是两个独立的测量。W3 种子 3 的 42 在上界之内：写入者在两次合入之后才重读 head，两次合入只让它被拒一次。
+两次运行中，逐次预测在 5 个种子里全部成立。每次 W2、W3 运行中，从 vc 历史判定的陈旧提交数都等于从最终数据得出的规则违反数，这是两个独立的测量。低于 45 的重交次数仍在上界之内：写入者在几次合入之后才重读 head，这几次合入只让它被拒一次。重复运行的 75 次中有 54 次的计数与登记运行完全相同；由种子决定的读集与浏览行两次一致，其余 21 次只在取决于线程时序的计数上不同。
 
 ### 采纳标准
 
-| 标准 | 结果 |
-|---|---|
-| 1 安全 | 通过：rs_declared 与 rs_tracked 在全部 20 次 W2/W3 运行中陈旧提交与规则违反均为 0；head_blind 在全部 10 次中与预测一致（5 和 2） |
-| 2 成本 | 通过：rs_declared 在每次 W1 运行中重新判断为 0，在每次 W3 运行中恰为 2 次，没有无效的 |
-| 3 开销 | 按登记的定义通过：读集组全部校验的合并中位数 16.3 ms，`vc.merge` 的合并中位数 37.5 ms；见下面的说明 |
-| 4 完整 | 通过：75 次运行核验全部通过，没有失败的写入者 |
+两次运行中四条标准全部通过。第 3 条按登记的定义比较合并中位数：校验 16.3 ms 对 `vc.merge` 37.5 ms（登记运行），17.1 对 36.8 ms（重复运行）。
 
-**关于第 3 条的说明。** 登记的标准比较读集组全部校验的合并中位数，而其中 39%（495 次中的 193 次）读集为空：rs_declared 与 rs_undercite 中的 W1 写入者，以及唯一的依赖被漏报的写入者。这些校验跳过了比较，中位只有 1.6 ms。读集非空时（302 次），校验中位为 22.0 ms，约为 `vc.merge` 中位数的 59%。直接测量的结果相近：读集非空的成功合入持有 main 锁（取锁 → COMMIT 前）的中位为 58.9 ms，head 组为 38.7 ms，约长 52%。按这些数字该标准仍然成立，但余量远小于合并中位数所显示的。校验耗时与键的数量无关（1–2 个键中位 22.8 ms，20 个以上 21.6 ms），因为 `vc.diff_rows` 回放两个版本的整张表；最慢的一次校验为 199.6 ms（rs_tracked）。
+**关于第 3 条的说明。** 合并中位数包含读集为空的校验：登记运行中占 39%（495 次中的 193 次），即 rs_declared 与 rs_undercite 中的 W1 写入者，以及唯一的依赖被漏报的写入者。这些校验跳过了比较，中位只有 1.6 ms。读集非空时，校验中位为 22.0 ms（302 次；重复运行 21.7 ms，303 次），约为 `vc.merge` 中位数的 59%。直接测量的结果相近：读集非空的成功合入持有 main 锁（取锁 → COMMIT 前）的中位为 58.9 ms，head 组为 38.7 ms，约长 52%（重复运行 57.1 对 38.8 ms，约长 47%）。按这些数字该标准仍然成立，但余量远小于合并中位数所显示的。校验耗时与键的数量无关：1–2 个键时中位为 22.8 ms，与 rs_tracked 20 个以上键时（见耗时表）相当，因为 `vc.diff_rows` 回放两个版本的整张表。
 
 ### 耗时
+
+除标注外均为登记运行。
 
 | | head_blind | head_rethink | rs_declared | rs_undercite | rs_tracked |
 |---|---:|---:|---:|---:|---:|
@@ -203,45 +203,25 @@ python experiments/readset/audit_sql.py <directory of a --keep-databases run>
 | 校验 p90 / 最大（ms） | 0.34 / 0.46 | 0.32 / 1.15 | 25.4 / 38.0 | 23.7 / 34.8 | 29.0 / 199.6 |
 | `vc.merge` 中位（ms） | 38.6 | 37.9 | 38.2 | 38.7 | 36.2 |
 | 合入阶段中位（ms）：W1 / W2 / W3 | 456 / 536 / 517 | 801 / 479 / 734 | 408 / 451 / 473 | 408 / 470 / 447 | 642 / 455 / 646 |
+| 重复运行的合入阶段中位（ms）：W1 / W2 / W3 | 518 / 533 / 533 | 779 / 532 / 792 | 395 / 453 / 438 | 404 / 479 / 436 | 688 / 443 / 686 |
 | main 被锁定的时间占比（中位）：W1 / W2 / W3 | 0.803 / 0.819 / 0.805 | 0.463 / 0.467 / 0.521 | 1.000 / 0.994 / 0.997 | 0.999 / 0.998 / 0.999 | 0.973 / 0.995 / 0.995 |
 
-head 组的“校验”只是记录一次时间戳，并不校验。合入阶段耗时包含重新判断，而这里没有模型，重新判断几乎瞬间完成。W3 rs_tracked 的一次运行（种子 5）耗时 1,672 ms，锁等待最长 536 ms，按实测保留。耗时是本机 WSL 上的测量，只在本实验内看比例。
+head 组的“校验”只是记录一次时间戳，并不校验。合入阶段耗时包含重新判断，而这里没有模型，重新判断几乎瞬间完成。登记运行的两个离群值按实测保留：最慢的那次校验，以及 W3 rs_tracked 一次运行（种子 5）1,672 ms 的合入阶段（锁等待最长 536 ms）；两者都没有在重复运行中再出现，重复运行最慢的校验为 37.1 ms。合入阶段中位耗时两次之间最多相差 13.5%（W1 head_blind）。W1、W3 中各组由快到慢的顺序不变；W2 中行为本来相同的 rs_declared 与 rs_tracked 互换了位置。耗时是本机 WSL 上的测量，只在本实验内看比例。
+
+### 独立核查
+
+两项核查既不使用脚本自身的计数，也不使用 `oracle.py`：
+
+- **按原始记录重算**（`audit_calls.py`）：两次完整运行（分别记录 5,942 和 5,944 次调用）的全部 75 次运行、每次 8 项计数都与 `results.json` 一致。这检查的是脚本自身的计数；`calls.jsonl` 只留在本机，所以只能在本机重跑。
+- **用 SQL 重新推导**（`audit_sql.py`）：只用 vc 历史，比较同套装另一件商品在合入提交的第一父提交处与在做出决定的版本处的值；SQL 核查运行的 10 个库全部与 `results.json` 一致。套装合计在违反规则时为 90，在一个卖家放弃时为 105，W3 中无人销售的套装为 120。该运行自己的判定显示成本一项为 false，只是因为它不含第 2 条标准需要的 W1 运行。它的 10 个运行库与模板库保留在本机服务器上。
 
 ### 结论
 
-- 盲重试（现在的脚本客户端）在每次运行中都放过了每个套装的第二笔销售：W2 的 25 个套装与 W3 的 10 个套装全部违反规则。
-- 每次 40001 都重新判断是安全的，但大多白费：W1 的 225 次全部无效，W2 的 125 次中 100 次、W3 的 166 次中 156 次没有改变任何东西。
-- 声明读集与重新判断一样安全，且没有无效的重新判断（W1 为 0；W2 的 25 次与 W3 的 10 次全部有效），W1 的合入阶段也最短（中位 408 ms，对比 456 与 801 ms）。
-- 保护效果完全取决于读集。按 0.5 的概率漏报，放过了 W2 中 25 个套装冲突里的 13 个、W3 中 10 个里的 5 个。记录全部读取是安全的，但浏览行与其他写入者的写入重叠时会多拒：5 个种子合计，W1 中 28 次、W3 中 17 次无效的重新判断。
-
-### 重复运行与独立核查（2026-10-21）
-
-为检验上述结果是否可靠，按登记的安排完整重跑了一次，并新增两项既不使用脚本自身计数、也不使用 `oracle.py` 的核查（`audit_calls.py`、`audit_sql.py`）。
-
-**重复运行。** 运行 `readset_038dfeaa`，UTC 11:08:58–11:12:57（约 4 分钟），同一机器与设置。`readset.sql`、`run_readset.py`、`oracle.py` 的 SHA-256 与第一次相同；只有本文不同，因为其中已加入上面的结果。原始结果：[`results/readset/readset_038dfeaa/results.json`](../results/readset/readset_038dfeaa/results.json)，其 `calls.jsonl` 同样不纳入 git。75 次运行核验全部通过，没有失败的写入者，没有锁超时；有 10 次合入调用（s2-W1-rs_undercite 7 次，s4-W2-rs_tracked 3 次）因服务端与客户端时钟相差超过 10 ms 而不计入耗时。逐次预测在 5 次运行中再次全部成立，四条标准全部通过（合并中位数：校验 17.1 ms，`vc.merge` 36.8 ms）。
-
-75 次运行中有 54 次的计数与第一次完全相同。由种子决定的读集与浏览行两次一致；其余 21 次只在取决于线程时序的计数上不同：
-
-| | 第一次 | 重复运行 |
-|---|---|---|
-| W1 head_blind：40001 重交 | 45 ×5 | 36,45,45,45,45 |
-| W3 head_blind：40001 重交 | 45,45,42,45,45 | 45 ×5 |
-| W1 rs_tracked：重新判断（全部无效） | 6,4,5,7,6 | 5,7,5,7,8 |
-| W3 head_rethink：重新判断（各 2 次有效） | 31,31,37,33,34 | 35,36,33,31,33 |
-| W3 rs_tracked：重新判断（各 2 次有效） | 3,4,3,9,8 | 5,4,5,5,5 |
-| W2 rs_undercite：规则违反 = 陈旧提交 | 3,3,2,2,3（25 个中 13 个） | 4,4,3,1,2（25 个中 14 个） |
-| W3 rs_undercite：规则违反 = 陈旧提交 | 0,0,2,1,2（10 个中 5 个） | 0,0,1,1,1（10 个中 3 个） |
-| 读集非空时的校验中位 | 22.0 ms（n = 302） | 21.7 ms（n = 303） |
-| 最慢的一次校验 | 199.6 ms | 37.1 ms |
-| 合入阶段中位：W1 head_blind / head_rethink / rs_declared | 456 / 801 / 408 ms | 518 / 779 / 395 ms |
-
-标准所依据的格子两次完全相同：head_blind 在每次 W2、W3 运行中都放过 5 个和 2 个违反；head_rethink、rs_declared、rs_tracked 一个也没有；rs_declared 在 W1、W2、W3 中的重新判断为 0、5、2 次，没有无效的。两次合计，漏报放过了 70 个冲突中的 35 个，与漏报概率 0.5 一致；具体放过哪一个，取决于哪个写入者第二个合入，由时序决定。第一次运行中 199.6 ms 的校验和 1,672 ms 的合入阶段没有再出现。读集非空的成功合入持有 main 锁的中位为 57.1 ms，head 组为 38.8 ms，约长 47%（第一次为 52%）。合入阶段中位耗时两次之间最多相差 13.5%（W1 head_blind，456 → 518 ms）。W1、W3 中各组由快到慢的顺序不变；W2 中 rs_declared 与 rs_tracked 互换了位置（第一次 451 对 455 ms，重复运行 453 对 443 ms），这两组在 W2 中的行为本来相同。
-
-**按原始记录重算**（`audit_calls.py`）。只用 `calls.jsonl` 中记录的 SQL 文本与返回码（定义见脚本），重建 `results.json` 中的每项计数。两次运行（分别记录 5,942 和 5,944 次调用）的全部 75 次运行、每次 8 项计数完全一致。这检查的是脚本自身的计数；`calls.jsonl` 只留在本机，所以只能在本机重跑。
-
-**用 SQL 重新推导**（`audit_sql.py`）。第三次较小的运行（`readset_a3702d78`：种子 1，W2 与 W3，全部五组，`--keep-databases`，UTC 11:13:40–11:14:23；`complete_schedule` 为 false，不计入实验，输出未放入仓库）保留了各运行库。在每个库中只用 vc 历史重新计算陈旧提交：对合入 main 的每笔套装销售，比较同套装另一件商品在合入提交的第一父提交处与在来源提交的父提交处（即做出决定的版本）的值；规则违反直接从 `app.products` 读取。这既不用脚本记录的读取值，也不用 `oracle.py`。10 次运行全部与 `results.json` 一致；套装合计在违反规则时为 90，在一个卖家放弃时为 105，W3 中无人销售的套装为 120。该子集自己的判定显示成本一项为 false，只是因为它不含第 2 条标准需要的 W1 运行。这 10 个运行库与模板库保留在本机服务器上。
-
-重复运行与两项核查都与上面的结果一致；结论与第 3 条标准的说明不变。
+- 盲重试（现在的脚本客户端）在每次运行中都放过了每个套装的第二笔销售。
+- 每次 40001 都重新判断是安全的，但大多白费：W1 的重新判断全部无效，W2、W3 的大多数也没有改变任何东西。
+- 声明读集与重新判断一样安全，没有无效的重新判断，W1 的合入阶段也最短。
+- 保护效果完全取决于读集。按 0.5 的概率漏报，两次合计放过了 70 个冲突中的 35 个；具体放过哪一个，取决于哪个写入者第二个合入，由时序决定。记录全部读取是安全的，但浏览行与其他写入者的写入重叠时会多拒。
+- 重复运行与两项核查都与上述结果一致；第 3 条标准的说明不变。
 
 ### 后续（尚未开始）
 
@@ -269,8 +249,8 @@ head 组的“校验”只是记录一次时间戳，并不校验。合入阶段
 |---|---|---|
 | 提交（4db8267 及之后） | `git revert` 对应提交；被改动的现有文件只有 `.gitignore`（新增 4 行）与 `AGENTS.md`（新增表格行与说明） | `git diff 8537cbb -- sql db.py agent_lab.py agent_lab_gateway.py review_local.py run_tests.py agent_state tests scripts` 为空（2026-10-21 已核对） |
 | `experiments/readset/` | `git revert`，或删除该目录；目录外没有代码导入它 | 在该目录、本文与 `results/` 之外，只有 `AGENTS.md` 与 `.gitignore` 提到 readset（2026-10-21 已核对） |
-| `xr` schema | 只存在于 `agentdb_test_readset_*` 测试库（契约测试的 `agentdb_test_xrcontract_*` 库在测试结束时删除）；`db.py install` 不安装它。用 `DROP DATABASE … WITH (FORCE)` 删除这些库 | 项目库 `agentdb` 中没有 `xr` schema（2026-10-21 已核对） |
-| 结果 | 删除 `results/readset/<运行>/`；`results.json` 已提交，`calls.jsonl` 只在本机 | — |
+| `xr` schema | 用 `DROP DATABASE … WITH (FORCE)` 删除 `agentdb_test_readset_*` 测试库；契约测试的库在测试结束时已删除 | 项目库 `agentdb` 中没有 `xr` schema（2026-10-21 已核对） |
+| 结果 | 删除 `results/readset/<运行>/` | — |
 | 将来进入版本引擎 | 尚未开始。若采纳，将作为新迁移（008）提交；其回滚方法（恢复 005 中的 `vc.merge` 定义、删除新增函数）须在应用前写明并测试 | — |
 
 ---
@@ -279,7 +259,7 @@ head 组的“校验”只是记录一次时间戳，并不校验。合入阶段
 
 # Read-Set Validation vs. the Stale-Head Check: Experiment Design
 
-Status (2026-10-21): design, fixed before any code is written. Nothing here has been implemented or run. **Local synthetic load only**: scripted writers, not large-language-model Agents; it does not represent production capacity, and no cloud services are accessed.
+Status: registered on 2026-10-21 before any code was written (commit 4db8267), then implemented and run the same day; results below. **Local synthetic load only**: scripted writers, not large-language-model Agents; it does not represent production capacity, and no cloud services are accessed.
 
 ## Question
 
@@ -433,47 +413,47 @@ Implementation notes (2026-10-21; the predictions and criteria above are unchang
 - Timing: the merge script first calls `xr.lock_main`, which takes main's lock and returns the time it was granted (as `scripts/benchmark_merge.py` takes the lock first); the merge functions then take it again as a no-op. An RS001 rolls back and its session settings go with it, so the error's HINT carries the time validation ended.
 - In every arm the writers read the same dependency rows and the same 20 browsed rows; the arms differ only in the read set they send. Writers connect as `agentdb_client`, each with its own `db.Session`.
 - The default output directory is `results/readset/<prefix>/`. Each run database is dropped once its checks are recorded (kept with `--keep-databases`); the template is kept.
-- Before the registered run, a smoke run was made on 2026-10-21 (seed 1, 15 runs) only to check the harness itself; all 15 runs passed their checks. It is not counted, and its output was not added to the repository. Subsets chosen with `--seeds`, `--workloads` or `--arms` are recorded as `complete_schedule=false`.
+- Subsets chosen with `--seeds`, `--workloads` or `--arms` are recorded as `complete_schedule=false` and not counted.
 
 Results will be appended to this document; the predictions and criteria above are not changed after running.
 
-## Results (2026-10-21, 75 runs)
+## Results (2026-10-21)
 
-Run `readset_df002d50`: started 10:49:36 UTC, finished 10:53:53 UTC (4 min 17 s). PostgreSQL 16.15 (Ubuntu WSL, unix socket, READ COMMITTED, fsync and synchronous_commit on); client Windows 11 (26200), Python 3.10.11, 22 logical CPUs. Template history: 3 changesets, 4,010 row changes, 1 path.
+All runs used the same machine and settings: PostgreSQL 16.15 (Ubuntu WSL, unix socket, READ COMMITTED, fsync and synchronous_commit on); client Windows 11 (26200), Python 3.10.11, 22 logical CPUs. Template history: 3 changesets, 4,010 row changes, 1 path. Each `results.json` holds every writer's proposals, read set, each merge attempt with its server timestamps, and the SHA-256 of the experiment sources as run, so every count and timing below can be recomputed from it; the verbatim SQL log `calls.jsonl` (7.7 MB for the registered run) stays on this machine and is git-ignored.
 
-Raw results: [`results/readset/readset_df002d50/results.json`](../results/readset/readset_df002d50/results.json), with every writer's proposals, read set, each merge attempt with its server timestamps, and the SHA-256 of the experiment sources as run. The verbatim SQL log of every call, `calls.jsonl` (7.7 MB), stays on this machine and is git-ignored; every count and timing below can be recomputed from results.json. The template database `agentdb_test_readset_df002d50_tpl` is kept; the 75 run databases were dropped after their checks.
+| Run | Time (UTC) | What | Outcome |
+|---|---|---|---|
+| smoke, `readset_8e903d65` | before the registered run | seed 1, 15 runs, only to check the harness; not counted, output not in the repository | all 15 passed their checks |
+| registered, [`readset_df002d50`](../results/readset/readset_df002d50/results.json) | 10:49:36–10:53:53 | the registered schedule, 75 runs; `complete_schedule` true | all 75 passed their checks; no failed writer, no lock timeout, no merge call left out of timing |
+| replication, [`readset_038dfeaa`](../results/readset/readset_038dfeaa/results.json) | 11:08:58–11:12:57 | the same schedule again, to check reliability; same SHA-256 of `readset.sql`, `run_readset.py` and `oracle.py`, only this document differed (results had been added) | all 75 passed their checks; no failed writer, no lock timeout; 10 merge calls (7 in s2-W1-rs_undercite, 3 in s4-W2-rs_tracked) left out of timing because the server and client clocks disagreed by more than 10 ms |
+| SQL audit, `readset_a3702d78` | 11:13:40–11:14:23 | seed 1, W2 and W3, all five arms, `--keep-databases`; not counted, output not in the repository | all 10 passed their checks; run databases kept for `audit_sql.py` |
 
-`complete_schedule` is true. All 75 runs passed their checks; no writer failed, no lock timeout occurred, and no merge call was excluded from timing because of clock disagreement.
+### Observed counts
 
-### Predictions vs. observed
-
-Observed values for seeds 1–5; the predictions are in the "Predictions" section above.
+Values for seeds 1–5; where the replication differs from the registered run, its values follow the "/". The predictions are in the "Predictions" section above.
 
 | Workload | Metric | head_blind | head_rethink | rs_declared | rs_undercite | rs_tracked |
 |---|---|---|---|---|---|---|
-| W1 | 40001 resubmits | 45 ×5 | 0 | 0 | 0 | 0 |
-| W1 | rethinks | 0 | 45 ×5, all wasted | 0 | 0 | 6,4,5,7,6, all wasted |
+| W1 | 40001 resubmits | 45 ×5 / 36,45,45,45,45 | 0 | 0 | 0 | 0 |
+| W1 | rethinks | 0 | 45 ×5, all wasted | 0 | 0 | 6,4,5,7,6 / 5,7,5,7,8, all wasted |
 | W2 | 40001 resubmits | 45 ×5 | 0 | 0 | 0 | 0 |
-| W2 | rule violations = stale commits | 5 ×5 | 0 | 0 | 3,3,2,2,3 (mean 2.6; predicted 2.5) | 0 |
-| W2 | rethinks (useful) | 0 | 25 ×5 (5 useful each) | 5 ×5 (all useful) | 2,2,3,3,2 (= 5 − violations) | 5 ×5 (all useful) |
-| W3 | 40001 resubmits | 45,45,42,45,45 | 0 | 0 | 0 | 0 |
-| W3 | rule violations = stale commits | 2 ×5 | 0 | 0 | 0,0,2,1,2 (mean 1.0; predicted 1) | 0 |
-| W3 | rethinks (useful) | 0 | 31,31,37,33,34 (2 useful each) | 2 ×5 (all useful) | 2,2,0,1,0 (= 2 − violations) | 3,4,3,9,8 (2 useful each) |
+| W2 | rule violations = stale commits | 5 ×5 | 0 | 0 | 3,3,2,2,3 (mean 2.6) / 4,4,3,1,2 (mean 2.8); predicted 2.5 | 0 |
+| W2 | rethinks (useful) | 0 | 25 ×5 (5 useful each) | 5 ×5 (all useful) | 2,2,3,3,2 / 1,1,2,4,3 (= 5 − violations) | 5 ×5 (all useful) |
+| W3 | 40001 resubmits | 45,45,42,45,45 / 45 ×5 | 0 | 0 | 0 | 0 |
+| W3 | rule violations = stale commits | 2 ×5 | 0 | 0 | 0,0,2,1,2 (mean 1.0) / 0,0,1,1,1 (mean 0.6); predicted 1 | 0 |
+| W3 | rethinks (useful) | 0 | 31,31,37,33,34 / 35,36,33,31,33 (2 useful each) | 2 ×5 (all useful) | 2,2,0,1,0 / 2,2,1,1,1 (= 2 − violations) | 3,4,3,9,8 / 5,4,5,5,5 (2 useful each) |
 
-Every per-run prediction held in all 5 runs; the two averages came out at 2.6 and 1.0. In every W2 and W3 run the stale commits found from vc history equalled the rule violations found in the final rows, two independent measures. The 42 in W3 seed 3 is within the bound: a writer that re-read head only after two merges was refused once for both.
+In both runs, every per-run prediction held in all 5 seeds. In every W2 and W3 run, the stale commits found from vc history equalled the rule violations found in the final rows, two independent measures. Resubmit counts below 45 are within the bound: a writer that re-read head only after several merges was refused once for all of them. 54 of the replication's 75 runs produced exactly the same counts as the registered run; the seeded read sets and browsed rows were identical, and the other 21 differ only in counts that depend on thread timing.
 
 ### Adoption criteria
 
-| Criterion | Result |
-|---|---|
-| 1 Safety | Passed: rs_declared and rs_tracked had 0 stale commits and 0 rule violations in all 20 W2/W3 runs; head_blind matched the prediction (5 and 2) in all 10 |
-| 2 Cost | Passed: rs_declared had 0 rethinks in every W1 run, and exactly 2, none wasted, in every W3 run |
-| 3 Overhead | Passed as registered: pooled median of all read-set-arm validations 16.3 ms, pooled median `vc.merge` 37.5 ms; see the caveat below |
-| 4 Integrity | Passed: all 75 runs passed their checks; no writer failed |
+All four criteria passed in both runs. Criterion 3, as registered, compares pooled medians: validation 16.3 ms against `vc.merge` 37.5 ms in the registered run, 17.1 against 36.8 ms in the replication.
 
-**Caveat on criterion 3.** The registered criterion compares pooled medians over every validation in the read-set arms, and 39% of them (193 of 495) had an empty read set: the W1 writers in rs_declared and rs_undercite, and writers whose only dependency was omitted. Those validations skipped the comparison and took 1.6 ms median. With a non-empty read set (302 validations), validation took 22.0 ms median, about 59% of the `vc.merge` median. A direct measurement agrees: a successful merge with a non-empty read set held main's lock (lock acquired → before COMMIT) for 58.9 ms median, against 38.7 ms in the head arms, about 52% longer. The criterion still holds on these numbers, but with much less margin than the pooled median suggests. Validation time does not depend on the number of keys (22.8 ms median with 1–2 keys, 21.6 ms with 20 or more), because `vc.diff_rows` replays both versions of the whole table; the slowest validation took 199.6 ms (rs_tracked).
+**Caveat on criterion 3.** The pooled medians include validations with an empty read set: 39% of the registered run's (193 of 495), from the W1 writers in rs_declared and rs_undercite and from writers whose only dependency was omitted. Those skipped the comparison and took 1.6 ms median. With a non-empty read set, validation took 22.0 ms median over 302 validations (21.7 ms over 303 in the replication), about 59% of the `vc.merge` median. A direct measurement agrees: a successful merge with a non-empty read set held main's lock (lock acquired → before COMMIT) for 58.9 ms median, against 38.7 ms in the head arms, about 52% longer (57.1 against 38.8 ms, about 47%, in the replication). The criterion still holds on these numbers, but with much less margin than the pooled medians suggest. Validation time does not depend on the number of keys: 22.8 ms median with 1–2 keys, about the same as rs_tracked's 20 or more (timing table), because `vc.diff_rows` replays both versions of the whole table.
 
 ### Timing
+
+Registered run unless marked.
 
 | | head_blind | head_rethink | rs_declared | rs_undercite | rs_tracked |
 |---|---:|---:|---:|---:|---:|
@@ -481,45 +461,25 @@ Every per-run prediction held in all 5 runs; the two averages came out at 2.6 an
 | Validation, p90 / max (ms) | 0.34 / 0.46 | 0.32 / 1.15 | 25.4 / 38.0 | 23.7 / 34.8 | 29.0 / 199.6 |
 | `vc.merge`, median (ms) | 38.6 | 37.9 | 38.2 | 38.7 | 36.2 |
 | Merge phase, median (ms): W1 / W2 / W3 | 456 / 536 / 517 | 801 / 479 / 734 | 408 / 451 / 473 | 408 / 470 / 447 | 642 / 455 / 646 |
+| Merge phase in the replication, median (ms): W1 / W2 / W3 | 518 / 533 / 533 | 779 / 532 / 792 | 395 / 453 / 438 | 404 / 479 / 436 | 688 / 443 / 686 |
 | Share of the phase main is locked (median): W1 / W2 / W3 | 0.803 / 0.819 / 0.805 | 0.463 / 0.467 / 0.521 | 1.000 / 0.994 / 0.997 | 0.999 / 0.998 / 0.999 | 0.973 / 0.995 / 0.995 |
 
-The head arms' "validation" only records a timestamp; nothing is validated. Merge-phase times include rethinks, which are nearly instant here because there is no model. One W3 rs_tracked run (seed 5) took 1,672 ms, with lock waits up to 536 ms; it is kept as measured. Timings are local WSL measurements; compare ratios within this experiment.
+The head arms' "validation" only records a timestamp; nothing is validated. Merge-phase times include rethinks, which are nearly instant here because there is no model. Two outliers of the registered run are kept as measured: its slowest validation, and a 1,672 ms W3 rs_tracked merge phase (seed 5, lock waits up to 536 ms); neither recurred in the replication, whose slowest validation took 37.1 ms. Merge-phase medians moved by up to 13.5% between the runs (W1 head_blind). The arms kept the same order from fastest to slowest in W1 and W3; in W2, rs_declared and rs_tracked, which behave identically there, swapped places. Timings are local WSL measurements; compare ratios within this experiment.
+
+### Independent checks
+
+Neither check uses the harness's own counters or `oracle.py`:
+
+- **Recount from the raw log** (`audit_calls.py`): for both full runs (5,942 and 5,944 logged calls), all 8 counts matched `results.json` in all 75 runs. This checks the harness's own bookkeeping; `calls.jsonl` stays on this machine, so the recount can only be rerun here.
+- **Re-derivation by SQL** (`audit_sql.py`): from vc history alone, comparing the other product of each bundle at the merge's first parent with its value at the version the sale was decided on, all 10 databases of the SQL audit run matched `results.json`. Bundle totals were 90 where the rule was broken, 105 where one seller held back, and 120 for the W3 bundles nobody sells from. That run's own criteria output shows cost as false only because it has no W1 runs, which criterion 2 needs. Its 10 run databases and template are kept on the local server.
 
 ### What the results show
 
-- Blind retry (today's scripted client) let the second sale of every bundle through in every run: all 25 W2 bundles and all 10 W3 bundles broke the rule.
-- Rethinking on every 40001 was safe but mostly wasted: all 225 rethinks in W1, 100 of 125 in W2 and 156 of 166 in W3 changed nothing.
-- A declared read set was as safe as rethinking, with no wasted rethinks (0 in W1; all 25 in W2 and all 10 in W3 useful), and had the shortest W1 merge phase (408 ms median, against 456 and 801 ms).
-- The protection is exactly as good as the read set. Omitting each dependency with probability 0.5 let 13 of 25 W2 bundle conflicts and 5 of 10 W3 conflicts through. Recording every read was safe but over-rejected whenever browsed rows overlapped another writer's writes: 28 wasted rethinks in W1 and 17 in W3 across the five seeds.
-
-### Replication and independent checks (2026-10-21)
-
-To check that the results above are reliable, the registered schedule was run a second time, and two checks were added that use neither the harness's own counters nor `oracle.py` (`audit_calls.py`, `audit_sql.py`).
-
-**Replication.** Run `readset_038dfeaa`, 11:08:58–11:12:57 UTC (about 4 minutes), on the same machine and settings. The SHA-256 of `readset.sql`, `run_readset.py` and `oracle.py` match the first run; only this document differed, because the results above had been added to it. Raw results: [`results/readset/readset_038dfeaa/results.json`](../results/readset/readset_038dfeaa/results.json); its `calls.jsonl` is git-ignored like the first. All 75 runs passed their checks, with no failed writer and no lock timeout; 10 merge calls (7 in s2-W1-rs_undercite, 3 in s4-W2-rs_tracked) were left out of the timing because the server and client clocks disagreed by more than 10 ms. Every per-run prediction held again in all 5 runs, and all four criteria passed (pooled medians: validation 17.1 ms, `vc.merge` 36.8 ms).
-
-54 of the 75 runs produced exactly the same counts as in the first run. The seeded read sets and browsed rows were identical; the other 21 runs differ only in counts that depend on thread timing:
-
-| | First run | Replication |
-|---|---|---|
-| W1 head_blind: 40001 resubmits | 45 ×5 | 36,45,45,45,45 |
-| W3 head_blind: 40001 resubmits | 45,45,42,45,45 | 45 ×5 |
-| W1 rs_tracked: rethinks (all wasted) | 6,4,5,7,6 | 5,7,5,7,8 |
-| W3 head_rethink: rethinks (2 useful each) | 31,31,37,33,34 | 35,36,33,31,33 |
-| W3 rs_tracked: rethinks (2 useful each) | 3,4,3,9,8 | 5,4,5,5,5 |
-| W2 rs_undercite: rule violations = stale commits | 3,3,2,2,3 (13 of 25) | 4,4,3,1,2 (14 of 25) |
-| W3 rs_undercite: rule violations = stale commits | 0,0,2,1,2 (5 of 10) | 0,0,1,1,1 (3 of 10) |
-| Validation with a non-empty read set, median | 22.0 ms (n = 302) | 21.7 ms (n = 303) |
-| Slowest validation | 199.6 ms | 37.1 ms |
-| Merge phase, median: W1 head_blind / head_rethink / rs_declared | 456 / 801 / 408 ms | 518 / 779 / 395 ms |
-
-The cells the criteria rest on were identical in both runs: head_blind let 5 and 2 violations through in every W2 and W3 run; head_rethink, rs_declared and rs_tracked let none through; rs_declared needed 0, 5 and 2 rethinks in W1, W2 and W3, none wasted. Over both runs, under-citation let 35 of 70 conflicts through, the omission rate of 0.5; which ones get through depends on which writer merges second, and timing decides that. The first run's 199.6 ms validation and 1,672 ms merge phase did not recur. Successful merges with a non-empty read set held main's lock for 57.1 ms median, against 38.8 ms in the head arms, about 47% longer (52% in the first run). Merge-phase medians moved by up to 13.5% between the runs (W1 head_blind, 456 → 518 ms). The arms kept the same order from fastest to slowest in W1 and W3; in W2, rs_declared and rs_tracked swapped places (451 vs 455 ms in the first run, 453 vs 443 ms in the replication), two arms that behave identically in W2.
-
-**Recount from the raw log** (`audit_calls.py`). Every count in `results.json` was rebuilt from `calls.jsonl` alone, using only the logged SQL text and return codes (definitions in the script). For both runs (5,942 and 5,944 logged calls), all 8 counts matched in all 75 runs. This checks the harness's own bookkeeping; `calls.jsonl` stays on this machine, so the recount can only be rerun here.
-
-**Re-derivation by SQL** (`audit_sql.py`). A third, smaller run (`readset_a3702d78`: seed 1, W2 and W3, all five arms, `--keep-databases`, 11:13:40–11:14:23 UTC; `complete_schedule` false, not counted, output not added to the repository) kept its run databases. In each, stale commits were recomputed from vc history alone: for every bundle sale merged into main, the other product of the bundle was compared between the merge's first parent and the parent of the source commit, the version the sale was decided on; rule violations were read directly from `app.products`. This uses neither the harness's recorded reads nor `oracle.py`. All 10 runs matched `results.json`; bundle totals were 90 where the rule was broken, 105 where one seller held back, and 120 for the W3 bundles nobody sells from. That subset's own criteria output shows cost as false only because it has no W1 runs, which criterion 2 needs. Its 10 run databases and template are kept on the local server.
-
-The replication and both checks agree with the results above; the conclusions and the caveat on criterion 3 stand.
+- Blind retry (today's scripted client) let the second sale of every bundle through in every run.
+- Rethinking on every 40001 was safe but mostly wasted: every W1 rethink, and most W2 and W3 rethinks, changed nothing.
+- A declared read set was as safe as rethinking, with no wasted rethinks, and had the shortest W1 merge phase.
+- The protection is exactly as good as the read set. Omitting each dependency with probability 0.5 let 35 of 70 conflicts through over both runs; which ones depends on which writer merges second, and timing decides that. Recording every read was safe but over-rejected whenever browsed rows overlapped another writer's writes.
+- The replication and both checks agree with these results; the caveat on criterion 3 stands.
 
 ### Next steps (not started)
 
@@ -547,6 +507,6 @@ The experiment changed no existing code, data format or project database, so eac
 |---|---|---|
 | Commits (4db8267 and later) | `git revert` them; the only existing files they touch are `.gitignore` (4 added lines) and `AGENTS.md` (added table rows and notes) | `git diff 8537cbb -- sql db.py agent_lab.py agent_lab_gateway.py review_local.py run_tests.py agent_state tests scripts` is empty (checked 2026-10-21) |
 | `experiments/readset/` | `git revert`, or delete the directory; no code outside it imports it | outside that directory, this document and `results/`, only `AGENTS.md` and `.gitignore` mention readset (checked 2026-10-21) |
-| `xr` schema | exists only in `agentdb_test_readset_*` test databases (the contract tests' `agentdb_test_xrcontract_*` database is dropped when they finish); `db.py install` never installs it. Drop those databases with `DROP DATABASE … WITH (FORCE)` | the project database `agentdb` has no `xr` schema (checked 2026-10-21) |
-| Results | delete `results/readset/<run>/`; `results.json` is committed, `calls.jsonl` exists only on this machine | — |
+| `xr` schema | drop the `agentdb_test_readset_*` test databases with `DROP DATABASE … WITH (FORCE)`; the contract tests' database is already dropped when they finish | the project database `agentdb` has no `xr` schema (checked 2026-10-21) |
+| Results | delete `results/readset/<run>/` | — |
 | A future engine change | not started. If adopted, it comes as a new migration (008) whose rollback (restoring 005's definition of `vc.merge` and dropping the new function) is written down and tested before it is applied | — |
