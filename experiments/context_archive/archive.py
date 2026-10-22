@@ -24,7 +24,10 @@ IN_FULL_BYTES = 4096   # newest entries shown word for word after a switch
 HANDOFF_BYTES = 8192   # the whole rendered handoff, header included
 FETCH_ENTRIES = 8      # entries per fetch call
 FETCH_BYTES = 16384    # one fetch result, below Claude Code's 10,000-token MCP output warning
-MAX_SWITCHES = 3       # per actor and round; one more fails the round
+# One reset per agent and round. The 10,000-token limit is a scaled-down window: after a
+# reset, B's handoff (~2.9K tokens) and the system prompt (~2.6K) leave ~4.5K tokens, which
+# one fetch can use up, so a second trigger would measure that scaling, not memory.
+MAX_SWITCHES = 1
 LABEL_CHARS = 120
 SHORT_CHARS = 12
 COLLAPSED_BYTES = 100  # room kept for the line that stands for collapsed catalog lines
@@ -162,7 +165,7 @@ class Writer:
         self.thread = threading.Thread(target=self._run, args=(open_session,), daemon=True)
         self.thread.start()
 
-    def _fail(self, message):
+    def fail(self, message):
         with self.done:
             self.error = self.error or message
             self.done.notify_all()
@@ -177,13 +180,13 @@ class Writer:
         try:
             self.queue.put_nowait((task, entry))
         except queue.Full:
-            self._fail("archive queue full: the database fell behind")
+            self.fail("archive queue full: the database fell behind")
 
     def _run(self, open_session):
         try:
             session = open_session()
         except Exception as error:
-            self._fail(f"archive session failed: {error}")
+            self.fail(f"archive session failed: {error}")
             return
         try:
             while True:
@@ -194,7 +197,7 @@ class Writer:
                     try:
                         session.sql(append_sql(*item))
                     except Exception as error:
-                        self._fail(f"append failed: {error}")
+                        self.fail(f"append failed: {error}")
                 with self.done:
                     self.pending -= 1
                     self.written += self.error is None

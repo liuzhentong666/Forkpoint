@@ -34,14 +34,14 @@ def forward(port, token, params, timeout):
     return message["result"]
 
 
-def respond(message, port, token, timeout):
+def respond(message, port, token, timeout, tool=MCP_TOOL):
     method, params = message.get("method"), message.get("params") or {}
     if method == "initialize":
         return {"protocolVersion": params.get("protocolVersion", "2025-06-18"),
                 "capabilities": {"tools": {"listChanged": False}},
                 "serverInfo": {"name": "agentdb", "version": "1"}}
     if method == "tools/list":
-        return {"tools": [MCP_TOOL]}
+        return {"tools": [tool]}
     if method == "tools/call":
         try:
             result = forward(port, token, params, timeout)
@@ -62,7 +62,13 @@ def main():
     parser.add_argument("--raw", type=Path, required=True, help="Directory for this agent's raw MCP logs")
     parser.add_argument("--actor", required=True)
     parser.add_argument("--timeout", type=float, default=600)
+    parser.add_argument("--tool-file", type=Path, help="JSON tool (name, description, inputSchema) served instead "
+                        "of the GPT run's; experiments/context_archive uses it for its fetch action")
     args = parser.parse_args()
+    tool = MCP_TOOL
+    if args.tool_file is not None:
+        given = json.loads(args.tool_file.read_text(encoding="utf-8"))
+        tool = {"name": given["name"], "description": given["description"], "inputSchema": given["inputSchema"]}
     received = (args.raw / f"{args.actor}.mcp_in.jsonl").open("xb")
     sent = (args.raw / f"{args.actor}.mcp_out.jsonl").open("xb")
     tools = (args.raw / f"tool_calls.{args.actor}.jsonl").open("xb")
@@ -80,7 +86,8 @@ def main():
                 tools.write(raw)
                 tools.flush()
             try:
-                reply = {"jsonrpc": "2.0", "id": message["id"], "result": respond(message, args.port, args.token, args.timeout)}
+                reply = {"jsonrpc": "2.0", "id": message["id"],
+                         "result": respond(message, args.port, args.token, args.timeout, tool)}
             except LookupError:
                 reply = {"jsonrpc": "2.0", "id": message["id"],
                          "error": {"code": -32601, "message": "Only the registered experiment tool is supported"}}
