@@ -1,6 +1,6 @@
 {
-  "recorded_at_utc": "2026-10-21T14:43:32+00:00",
-  "database": "agentdb_test_rsbench_8c04561215",
+  "recorded_at_utc": "2026-10-22T02:55:49+00:00",
+  "database": "agentdb_test_rsbench_4b2e259b67",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "repeats": 7,
   "products": 4000,
@@ -10,47 +10,47 @@
       "commits_since_snapshot": 10,
       "read_keys": 1,
       "median_ms": {
-        "check": 1.142,
-        "merge": 46.086,
-        "diff_rows": 23.425,
-        "head_only": 0.48,
-        "validated": 48.154,
-        "check_share_of_merge": 0.025
+        "check": 1.192,
+        "merge": 44.572,
+        "diff_rows": 23.723,
+        "head_only": 0.468,
+        "validated": 52.762,
+        "check_share_of_merge": 0.027
       }
     },
     {
       "commits_since_snapshot": 10,
       "read_keys": 10,
       "median_ms": {
-        "check": 1.418,
-        "merge": 47.947,
-        "diff_rows": 26.623,
-        "head_only": 0.705,
-        "validated": 49.631,
-        "check_share_of_merge": 0.03
+        "check": 1.378,
+        "merge": 43.826,
+        "diff_rows": 24.575,
+        "head_only": 0.662,
+        "validated": 54.101,
+        "check_share_of_merge": 0.031
       }
     },
     {
       "commits_since_snapshot": 10,
       "read_keys": 100,
       "median_ms": {
-        "check": 4.467,
-        "merge": 48.29,
-        "diff_rows": 23.135,
-        "head_only": 2.219,
-        "validated": 55.859,
-        "check_share_of_merge": 0.093
+        "check": 4.864,
+        "merge": 46.957,
+        "diff_rows": 24.886,
+        "head_only": 1.994,
+        "validated": 53.173,
+        "check_share_of_merge": 0.104
       }
     },
     {
       "commits_since_snapshot": 100,
       "read_keys": 1,
       "median_ms": {
-        "check": 1.151,
-        "merge": 49.186,
-        "diff_rows": 26.657,
-        "head_only": 0.574,
-        "validated": 47.559,
+        "check": 1.201,
+        "merge": 51.825,
+        "diff_rows": 24.883,
+        "head_only": 0.624,
+        "validated": 51.765,
         "check_share_of_merge": 0.023
       }
     },
@@ -58,60 +58,60 @@
       "commits_since_snapshot": 100,
       "read_keys": 10,
       "median_ms": {
-        "check": 1.513,
-        "merge": 53.344,
-        "diff_rows": 25.674,
-        "head_only": 0.898,
-        "validated": 49.0,
-        "check_share_of_merge": 0.028
+        "check": 2.217,
+        "merge": 49.238,
+        "diff_rows": 24.824,
+        "head_only": 1.1,
+        "validated": 54.773,
+        "check_share_of_merge": 0.045
       }
     },
     {
       "commits_since_snapshot": 100,
       "read_keys": 100,
       "median_ms": {
-        "check": 6.351,
-        "merge": 47.334,
-        "diff_rows": 26.176,
-        "head_only": 3.534,
-        "validated": 59.288,
-        "check_share_of_merge": 0.134
+        "check": 5.9,
+        "merge": 49.253,
+        "diff_rows": 24.053,
+        "head_only": 2.956,
+        "validated": 60.19,
+        "check_share_of_merge": 0.12
       }
     },
     {
       "commits_since_snapshot": 1000,
       "read_keys": 1,
       "median_ms": {
-        "check": 3.093,
-        "merge": 53.103,
-        "diff_rows": 28.861,
-        "head_only": 1.784,
-        "validated": 58.383,
-        "check_share_of_merge": 0.058
+        "check": 3.791,
+        "merge": 58.696,
+        "diff_rows": 33.058,
+        "head_only": 1.659,
+        "validated": 60.198,
+        "check_share_of_merge": 0.065
       }
     },
     {
       "commits_since_snapshot": 1000,
       "read_keys": 10,
       "median_ms": {
-        "check": 3.504,
-        "merge": 56.379,
-        "diff_rows": 30.034,
-        "head_only": 2.615,
-        "validated": 64.429,
-        "check_share_of_merge": 0.062
+        "check": 4.206,
+        "merge": 53.842,
+        "diff_rows": 31.413,
+        "head_only": 2.657,
+        "validated": 59.991,
+        "check_share_of_merge": 0.078
       }
     },
     {
       "commits_since_snapshot": 1000,
       "read_keys": 100,
       "median_ms": {
-        "check": 16.528,
-        "merge": 57.705,
-        "diff_rows": 28.261,
-        "head_only": 13.077,
-        "validated": 79.566,
-        "check_share_of_merge": 0.286
+        "check": 16.159,
+        "merge": 57.997,
+        "diff_rows": 34.332,
+        "head_only": 12.494,
+        "validated": 80.545,
+        "check_share_of_merge": 0.279
       }
     }
   ],

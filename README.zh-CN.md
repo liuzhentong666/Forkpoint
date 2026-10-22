@@ -151,7 +151,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 
 - **固定 schema。** 还没有 DDL 分支或迁移合并。
 - **整行冲突。** 两个 Agent 修改同一行的不同列仍会冲突，尚不支持逐列合并。
-- **不推断跨行规则。** 原生约束会被检查；像“订单量不能超过库存”这样的规则，可用 `vc.merge_validated` 合入并给出决定读过的行，这些行在建分支后被改过时合入会被拒绝（写偏斜）。
+- **不推断跨行规则。** 原生约束会被检查；像“订单量不能超过库存”这样的规则，可用 `vc.merge_validated` 合入并给出决定读过的行（它写过的行也会校验），这些行在建分支后被改过时合入会被拒绝（写偏斜）。
 - **分支可以暂时无效。** UNIQUE 和外键只在合入 `main` 时检查。
 - **读取需要回放历史。** 分支视图由历史加快照解析，用不到表自身的索引，因此需要维护任务按 `vc.snapshot_due` 生成快照。
 - **单节点、单租户。** 没有复制、配额或租户隔离；同一分支的写入串行执行，所有合入 `main` 的操作都要取得 `main` 的锁。
@@ -168,7 +168,7 @@ agent_lab.py          实验中 GPT Agent 使用的工具命令行
 agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
 smoke_cloud.py        云端状态服务冒烟测试（尚未运行）
 compose.yaml          一条命令的 Docker 演示
-sql/                  版本引擎，按 001–008 顺序安装
+sql/                  版本引擎，按 001–009 顺序安装
 examples/             可运行的 SQL 示例
 scripts/              基准测试、迁移检查、预发布演练
 results/              文档中各项数字对应的原始结果

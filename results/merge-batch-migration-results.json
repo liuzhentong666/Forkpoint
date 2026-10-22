@@ -1,5 +1,5 @@
 {
-  "database": "agentdb_test_mergemig_dd5f6a5d25",
+  "database": "agentdb_test_mergemig_118789d112",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "old_ref": "8aeb3d7",
   "migration": "sql/004_merge_batch.sql via Connection.install_merge_batch (db.py install-merge-batch)",
@@ -30,12 +30,12 @@
       "merge_commits": 1
     },
     "orders": "d41d8cd98f00b204e9800998ecf8427e",
-    "parents": "994dffaa65a2f5b82e81184b1ae92859",
-    "branches": "1ea0fc976c91f07434619277230a24df",
+    "parents": "735204f77598554ae92547414b478f5f",
+    "branches": "db44c62607381feffef9642edc835405",
     "products": "aee55dc96719b0722f80c7e9623841a0",
-    "changesets": "ca1399892b7e82a0577ac04cdd334d1f",
-    "row_changes": "5915dbaa59a7e79b9df5a1e521537c5b",
-    "path_changes": "c302e06a8a0e43e0951e1f91acf69938",
+    "changesets": "2f9511a390c6e4681df1f826cae22ed4",
+    "row_changes": "3d899f43f1125de82e1c2f674e8f1944",
+    "path_changes": "9124e3d897cd47fbadd644d273ddb034",
     "snapshot_rows": 4000
   },
   "merge_cases": 13,

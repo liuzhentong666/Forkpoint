@@ -1,7 +1,7 @@
 {
   "databases": {
-    "history": "agentdb_test_hhmig_172eb10112",
-    "fresh": "agentdb_test_hhnew_172eb10112"
+    "history": "agentdb_test_hhmig_7f28b25bbc",
+    "fresh": "agentdb_test_hhnew_7f28b25bbc"
   },
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "old_ref": "d5c68b0",
@@ -29,9 +29,9 @@
   },
   "history_health": {
     "h-a": {
-      "head": "44afeec8-d2e0-4517-bae4-e3234a10c112",
+      "head": "18ceae37-d301-496b-b55e-8c91bab4827e",
       "branch": "h-a",
-      "ancestor_walk_ms": 1.008,
+      "ancestor_walk_ms": 0.839,
       "changesets_total": 41,
       "first_parent_depth": 14,
       "reachable_changesets": 15,
@@ -42,9 +42,9 @@
       "max_commits_since_snapshot": 14
     },
     "h-b": {
-      "head": "cd3080b9-e52b-4278-9505-8a107aa6290f",
+      "head": "2512b88c-7f70-4464-bdb0-f15da2d62d11",
       "branch": "h-b",
-      "ancestor_walk_ms": 0.973,
+      "ancestor_walk_ms": 1.102,
       "changesets_total": 41,
       "first_parent_depth": 10,
       "reachable_changesets": 31,
@@ -55,9 +55,9 @@
       "max_commits_since_snapshot": 10
     },
     "h-c": {
-      "head": "9c72cefa-9d3e-4f24-bbb5-1dbc9ab72ddf",
+      "head": "6388e1c0-265e-4f97-9c19-97c0e021baf9",
       "branch": "h-c",
-      "ancestor_walk_ms": 1.038,
+      "ancestor_walk_ms": 0.847,
       "changesets_total": 41,
       "first_parent_depth": 9,
       "reachable_changesets": 29,
@@ -68,9 +68,9 @@
       "max_commits_since_snapshot": 9
     },
     "main": {
-      "head": "bbf1477b-c158-4b36-980e-9559cf8c6f26",
+      "head": "371eb4bf-d9c4-4f1f-9eec-a20a8dd40934",
       "branch": "main",
-      "ancestor_walk_ms": 1.043,
+      "ancestor_walk_ms": 0.806,
       "changesets_total": 41,
       "first_parent_depth": 28,
       "reachable_changesets": 37,
@@ -81,9 +81,9 @@
       "max_commits_since_snapshot": 15
     },
     "x-1": {
-      "head": "259c7d5b-67f3-4fc4-8e0e-40a61f64c151",
+      "head": "501a70fb-c9d6-4319-8f64-0ffb56c12a73",
       "branch": "x-1",
-      "ancestor_walk_ms": 0.915,
+      "ancestor_walk_ms": 0.84,
       "changesets_total": 41,
       "first_parent_depth": 30,
       "reachable_changesets": 40,
@@ -94,9 +94,9 @@
       "max_commits_since_snapshot": 17
     },
     "x-2": {
-      "head": "ae405ce1-9157-4558-b12f-0ea115e445fe",
+      "head": "8b064dc0-b819-4eb8-a610-5253204ffd11",
       "branch": "x-2",
-      "ancestor_walk_ms": 0.912,
+      "ancestor_walk_ms": 0.815,
       "changesets_total": 41,
       "first_parent_depth": 30,
       "reachable_changesets": 40,
@@ -125,8 +125,8 @@
         "median_merge_ms": null,
         "merge_samples": 0,
         "crossed": 0,
-        "head": "bbf1477b-c158-4b36-980e-9559cf8c6f26",
-        "ancestor_walk_ms": 1.12,
+        "head": "371eb4bf-d9c4-4f1f-9eec-a20a8dd40934",
+        "ancestor_walk_ms": 0.881,
         "changesets_total": 41,
         "first_parent_depth": 28,
         "reachable_changesets": 37,
