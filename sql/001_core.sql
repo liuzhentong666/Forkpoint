@@ -261,7 +261,9 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._capture_main() RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp
+  -- to_jsonb renders the same in every session (sql/009_canonical_row_docs.sql).
+  SET TimeZone='UTC' SET IntervalStyle='postgres' SET extra_float_digits=1 SET bytea_output='hex' AS $$
 DECLARE ctx vc.work_tx := vc._context(); tid uuid := TG_ARGV[0]::uuid;
         old_doc jsonb; new_doc jsonb; old_pk jsonb; new_pk jsonb;
 BEGIN
@@ -278,7 +280,9 @@ BEGIN
 END $$;
 
 CREATE FUNCTION vc._overlay_write() RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp
+  -- to_jsonb renders the same in every session (sql/009_canonical_row_docs.sql).
+  SET TimeZone='UTC' SET IntervalStyle='postgres' SET extra_float_digits=1 SET bytea_output='hex' AS $$
 DECLARE ctx vc.work_tx := vc._context(); tid uuid := TG_ARGV[0]::uuid;
         old_doc jsonb; new_doc jsonb; old_pk jsonb; new_pk jsonb;
 BEGIN

@@ -19,14 +19,17 @@ BEGIN;
 DO $harden$
 DECLARE f regprocedure;
 BEGIN
+  -- Only the search_path entry counts: 009 adds other settings to some functions.
   IF EXISTS(SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
-            WHERE n.nspname='vc' AND p.proconfig IS NOT NULL AND p.proconfig IS DISTINCT FROM '{"search_path=pg_catalog, vc"}'
-              AND p.proconfig IS DISTINCT FROM '{"search_path=pg_catalog, vc, pg_temp"}') THEN
+            CROSS JOIN LATERAL unnest(p.proconfig) c(setting)
+            WHERE n.nspname='vc' AND c.setting LIKE 'search_path=%'
+              AND c.setting NOT IN ('search_path=pg_catalog, vc','search_path=pg_catalog, vc, pg_temp')) THEN
     RAISE EXCEPTION 'A function in vc has an unexpected search_path; nothing was changed';
   END IF;
   FOR f IN SELECT p.oid::regprocedure FROM pg_catalog.pg_proc p
            JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
-           WHERE n.nspname='vc' AND p.proconfig IS NOT NULL ORDER BY 1 LOOP
+           WHERE n.nspname='vc' AND EXISTS(SELECT 1 FROM unnest(p.proconfig) c WHERE c LIKE 'search_path=%')
+           ORDER BY 1 LOOP
     EXECUTE format('ALTER FUNCTION %s SET search_path = pg_catalog, vc, pg_temp', f);
   END LOOP;
 END $harden$;

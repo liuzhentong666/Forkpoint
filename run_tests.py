@@ -425,8 +425,9 @@ def read_set_merge():
     Kept apart from test_suite(), which the migration checks also run on installs
     that predate 008. Each case runs as agentdb_client in a transaction that is
     rolled back, except the comparison with vc.rows_at, which calls an owner-only
-    function. Rows 3201-3214, 9201 and 9301 are used only here; the last case,
-    a race between two sessions, commits for real and leaves main two merges on.
+    function. Rows 3201-3216, 9201, 9301 and 9401-9403 are used only here; the
+    last case, a race between two sessions, commits for real and leaves main two
+    merges on.
     """
     results = []
 
@@ -519,6 +520,59 @@ def read_set_merge():
            t:=vc.merge_validated('main',s,'{}'::jsonb,'er-b');
            ASSERT vc.merge_base(t,s)=s AND vc.merge_base(t,r)=r;""")
 
+    # C01: the stock row is written, not named; both sales computed 1 -> 0.
+    test("two_sales_of_the_last_unit_refuse_the_second", """
+           PERFORM vc.begin_change('main',b); UPDATE app.products SET stock=1 WHERE id=3215; b:=vc.finish_change();
+           """ + proposal("r", "lu-a", "UPDATE agent.products SET stock=0 WHERE id=3215; "
+                                     "INSERT INTO agent.products VALUES(9401,'lu-9401','order a',1,1);")
+         + proposal("s", "lu-b", "UPDATE agent.products SET stock=0 WHERE id=3215; "
+                                 "INSERT INTO agent.products VALUES(9402,'lu-9402','order b',1,1);")
+         + "t:=vc.merge_validated('main',r,'{}'::jsonb,'lu-a');\n"
+         + refused("vc.merge_validated('main',s,'{}'::jsonb,'lu-b')", "RS001", detail=True)
+         + """ASSERT vc.head()=t AND NOT EXISTS(SELECT 1 FROM app.products WHERE id=9402), text_value;
+           ASSERT jsonb_array_length(text_value::jsonb)=1 AND text_value::jsonb @>
+             '[{"key":{"id":3215},"base":{"stock":1},"now":{"stock":0},"written":true}]', text_value;""")
+
+    test("a_written_row_main_changed_and_changed_back_merges",
+         proposal("s", "wb", "UPDATE agent.products SET stock=45 WHERE id=3216; "
+                             "INSERT INTO agent.products VALUES(9403,'wb-9403','order',1,1);") + """
+           PERFORM vc.begin_change('main',vc.head()); UPDATE app.products SET stock=50 WHERE id=3216; PERFORM vc.finish_change();
+           PERFORM vc.begin_change('main',vc.head()); UPDATE app.products SET stock=100 WHERE id=3216; PERFORM vc.finish_change();
+           t:=vc.merge_validated('main',s,'{}'::jsonb,'wb');
+           ASSERT vc.merge_base(t,s)=s AND (SELECT stock FROM app.products WHERE id=3216)=45;""")
+
+    # C02: insert under one set of rendering settings, update and delete under another.
+    test("row_documents_do_not_depend_on_session_settings", """
+           CREATE TABLE app.rs_events(at timestamptz PRIMARY KEY, span interval NOT NULL, ratio float8 NOT NULL,
+                                      blob bytea NOT NULL, note text NOT NULL);
+           s:=vc.register_table('app.rs_events');
+           PERFORM set_config('TimeZone','UTC',true); PERFORM set_config('IntervalStyle','postgres',true);
+           PERFORM set_config('extra_float_digits','1',true); PERFORM set_config('bytea_output','hex',true);
+           PERFORM vc.begin_change('main',vc.head());
+           INSERT INTO app.rs_events VALUES('2026-01-01 00:00:00+00','1 day 02:00:00',0.1+0.2,decode('0102','hex'),'v1');
+           r:=vc.finish_change();
+           PERFORM set_config('TimeZone','Asia/Shanghai',true); PERFORM set_config('IntervalStyle','iso_8601',true);
+           PERFORM set_config('extra_float_digits','-3',true); PERFORM set_config('bytea_output','escape',true);
+           PERFORM vc.begin_change('main',vc.head());
+           UPDATE app.rs_events SET note='v2' WHERE at='2026-01-01 08:00:00+08';
+           t:=vc.finish_change();
+           ASSERT (SELECT before_row FROM vc.row_change WHERE changeset=t AND table_id=s)
+                  =(SELECT after_row FROM vc.row_change WHERE changeset=r AND table_id=s),
+                  (SELECT before_row::text FROM vc.row_change WHERE changeset=t AND table_id=s);
+           PERFORM vc.begin_change('main',vc.head());
+           DELETE FROM app.rs_events WHERE at='2026-01-01 08:00:00+08';
+           t:=vc.finish_change();
+           ASSERT (SELECT count(DISTINCT pk) FROM vc.row_change WHERE table_id=s)=1;
+           ASSERT NOT EXISTS(SELECT 1 FROM vc.rows_at(t,s)),
+                  (SELECT string_agg(pk::text,' ') FROM vc.rows_at(t,s));
+           -- Read keys are compared in the same form: UTC is accepted, another offset refused.
+           PERFORM vc.merge_validated('main',r,jsonb_build_object(s::text,'[{"at":"2026-01-01T00:00:00+00:00"}]'::jsonb),'tz');
+           BEGIN
+             PERFORM vc.merge_validated('main',r,jsonb_build_object(s::text,'[{"at":"2026-01-01T08:00:00+08:00"}]'::jsonb),'tz');
+             RAISE EXCEPTION 'Accepted a non-UTC timestamptz key' USING ERRCODE='XX000';
+           EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+           END;""", role=False)
+
     results.append(read_set_race())
     print("PASS " + results[-1]["name"], flush=True)
     return results
@@ -527,10 +581,11 @@ def read_set_merge():
 def read_set_race():
     """Two crossing read sets merged at the same time: the head lock comes before the check.
 
-    A merges and holds main's lock (sleeping inside its transaction); B, started
-    then, must wait for A's commit and refuse with RS001 against A's head. Checking
-    before the lock would instead validate B against the old head and fail later
-    with 40001, or merge both, so this case pins the order.
+    A merges and keeps main's lock until it sees B blocked behind it
+    (pg_blocking_pids), then commits; B must then refuse with RS001 against A's
+    head. Without that wait B could start after A's commit and get RS001 from an
+    ordinary stale read. Checking before the lock would validate B against the old
+    head and fail with 40001 once A commits, so this case pins the order.
     """
     start = time.perf_counter()
     base = sql("SELECT vc.head();")
@@ -548,11 +603,22 @@ def read_set_race():
     holder = ThreadPoolExecutor(max_workers=1).submit(CONNECTION.execute, f"""
       BEGIN; SET LOCAL ROLE agentdb_client;
       SELECT vc.merge_validated('main','{revision["rsc-a"]}',{reads(3214)},'rsc-a');
-      SELECT pg_sleep(3) /* {tag} */;
+      RESET ROLE;
+      DO $wait$ /* {tag} */ BEGIN
+        FOR i IN 1..600 LOOP
+          -- pg_locks, not pg_stat_activity, which a transaction reads once and caches.
+          IF EXISTS(SELECT 1 FROM pg_locks l WHERE NOT l.granted AND pg_backend_pid()=ANY(pg_blocking_pids(l.pid))) THEN
+            RAISE NOTICE 'a session is waiting on this one';
+            RETURN;
+          END IF;
+          PERFORM pg_sleep(0.05);
+        END LOOP;
+        RAISE EXCEPTION 'No session waited on main''s lock within 30 s';
+      END $wait$;
       COMMIT;""", DBNAME)
     deadline = time.monotonic() + 30
     while sql(f"SELECT count(*) FROM pg_stat_activity WHERE state='active' AND query LIKE '%{tag}%' "
-              f"AND pid<>pg_backend_pid() AND query NOT LIKE '%pg_stat_activity%';") != "1":
+              f"AND pid<>pg_backend_pid();") != "1":
         if holder.done() or time.monotonic() > deadline:
             raise AssertionError("A never held main's lock: " + str(holder.result().stderr if holder.done() else "timeout"))
         time.sleep(0.05)
@@ -563,14 +629,15 @@ def read_set_race():
       COMMIT;""", DBNAME)
     waited_ms = (time.perf_counter()-waited)*1000
     first = holder.result()
-    assert first.returncode == 0, first.stderr
+    assert first.returncode == 0 and "a session is waiting on this one" in first.stderr, first.stderr
     assert second.returncode != 0 and "RS001" in second.stderr, (second.returncode, second.stderr)
     head = sql("SELECT vc.head();")
     assert sql(f"SELECT vc.merge_base('{head}','{revision['rsc-a']}')='{revision['rsc-a']}' "
                f"AND vc.merge_base('{head}','{revision['rsc-b']}')<>'{revision['rsc-b']}';") == "t"
     assert sql("SELECT string_agg(stock::text,',' ORDER BY id) FROM app.products WHERE id IN (3213,3214);") == "45,100"
     return {"name": "crossing_read_sets_at_the_same_time_refuse_the_second", "passed": True,
-            "ms": round((time.perf_counter()-start)*1000, 2), "second_waited_ms": round(waited_ms, 2)}
+            "ms": round((time.perf_counter()-start)*1000, 2), "second_blocked_by_first": True,
+            "second_waited_ms": round(waited_ms, 2)}
 
 
 def session():

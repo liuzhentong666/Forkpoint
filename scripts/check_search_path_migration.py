@@ -75,6 +75,7 @@ def main():
     owner.install_read_set_merge()
     current = signatures(owner)
     assert set(functions) <= set(current) and function_states(owner, functions) == states_after
+    owner.install_canonical_row_docs()  # 009: the capture triggers' rendering settings
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
     fresh_owner = connect(args, names["fresh"])

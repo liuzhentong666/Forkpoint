@@ -241,7 +241,7 @@ class Connection:
         statements = []
         for filename in ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql",
                          "005_bounded_history.sql", "006_history_health.sql", "007_search_path_pg_temp.sql",
-                         "008_read_set_merge.sql"):
+                         "008_read_set_merge.sql", "009_canonical_row_docs.sql"):
             source = (ROOT / "sql" / filename).read_text(encoding="utf-8")
             source = re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", source)
             statements.append(source)
@@ -281,6 +281,12 @@ class Connection:
         """Add vc.merge_validated, merges that refuse write skew (sql/008_read_set_merge.sql)."""
         target = database_name(database or self.settings["database"])
         source = (ROOT / "sql/008_read_set_merge.sql").read_text(encoding="utf-8")
+        self.sql(source, target)
+
+    def install_canonical_row_docs(self, database=None):
+        """Record rows the same way in every session (sql/009_canonical_row_docs.sql)."""
+        target = database_name(database or self.settings["database"])
+        source = (ROOT / "sql/009_canonical_row_docs.sql").read_text(encoding="utf-8")
         self.sql(source, target)
 
 
@@ -467,7 +473,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("check", "install", "install-manager", "install-merge-batch",
                                            "install-bounded-history", "install-history-health",
-                                           "install-search-path-hardening", "install-read-set-merge"))
+                                           "install-search-path-hardening", "install-read-set-merge",
+                                           "install-canonical-row-docs"))
     add_connection_arguments(parser)
     args = parser.parse_args()
     try:
@@ -502,6 +509,9 @@ def main():
         elif args.action == "install-read-set-merge":
             connection.install_read_set_merge()
             details["read_set_merge_installed_in"] = connection.settings["database"]
+        elif args.action == "install-canonical-row-docs":
+            connection.install_canonical_row_docs()
+            details["canonical_row_docs_installed_in"] = connection.settings["database"]
         print(json.dumps(details, indent=2))
     except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"{error}\n")

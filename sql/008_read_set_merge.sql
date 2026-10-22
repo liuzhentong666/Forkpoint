@@ -4,10 +4,15 @@
 --
 -- * vc.merge_validated(target, source, reads, author) merges like vc.merge, but
 --   instead of naming the exact current head the caller names the rows its
---   decision read and did not write. When any of them differs between the merge
---   base and the target's head, it raises RS001 (read_conflict) with each changed
---   key and its old and new value in DETAIL, and nothing is merged. Write-write
---   conflicts and native constraints stay vc.merge's (P0001, 23xxx).
+--   decision read. When any of them differs between the merge base and the
+--   target's head, it raises RS001 (read_conflict) with each changed key and its
+--   old and new value in DETAIL, and nothing is merged.
+-- * Rows the source wrote are checked as read without being named: a decision
+--   computes them from their values at the base. One the target has since set to
+--   a different value is vc.merge's write conflict (P0001); one it has set to the
+--   same value, which vc.merge would count as already applied, is RS001 here
+--   ("written": true in DETAIL), else two sales of the last unit both land.
+--   Native constraints stay vc.merge's (23xxx).
 -- * p_reads maps registered table ids to arrays of primary keys:
 --   {"<vc.table_id('app.products')>": [{"id": 1}, ...]}. A malformed read set, an
 --   unregistered table, or a key that is not the table's primary key exactly as
@@ -16,9 +21,12 @@
 --   "nothing changed".
 -- * The read set replaces the expected-head check, so it is the caller's own
 --   declaration: a row the decision used but the set leaves out is not checked
---   (an empty set declares that the decision read nothing and merges like a
---   blind retry). Callers send every row their decision used; agent_lab.py does
---   not expose this function.
+--   (an empty set declares that the decision read nothing besides the rows it
+--   wrote). Callers send every row their decision used; agent_lab.py does not
+--   expose this function.
+-- * Read keys are compared with history as the capture triggers record it, with
+--   the fixed rendering settings of sql/009_canonical_row_docs.sql (a timestamptz
+--   key is written in UTC).
 -- * Rows are compared by value at the two versions with vc._rows_at_keys, which
 --   follows vc.rows_at's first-parent lineage but resolves only the given keys:
 --   the cost follows that lineage and the number of keys, not the table size.
@@ -59,8 +67,10 @@ LANGUAGE sql STABLE SECURITY DEFINER ROWS 10 SET search_path=pg_catalog,vc,pg_te
 $$;
 
 CREATE OR REPLACE FUNCTION vc.merge_validated(p_target text,p_source uuid,p_reads jsonb,p_author text DEFAULT 'agent')
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
-DECLARE target_head uuid; read_base uuid; conflicts jsonb; read_table record; bad jsonb;
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp
+  SET TimeZone='UTC' SET IntervalStyle='postgres' SET extra_float_digits=1 SET bytea_output='hex' AS $$
+DECLARE target_head uuid; read_base uuid; conflicts jsonb; written jsonb; read_table record; bad jsonb;
+        source_chain uuid[]; on_chain boolean;
 BEGIN
   -- CASE keeps each check from running on input an earlier check already refused.
   IF jsonb_typeof(p_reads) IS DISTINCT FROM 'object' OR EXISTS(
@@ -115,8 +125,38 @@ BEGIN
       FROM vc._rows_at_keys(read_base,r.key::uuid,k.keys) a
       FULL JOIN vc._rows_at_keys(target_head,r.key::uuid,k.keys) z USING (pk)
       WHERE a.doc IS DISTINCT FROM z.doc) d;
+    -- The rows the source wrote: the row changes on its first-parent chain above
+    -- the base (the chain vc.rows_at replays), or vc.diff_rows when the base is
+    -- not on that chain. Of those that really differ from the base, the ones the
+    -- target now holds with the source's own value; rows also named in p_reads
+    -- were checked above.
+    SELECT array_agg(c.id) INTO source_chain FROM (
+      WITH RECURSIVE up(id) AS (
+        SELECT p_source
+        UNION ALL
+        SELECT p.parent FROM up u JOIN vc.parent p ON p.child=u.id AND p.ordinal=1
+        WHERE u.id IS DISTINCT FROM read_base)
+      SELECT id FROM up) c;
+    on_chain:=read_base=ANY(source_chain);
+    SELECT jsonb_agg(jsonb_build_object('table',w.table_id,'key',d.pk,'base',d.base_doc,'now',d.now_doc,'written',true)
+                     ORDER BY w.table_id::text,d.pk::text)
+    INTO written
+    FROM (SELECT r.table_id,array_agg(DISTINCT r.pk) AS keys FROM vc.row_change r
+          WHERE on_chain AND r.changeset=ANY(source_chain) AND r.changeset<>read_base GROUP BY r.table_id
+          UNION ALL
+          SELECT t.id,ARRAY(SELECT x.pk FROM vc.diff_rows(read_base,p_source,t.id) x) FROM vc.tracked_table t
+          WHERE on_chain IS NOT TRUE) w
+    CROSS JOIN LATERAL (
+      SELECT k.pk,a.doc AS base_doc,z.doc AS now_doc
+      FROM unnest(w.keys) k(pk)
+      LEFT JOIN vc._rows_at_keys(read_base,w.table_id,w.keys) a USING (pk)
+      LEFT JOIN vc._rows_at_keys(p_source,w.table_id,w.keys) s USING (pk)
+      LEFT JOIN vc._rows_at_keys(target_head,w.table_id,w.keys) z USING (pk)
+      WHERE a.doc IS DISTINCT FROM s.doc AND z.doc IS DISTINCT FROM a.doc AND z.doc IS NOT DISTINCT FROM s.doc
+        AND NOT coalesce(p_reads->(w.table_id::text),'[]') @> jsonb_build_array(k.pk)) d;
+    conflicts:=CASE WHEN written IS NULL THEN conflicts WHEN conflicts IS NULL THEN written ELSE conflicts||written END;
     IF conflicts IS NOT NULL THEN
-      RAISE EXCEPTION 'Read conflict: % row(s) the source read changed on % since %',
+      RAISE EXCEPTION 'Read conflict: % row(s) the source read or wrote changed on % since %',
         jsonb_array_length(conflicts),p_target,read_base USING ERRCODE='RS001', DETAIL=conflicts::text;
     END IF;
   END IF;
