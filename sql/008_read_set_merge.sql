@@ -14,19 +14,17 @@
 --   ("written": true in DETAIL), else two sales of the last unit both land.
 --   Native constraints stay vc.merge's (23xxx).
 -- * p_reads maps registered table ids to arrays of primary keys:
---   {"<vc.table_id('app.products')>": [{"id": 1}, ...]}. A malformed read set, an
---   unregistered table, or a key that is not the table's primary key exactly as
---   history records it (other columns, a null, or a value of another type such as
---   {"id": "1"} for an integer id) raises 22023, so a mistake cannot pass as
---   "nothing changed".
+--   {"<vc.table_id('app.products')>": [{"id": 1}, ...]}. Each key is rewritten to
+--   the form history records (sql/009_canonical_row_docs.sql), so {"id": "1"} reads
+--   as {"id": 1} and a timestamptz in any offset as its UTC form; DETAIL reports
+--   that form. A malformed read set, an unregistered table, a key with other
+--   columns, a null, or a value the column cannot take ("abc" for an integer)
+--   raises 22023, so a mistake cannot pass as "nothing changed".
 -- * The read set replaces the expected-head check, so it is the caller's own
 --   declaration: a row the decision used but the set leaves out is not checked
 --   (an empty set declares that the decision read nothing besides the rows it
 --   wrote). Callers send every row their decision used; agent_lab.py does not
 --   expose this function.
--- * Read keys are compared with history as the capture triggers record it, with
---   the fixed rendering settings of sql/009_canonical_row_docs.sql (a timestamptz
---   key is written in UTC).
 -- * Rows are compared by value at the two versions with vc._rows_at_keys, which
 --   follows vc.rows_at's first-parent lineage but resolves only the given keys:
 --   the cost follows that lineage and the number of keys, not the table size.
@@ -70,6 +68,7 @@ CREATE OR REPLACE FUNCTION vc.merge_validated(p_target text,p_source uuid,p_read
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp
   SET TimeZone='UTC' SET IntervalStyle='postgres' SET extra_float_digits=1 SET bytea_output='hex' AS $$
 DECLARE target_head uuid; read_base uuid; conflicts jsonb; written jsonb; read_table record; bad jsonb;
+        reads jsonb:='{}'; canonical jsonb;
         source_chain uuid[]; on_chain boolean;
 BEGIN
   -- CASE keeps each check from running on input an earlier check already refused.
@@ -86,17 +85,19 @@ BEGIN
     RAISE EXCEPTION 'p_reads must map registered table ids to arrays of primary keys'
       USING ERRCODE='22023', HINT='{"<vc.table_id(...)>": [{"id": 1}, ...]}';
   END IF;
-  -- Each key must equal the primary key the capture trigger records for that row
-  -- (vc._pk of the row rebuilt from the key), else it would match no row at
-  -- either version and read as unchanged. A value the column type cannot take
-  -- at all, such as "abc" for an integer, fails the rebuild itself.
+  -- Each key becomes the primary key the capture trigger records for that row:
+  -- vc._pk of the row rebuilt from the key, under this function's fixed rendering
+  -- settings. Unrewritten, a key in another form would match no row at either
+  -- version and read as unchanged. A value the column type cannot take fails the
+  -- rebuild, and a null matches no primary key; both are refused.
   FOR read_table IN SELECT r.key::uuid AS id,r.value AS keys,tt.relation
            FROM jsonb_each(p_reads) r JOIN vc.tracked_table tt ON tt.id=r.key::uuid LOOP
     BEGIN
-      EXECUTE format('SELECT e.k FROM jsonb_array_elements($1) e(k)
-                      WHERE e.k IS DISTINCT FROM vc._pk($2,to_jsonb(jsonb_populate_record(NULL::%s,e.k)))
-                         OR EXISTS(SELECT 1 FROM jsonb_each(e.k) v WHERE v.value=''null''::jsonb) LIMIT 1',
-                     read_table.relation) INTO bad USING read_table.keys,read_table.id;
+      EXECUTE format('SELECT coalesce(jsonb_agg(vc._pk($2,to_jsonb(jsonb_populate_record(NULL::%s,e.k))) ORDER BY e.n),''[]'')
+                      FROM jsonb_array_elements($1) WITH ORDINALITY e(k,n)',
+                     read_table.relation) INTO canonical USING read_table.keys,read_table.id;
+      bad:=(SELECT k FROM jsonb_array_elements(canonical) k
+            WHERE EXISTS(SELECT 1 FROM jsonb_each(k) v WHERE v.value='null'::jsonb) LIMIT 1);
     EXCEPTION WHEN data_exception THEN
       bad:=to_jsonb(SQLERRM);
     END;
@@ -104,6 +105,7 @@ BEGIN
       RAISE EXCEPTION 'p_reads key does not match the primary key of %',read_table.relation
         USING ERRCODE='22023', DETAIL=bad::text;
     END IF;
+    reads:=reads||jsonb_build_object(read_table.id::text,coalesce(reads->(read_table.id::text),'[]')||canonical);
   END LOOP;
   IF NOT EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_source) THEN RAISE EXCEPTION 'Unknown source'; END IF;
   -- The target's head lock first, as vc.begin_change takes it, so the reads are
@@ -118,7 +120,7 @@ BEGIN
     SELECT jsonb_agg(jsonb_build_object('table',r.key,'key',d.pk,'base',d.before_doc,'now',d.after_doc)
                      ORDER BY r.key,d.pk::text)
     INTO conflicts
-    FROM jsonb_each(p_reads) r
+    FROM jsonb_each(reads) r
     CROSS JOIN LATERAL (SELECT ARRAY(SELECT jsonb_array_elements(r.value)) AS keys) k
     CROSS JOIN LATERAL (
       SELECT pk,a.doc AS before_doc,z.doc AS after_doc
@@ -128,7 +130,7 @@ BEGIN
     -- The rows the source wrote: the row changes on its first-parent chain above
     -- the base (the chain vc.rows_at replays), or vc.diff_rows when the base is
     -- not on that chain. Of those that really differ from the base, the ones the
-    -- target now holds with the source's own value; rows also named in p_reads
+    -- target now holds with the source's own value; rows also in the read set
     -- were checked above.
     SELECT array_agg(c.id) INTO source_chain FROM (
       WITH RECURSIVE up(id) AS (
@@ -153,7 +155,7 @@ BEGIN
       LEFT JOIN vc._rows_at_keys(p_source,w.table_id,w.keys) s USING (pk)
       LEFT JOIN vc._rows_at_keys(target_head,w.table_id,w.keys) z USING (pk)
       WHERE a.doc IS DISTINCT FROM s.doc AND z.doc IS DISTINCT FROM a.doc AND z.doc IS NOT DISTINCT FROM s.doc
-        AND NOT coalesce(p_reads->(w.table_id::text),'[]') @> jsonb_build_array(k.pk)) d;
+        AND NOT coalesce(reads->(w.table_id::text),'[]') @> jsonb_build_array(k.pk)) d;
     conflicts:=CASE WHEN written IS NULL THEN conflicts WHEN conflicts IS NULL THEN written ELSE conflicts||written END;
     IF conflicts IS NOT NULL THEN
       RAISE EXCEPTION 'Read conflict: % row(s) the source read or wrote changed on % since %',

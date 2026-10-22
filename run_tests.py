@@ -425,7 +425,7 @@ def read_set_merge():
     Kept apart from test_suite(), which the migration checks also run on installs
     that predate 008. Each case runs as agentdb_client in a transaction that is
     rolled back, except the comparison with vc.rows_at, which calls an owner-only
-    function. Rows 3201-3216, 9201, 9301 and 9401-9403 are used only here; the
+    function. Rows 3201-3217, 9201, 9301 and 9401-9403 are used only here; the
     last case, a race between two sessions, commits for real and leaves main two
     merges on.
     """
@@ -460,6 +460,15 @@ def read_set_merge():
            ASSERT jsonb_array_length(text_value::jsonb)=1
              AND text_value::jsonb @> '[{"key":{"id":3204},"base":{"stock":100},"now":{"stock":45}}]', text_value;""")
 
+    # The same write skew with the integer key written as a string: it is read as {"id":3204}.
+    test("read_keys_are_rewritten_to_the_recorded_form",
+         proposal("r", "rf-a", "UPDATE agent.products SET stock=45 WHERE id=3204;")
+         + proposal("s", "rf-b", "UPDATE agent.products SET stock=45 WHERE id=3205;")
+         + f"t:=vc.merge_validated('main',r,{reads(3205)},'rf-a');\n"
+         + refused("""vc.merge_validated('main',s,jsonb_build_object(vc.table_id('app.products')::text,'[{"id":"3204"}]'::jsonb),'rf-b')""",
+                   "RS001", detail=True)
+         + """ASSERT jsonb_array_length(text_value::jsonb)=1 AND text_value::jsonb @> '[{"key":{"id":3204}}]', text_value;""")
+
     test("unchanged_reads_merge_although_main_moved",
          proposal("r", "un-a", "UPDATE agent.products SET stock=45 WHERE id=3206;")
          + proposal("s", "un-b", "UPDATE agent.products SET stock=45 WHERE id=3207;")
@@ -492,8 +501,8 @@ def read_set_merge():
 
     malformed = ["[]", None, '{"products":[{"id":1}]}', '{"00000000-0000-0000-0000-0000000000aa":[{"id":1}]}',
                  '{"TID":{"id":1}}', '{"TID":[1]}', '{"TID":[{"sku":"sku-1"}]}', '{"TID":[{"id":1,"sku":"sku-1"}]}',
-                 # The right column but not the value history records: each would match no row.
-                 '{"TID":[{"id":"3204"}]}', '{"TID":[{"id":null}]}', '{"TID":[{"id":1.5}]}', '{"TID":[{"id":"abc"}]}']
+                 # The right column but a null or a value the column cannot take.
+                 '{"TID":[{"id":null}]}', '{"TID":[{"id":1.5}]}', '{"TID":[{"id":"abc"}]}']
     literal = "ARRAY[" + ",".join("NULL" if m is None else f"'{m}'" for m in malformed) + "]::text[]"
     test("malformed_read_sets_are_refused_before_merging",
          proposal("r", "mf", "UPDATE agent.products SET stock=45 WHERE id=3201;") + f"""
@@ -565,12 +574,18 @@ def read_set_merge():
            ASSERT (SELECT count(DISTINCT pk) FROM vc.row_change WHERE table_id=s)=1;
            ASSERT NOT EXISTS(SELECT 1 FROM vc.rows_at(t,s)),
                   (SELECT string_agg(pk::text,' ') FROM vc.rows_at(t,s));
-           -- Read keys are compared in the same form: UTC is accepted, another offset refused.
-           PERFORM vc.merge_validated('main',r,jsonb_build_object(s::text,'[{"at":"2026-01-01T00:00:00+00:00"}]'::jsonb),'tz');
-           BEGIN
-             PERFORM vc.merge_validated('main',r,jsonb_build_object(s::text,'[{"at":"2026-01-01T08:00:00+08:00"}]'::jsonb),'tz');
-             RAISE EXCEPTION 'Accepted a non-UTC timestamptz key' USING ERRCODE='XX000';
-           EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+           -- A read key in this session's offset is read in the UTC form history records:
+           -- a branch forked while the row existed sees its deletion on main.
+           DECLARE src uuid; BEGIN
+             PERFORM vc.fork('tz-src',r); PERFORM vc.begin_change('tz-src',r);
+             UPDATE agent.products SET stock=45 WHERE id=3217; src:=vc.finish_change();
+             BEGIN
+               PERFORM vc.merge_validated('main',src,jsonb_build_object(s::text,'[{"at":"2026-01-01T08:00:00+08:00"}]'::jsonb),'tz');
+               RAISE EXCEPTION 'Merged without seeing the deleted row' USING ERRCODE='XX000';
+             EXCEPTION WHEN SQLSTATE 'RS001' THEN GET STACKED DIAGNOSTICS text_value=PG_EXCEPTION_DETAIL;
+             END;
+             ASSERT (text_value::jsonb)->0->'key'='{"at":"2026-01-01T00:00:00+00:00"}'::jsonb
+                AND (text_value::jsonb)->0->'now'='null'::jsonb, text_value;
            END;""", role=False)
 
     results.append(read_set_race())
