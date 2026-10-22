@@ -24,9 +24,11 @@ MERGE_LOCK_TIMEOUT = "10s"
 # the proposal wrote, or one its decision read (merge --reads), changed on main, so
 # the decision is made again from current main. After stale_head or lock_timeout
 # main is unchanged and the same proposal may be tried again. invalid_read_set is a
-# read-set key the engine refused (not the table's primary key, or a wrong type).
+# read-set key the engine refused: other columns, a null, or a value the column
+# cannot take (it rewrites the rest, such as "101" to 101). not_found is a revision
+# vc.merge_validated does not know (vc.merge still reports that as P0001).
 MERGE_ERRORS = {"40001": "stale_head", "P0001": "merge_conflict", "55P03": "lock_timeout",
-                "RS001": "read_conflict", "22023": "invalid_read_set"}
+                "RS001": "read_conflict", "22023": "invalid_read_set", "P0002": "not_found"}
 # merge --reads names rows by table; every lab database registers these two
 # (sql/002_demo_app.sql), so vc.table_id never sees an unregistered name.
 READ_TABLES = ("app.products", "app.orders")
@@ -55,6 +57,10 @@ def branch(value):
     return value
 
 
+class Repeated(ValueError):
+    pass
+
+
 def read_set(value):
     """The --reads JSON, checked for shape; the engine checks each key against the primary key."""
     shape = ("--reads must be a JSON object mapping app.products or app.orders to arrays of "
@@ -64,8 +70,17 @@ def read_set(value):
 
     def constant(name):
         raise ValueError(name)
+
+    def unique(pairs):
+        # json.loads would keep only the last of repeated names, silently dropping rows.
+        names = [name for name, _ in pairs]
+        if len(set(names)) < len(names):
+            raise Repeated("--reads repeats a table or column name; give each once")
+        return dict(pairs)
     try:
-        reads = json.loads(value, parse_constant=constant)
+        reads = json.loads(value, parse_constant=constant, object_pairs_hook=unique)
+    except Repeated:
+        raise
     except (ValueError, RecursionError):
         raise ValueError(shape) from None
     if not isinstance(reads, dict) or not all(
@@ -229,17 +244,24 @@ def perform(args, worker):
             'files',(SELECT coalesce(json_agg(d),'[]') FROM vc.diff_files('{base}','{proposed}') d));
         """))
     elif args.action == "merge":
+        names = ""
         if args.reads is None:
             merge = f"vc.merge('main','{revision(args.revision)}','{revision(args.expected)}',{literal(args.actor)})"
         else:
-            # Table names become the table ids vc.merge_validated takes. Hex keeps the
-            # JSON clear of psql's own syntax, as propose does with policy code.
-            reads = json.dumps(read_set(args.reads)).encode().hex()
+            # The text goes as given, so PostgreSQL reads every number exactly (Python
+            # would turn 1e400 into infinity); hex keeps it clear of psql's own syntax,
+            # as propose does with policy code. Table names become the table ids
+            # vc.merge_validated takes, and the line printed first maps them back if
+            # the merge is refused, without a second round trip.
+            read_set(args.reads)
+            reads = args.reads.encode().hex()
+            names = ("SELECT 'tables',json_build_object(" + ",".join(
+                f"vc.table_id('{table}')::text,'{table}'" for table in READ_TABLES) + ");\n          ")
             merge = (f"vc.merge_validated('main','{revision(args.revision)}',"
                      f"(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{{}}') "
                      f"FROM jsonb_each(convert_from(decode('{reads}','hex'),'UTF8')::jsonb) r),{literal(args.actor)})")
         response = worker.execute(f"""
-          BEGIN;
+          {names}BEGIN;
           SET LOCAL lock_timeout = '{MERGE_LOCK_TIMEOUT}';
           SELECT {merge} AS landed \gset
           COMMIT;
@@ -249,9 +271,9 @@ def perform(args, worker):
             state = sqlstate(response.stderr) or "unknown"
             failure = dict(error=MERGE_ERRORS.get(state, "database_error"), sqlstate=state)
             if state == "RS001":
-                failure["changed"] = changed_rows(worker, response.stderr)
+                failure["changed"] = changed_rows(response.stdout, response.stderr)
             return json.dumps(dict(failure, detail=response.stderr.strip())) + "\n", 2
-        result = dict(merged=True, main=response.stdout.strip())
+        result = dict(merged=True, main=response.stdout.strip().splitlines()[-1])
     else:
         head = worker.sql("SELECT vc.head();")
         product = json.loads(worker.sql(f"SELECT doc FROM vc.rows_at('{head}',vc.table_id('app.products')) WHERE pk='{{\"id\":101}}';"))
@@ -270,7 +292,7 @@ def perform(args, worker):
     return json.dumps(result, ensure_ascii=False, indent=2) + "\n", 0
 
 
-def changed_rows(worker, stderr):
+def changed_rows(stdout, stderr):
     """RS001's DETAIL rows with table names for table ids; None if DETAIL is unreadable."""
     match = re.search(r"^DETAIL:\s+(\[.*\])\s*$", stderr, re.M)
     try:
@@ -279,10 +301,10 @@ def changed_rows(worker, stderr):
         rows = None
     if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
         return None
+    line = next((line for line in stdout.splitlines() if line.startswith("tables|")), "")
     try:
-        names = json.loads(worker.sql("SELECT json_build_object(" + ",".join(
-            f"vc.table_id('{table}')::text,'{table}'" for table in READ_TABLES) + ");"))
-    except (RuntimeError, ValueError):
+        names = json.loads(line.split("|", 1)[1]) if line else {}
+    except ValueError:
         names = {}  # The refusal stands; only the names are missing.
     return [{key: names.get(row[key], row[key]) if key == "table" else row[key]
              for key in ("table", "key", "base", "now", "written") if key in row} for row in rows]

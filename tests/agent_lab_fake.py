@@ -59,8 +59,6 @@ class FakeWorker:
             return NEW
         if "vc.diff_rows(" in statement:
             return json.dumps({"rows": [], "files": [{"path": "experiments/pricing.py"}]})
-        if "vc.table_id('app.orders')" in statement:
-            return json.dumps({PRODUCTS: "app.products", ORDERS: "app.orders"})
         raise RuntimeError("unexpected statement\n" + statement)
 
     def execute(self, statement, database=None, timeout=120):
@@ -69,12 +67,17 @@ class FakeWorker:
             return subprocess.CompletedProcess("psql", 3, "", "ERROR:  40001: stale head\n")
         if self.merge == "lock_timeout":
             return subprocess.CompletedProcess("psql", 3, "", "ERROR:  55P03: canceling statement due to lock timeout\n")
+        # merge --reads prints the table names before BEGIN, so they arrive even on a refusal.
+        tables = ("tables|" + json.dumps({PRODUCTS: "app.products", ORDERS: "app.orders"}) + "\n"
+                  if "SELECT 'tables',json_build_object(" in statement else "")
         if self.merge in ("read_conflict", "unreadable_detail"):
             stderr = READ_CONFLICT if self.merge == "read_conflict" else READ_CONFLICT.replace("DETAIL", "NOTE")
-            return subprocess.CompletedProcess("psql", 3, "", stderr)
+            return subprocess.CompletedProcess("psql", 3, tables, stderr)
         if self.merge == "invalid_read_set":
-            return subprocess.CompletedProcess("psql", 3, "", INVALID_READ_SET)
-        return subprocess.CompletedProcess("psql", 0, NEW + "\n", "")
+            return subprocess.CompletedProcess("psql", 3, tables, INVALID_READ_SET)
+        if self.merge == "not_found":
+            return subprocess.CompletedProcess("psql", 3, tables, "ERROR:  P0002: Unknown source\n")
+        return subprocess.CompletedProcess("psql", 0, tables + NEW + "\n", "")
 
 
 COMMON = ["--database", DB]

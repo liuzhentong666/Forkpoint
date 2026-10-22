@@ -50,9 +50,9 @@ class ReadSetMergeTests(unittest.TestCase):
         self.assertEqual(output["changed"], [dict(table="app.products", key={"id": 101}, base=dict(ROW, stock=100),
                                                   now=dict(ROW, stock=95), written=True)])
         self.assertTrue(output["detail"].startswith("ERROR:  RS001: Read conflict"))
-        # The merge, then one lookup of the two table ids; nothing else.
-        self.assertEqual(len(result["statements"]), 2)
-        self.assertIn("vc.table_id('app.products')", result["statements"][1])
+        # One script: the table names it prints before BEGIN map the ids back.
+        [statement] = result["statements"]
+        self.assertIn("SELECT 'tables',json_build_object(vc.table_id('app.products')", statement)
 
     def test_read_conflict_without_a_readable_detail_is_still_a_read_conflict(self):
         result = self.lab(*MERGE, "--reads", "{}", merge="unreadable_detail")
@@ -69,6 +69,8 @@ class ReadSetMergeTests(unittest.TestCase):
             "keys not in an array": '{"app.products": {"id": 101}}',
             "a key that is not an object": '{"app.products": [101]}',
             "an empty key": '{"app.products": [{}]}',
+            "a repeated table": '{"app.products": [{"id": 101}], "app.products": [{"id": 102}]}',
+            "a repeated column": '{"app.products": [{"id": 101, "id": 102}]}',
             "deep nesting": "[" * 5000 + "]" * 5000,
             "more than 16384 bytes": json.dumps({"app.products": [{"id": n} for n in range(2000)]}),
         }
@@ -78,6 +80,20 @@ class ReadSetMergeTests(unittest.TestCase):
                 self.assertEqual((result["exit_code"], result["statements"], result["stdout"]), (2, [], ""))
                 self.assertNotIn("Traceback", result["stderr"])
                 self.assertTrue(last_line(result["stderr"]).startswith("agent_lab.py: error: --reads "), result)
+
+    def test_read_set_text_is_sent_as_given(self):
+        # Re-serialized, 1e400 would become Infinity (not JSON) and 12345678901234567890.5 would
+        # lose digits; as given, the engine reads each number exactly and judges it as a key.
+        value = '{"app.products": [{"id": 1e400}, {"id": 12345678901234567890.5}]}'
+        result = self.lab(*MERGE, "--reads", value)
+        self.assertEqual(result["exit_code"], 0, result)
+        sent = re.search(r"decode\('([0-9a-f]+)','hex'\)", result["statements"][0]).group(1)
+        self.assertEqual(bytes.fromhex(sent).decode(), value)
+
+    def test_an_unknown_revision_is_not_found(self):
+        result = self.lab(*MERGE, "--reads", "{}", merge="not_found")
+        output = json.loads(result["stdout"])
+        self.assertEqual((result["exit_code"], output["error"], output["sqlstate"]), (2, "not_found", "P0002"))
 
     def test_merge_without_expected_or_reads_is_refused_as_before(self):
         result = self.lab(*MERGE)

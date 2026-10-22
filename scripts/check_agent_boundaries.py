@@ -142,7 +142,8 @@ def main():
     def lab_reject(name, reason, *argv):
         code, out, err = lab(*argv)
         last = (err.strip().splitlines() or [""])[-1]
-        # A rejection is an argument error (exit 2) before any SQL, never an uncaught exception.
+        # A rejection exits 2 and is never an uncaught exception: an argument error before any
+        # SQL, or (where the reason names one) an engine refusal that agent_lab reports as JSON.
         record("D", name, code == 2 and "Traceback" not in err and reason in out + err,
                f"exit {code}: {last[:160]}" if code else f"ACCEPTED: {out[-200:]!r}")
 
@@ -173,6 +174,10 @@ def main():
     # Key values are the engine's to check: SQL in one is data, refused as a value the column cannot take.
     lab_reject("read_key_with_sql_refused", "invalid_read_set",
                *merge, "--reads", '{"app.products": [{"id": "1\'); DELETE FROM app.products; --"}]}')
+    lab_reject("read_set_repeating_a_table_rejected", "repeats a table or column name",
+               *merge, "--reads", '{"app.products": [{"id": 101}], "app.products": [{"id": 102}]}')
+    lab_reject("merge_of_an_unknown_revision_is_not_found", "not_found",
+               "merge", *target, "--revision", str(uuid.uuid4()), "--actor", "gpt-a", "--reads", "{}")
     payload = 'PRICE = 11\nNOTE = "\'; DELETE FROM app.products; -- :\'revision\' \\\\gset $$ $x$"\n'
     stored, problems = None, ""
     fork_code, _, fork_err = lab("fork", *target, "--branch", "gpt-a-payload", "--base", base)

@@ -102,7 +102,7 @@
  "merge_reads": {
   "exit_code": 0,
   "statements": [
-   "\n          BEGIN;\n          SET LOCAL lock_timeout = '10s';\n          SELECT vc.merge_validated('main','33333333-3333-3333-3333-333333333333',(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{}') FROM jsonb_each(convert_from(decode('7b226170702e70726f6475637473223a205b7b226964223a203130317d5d2c20226170702e6f7264657273223a205b5d7d','hex'),'UTF8')::jsonb) r),'gpt-a') AS landed \\gset\n          COMMIT;\n          SELECT :'landed';\n        "
+   "\n          SELECT 'tables',json_build_object(vc.table_id('app.products')::text,'app.products',vc.table_id('app.orders')::text,'app.orders');\n          BEGIN;\n          SET LOCAL lock_timeout = '10s';\n          SELECT vc.merge_validated('main','33333333-3333-3333-3333-333333333333',(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{}') FROM jsonb_each(convert_from(decode('7b226170702e70726f6475637473223a205b7b226964223a203130317d5d2c20226170702e6f7264657273223a205b5d7d','hex'),'UTF8')::jsonb) r),'gpt-a') AS landed \\gset\n          COMMIT;\n          SELECT :'landed';\n        "
   ],
   "stderr": "",
   "stderr_last_line": "",
@@ -118,8 +118,7 @@
  "merge_reads_conflict": {
   "exit_code": 2,
   "statements": [
-   "\n          BEGIN;\n          SET LOCAL lock_timeout = '10s';\n          SELECT vc.merge_validated('main','33333333-3333-3333-3333-333333333333',(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{}') FROM jsonb_each(convert_from(decode('7b226170702e70726f6475637473223a205b7b226964223a203130317d5d2c20226170702e6f7264657273223a205b5d7d','hex'),'UTF8')::jsonb) r),'gpt-b') AS landed \\gset\n          COMMIT;\n          SELECT :'landed';\n        ",
-   "SELECT json_build_object(vc.table_id('app.products')::text,'app.products',vc.table_id('app.orders')::text,'app.orders');"
+   "\n          SELECT 'tables',json_build_object(vc.table_id('app.products')::text,'app.products',vc.table_id('app.orders')::text,'app.orders');\n          BEGIN;\n          SET LOCAL lock_timeout = '10s';\n          SELECT vc.merge_validated('main','33333333-3333-3333-3333-333333333333',(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{}') FROM jsonb_each(convert_from(decode('7b226170702e70726f6475637473223a205b7b226964223a203130317d5d2c20226170702e6f7264657273223a205b5d7d','hex'),'UTF8')::jsonb) r),'gpt-b') AS landed \\gset\n          COMMIT;\n          SELECT :'landed';\n        "
   ],
   "stderr": "",
   "stderr_last_line": "",
@@ -128,7 +127,7 @@
  "merge_reads_invalid": {
   "exit_code": 2,
   "statements": [
-   "\n          BEGIN;\n          SET LOCAL lock_timeout = '10s';\n          SELECT vc.merge_validated('main','33333333-3333-3333-3333-333333333333',(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{}') FROM jsonb_each(convert_from(decode('7b226170702e70726f6475637473223a205b7b22736b75223a202278227d5d7d','hex'),'UTF8')::jsonb) r),'gpt-a') AS landed \\gset\n          COMMIT;\n          SELECT :'landed';\n        "
+   "\n          SELECT 'tables',json_build_object(vc.table_id('app.products')::text,'app.products',vc.table_id('app.orders')::text,'app.orders');\n          BEGIN;\n          SET LOCAL lock_timeout = '10s';\n          SELECT vc.merge_validated('main','33333333-3333-3333-3333-333333333333',(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{}') FROM jsonb_each(convert_from(decode('7b226170702e70726f6475637473223a205b7b22736b75223a202278227d5d7d','hex'),'UTF8')::jsonb) r),'gpt-a') AS landed \\gset\n          COMMIT;\n          SELECT :'landed';\n        "
   ],
   "stderr": "",
   "stderr_last_line": "",
