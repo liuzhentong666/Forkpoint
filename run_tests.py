@@ -469,6 +469,25 @@ def read_set_merge():
                    "RS001", detail=True)
          + """ASSERT jsonb_array_length(text_value::jsonb)=1 AND text_value::jsonb @> '[{"key":{"id":3204}}]', text_value;""")
 
+    # A number for a text key reads as its text; an object, array or boolean would only
+    # become its text and match no row, so it is refused.
+    test("read_keys_that_would_only_become_text_are_refused", """
+           CREATE TABLE app.rs_codes(code text PRIMARY KEY, note text NOT NULL);
+           s:=vc.register_table('app.rs_codes');
+           PERFORM vc.merge_validated('main',b,jsonb_build_object(s::text,'[{"code": 123}, {"code": "x"}]'::jsonb),'tk');
+           FOREACH text_value IN ARRAY ARRAY['{"a": 1}','[1]','true'] LOOP
+             BEGIN
+               PERFORM vc.merge_validated('main',b,jsonb_build_object(s::text,
+                 jsonb_build_array(jsonb_build_object('code',text_value::jsonb))),'tk');
+               RAISE EXCEPTION 'Accepted %',text_value USING ERRCODE='XX000';
+             EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+             END;
+           END LOOP;""", role=False)
+
+    test("an_unknown_source_is_not_found_not_a_conflict",
+         refused("vc.merge_validated('main',gen_random_uuid(),'{}'::jsonb,'nf')", "P0002")
+         + "ASSERT text_value='Unknown source', text_value;")
+
     test("unchanged_reads_merge_although_main_moved",
          proposal("r", "un-a", "UPDATE agent.products SET stock=45 WHERE id=3206;")
          + proposal("s", "un-b", "UPDATE agent.products SET stock=45 WHERE id=3207;")

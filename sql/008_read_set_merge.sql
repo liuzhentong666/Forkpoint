@@ -18,8 +18,11 @@
 --   the form history records (sql/009_canonical_row_docs.sql), so {"id": "1"} reads
 --   as {"id": 1} and a timestamptz in any offset as its UTC form; DETAIL reports
 --   that form. A malformed read set, an unregistered table, a key with other
---   columns, a null, or a value the column cannot take ("abc" for an integer)
---   raises 22023, so a mistake cannot pass as "nothing changed".
+--   columns, a null, a value the column cannot take ("abc" for an integer), or an
+--   object, array or boolean the column would take only as its text raises 22023,
+--   so a mistake cannot pass as "nothing changed".
+-- * An unknown source or target branch raises P0002 (no_data_found), so callers do
+--   not mistake it for vc.merge's conflict code P0001.
 -- * The read set replaces the expected-head check, so it is the caller's own
 --   declaration: a row the decision used but the set leaves out is not checked
 --   (an empty set declares that the decision read nothing besides the rows it
@@ -96,8 +99,15 @@ BEGIN
       EXECUTE format('SELECT coalesce(jsonb_agg(vc._pk($2,to_jsonb(jsonb_populate_record(NULL::%s,e.k))) ORDER BY e.n),''[]'')
                       FROM jsonb_array_elements($1) WITH ORDINALITY e(k,n)',
                      read_table.relation) INTO canonical USING read_table.keys,read_table.id;
-      bad:=(SELECT k FROM jsonb_array_elements(canonical) k
-            WHERE EXISTS(SELECT 1 FROM jsonb_each(k) v WHERE v.value='null'::jsonb) LIMIT 1);
+      -- A rewrite may turn a string into a number or move a timestamptz to UTC, but
+      -- an object, array or boolean that only becomes its text would match nothing.
+      bad:=(SELECT o.k FROM jsonb_array_elements(read_table.keys) WITH ORDINALITY o(k,n)
+            JOIN jsonb_array_elements(canonical) WITH ORDINALITY c(k,n) USING (n)
+            WHERE EXISTS(SELECT 1 FROM jsonb_each(c.k) v WHERE v.value='null'::jsonb)
+               OR EXISTS(SELECT 1 FROM jsonb_each(o.k) w
+                         WHERE jsonb_typeof(w.value) IN ('object','array','boolean')
+                           AND jsonb_typeof(w.value) IS DISTINCT FROM jsonb_typeof(c.k->w.key))
+            LIMIT 1);
     EXCEPTION WHEN data_exception THEN
       bad:=to_jsonb(SQLERRM);
     END;
@@ -107,11 +117,13 @@ BEGIN
     END IF;
     reads:=reads||jsonb_build_object(read_table.id::text,coalesce(reads->(read_table.id::text),'[]')||canonical);
   END LOOP;
-  IF NOT EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_source) THEN RAISE EXCEPTION 'Unknown source'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM vc.changeset WHERE id=p_source) THEN
+    RAISE EXCEPTION 'Unknown source' USING ERRCODE='P0002';
+  END IF;
   -- The target's head lock first, as vc.begin_change takes it, so the reads are
   -- checked against the head this merge is built on.
   SELECT b.head INTO target_head FROM vc.branch b WHERE b.name=p_target FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Unknown branch'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Unknown branch' USING ERRCODE='P0002'; END IF;
   read_base:=vc.merge_base(target_head,p_source);
   -- Equal to the head: nothing landed since. Equal to the source: already merged,
   -- and vc.merge returns the head unchanged. A NULL base is neither, so the reads

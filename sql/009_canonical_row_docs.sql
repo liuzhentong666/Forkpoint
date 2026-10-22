@@ -16,12 +16,17 @@
 -- Rows recorded earlier under other settings would no longer match what new
 -- writes record, so every stored row document is first rendered again with the
 -- fixed settings; if any differs, the migration stops and changes nothing, and
--- that history has to be repaired first.
+-- that history has to be repaired first. The check runs under a lock that waits
+-- for open versioned transactions and keeps new ones out until this commits, so
+-- no row rendered under the old settings can land after it.
 BEGIN;
 SET LOCAL TimeZone='UTC';
 SET LOCAL IntervalStyle='postgres';
 SET LOCAL extra_float_digits=1;
 SET LOCAL bytea_output='hex';
+-- Captures stage rows in vc.pending_row and finish_change moves them to
+-- vc.row_change; materialize writes vc.snapshot_row.
+LOCK TABLE vc.pending_row, vc.row_change, vc.snapshot_row IN SHARE MODE;
 DO $canonical$
 DECLARE t record; differing bigint; total bigint:=0; f regprocedure;
 BEGIN
