@@ -11,6 +11,21 @@ DB = "agentdb_test_gpt_0123456789"
 HEAD = "11111111-1111-1111-1111-111111111111"
 BASE = "22222222-2222-2222-2222-222222222222"
 NEW = "33333333-3333-3333-3333-333333333333"
+PRODUCTS = "44444444-4444-4444-4444-444444444444"
+ORDERS = "55555555-5555-5555-5555-555555555555"
+# psql's report of an RS001 refusal, as a real lab database printed it on 2026-10-22.
+READ_CONFLICT = (
+    f"ERROR:  RS001: Read conflict: 1 row(s) the source read or wrote changed on main since {BASE}\n"
+    'DETAIL:  [{"key": {"id": 101}, "now": {"id": 101, "sku": "sku-101", "name": "product-101", "price": 10.00, '
+    '"stock": 95}, "base": {"id": 101, "sku": "sku-101", "name": "product-101", "price": 10.00, "stock": 100}, '
+    f'"table": "{PRODUCTS}", "written": true}}]\n'
+    "CONTEXT:  PL/pgSQL function merge_validated(text,uuid,jsonb,text) line 93 at RAISE\n"
+    "LOCATION:  exec_stmt_raise, pl_exec.c:3897\n")
+INVALID_READ_SET = (
+    "ERROR:  22023: p_reads must map registered table ids to arrays of primary keys\n"
+    'HINT:  {"<vc.table_id(...)>": [{"id": 1}, ...]}\n'
+    "CONTEXT:  PL/pgSQL function merge_validated(text,uuid,jsonb,text) line 17 at RAISE\n"
+    "LOCATION:  exec_stmt_raise, pl_exec.c:3897\n")
 
 
 class FakeWorker:
@@ -44,6 +59,8 @@ class FakeWorker:
             return NEW
         if "vc.diff_rows(" in statement:
             return json.dumps({"rows": [], "files": [{"path": "experiments/pricing.py"}]})
+        if "vc.table_id('app.orders')" in statement:
+            return json.dumps({PRODUCTS: "app.products", ORDERS: "app.orders"})
         raise RuntimeError("unexpected statement\n" + statement)
 
     def execute(self, statement, database=None, timeout=120):
@@ -52,10 +69,16 @@ class FakeWorker:
             return subprocess.CompletedProcess("psql", 3, "", "ERROR:  40001: stale head\n")
         if self.merge == "lock_timeout":
             return subprocess.CompletedProcess("psql", 3, "", "ERROR:  55P03: canceling statement due to lock timeout\n")
+        if self.merge in ("read_conflict", "unreadable_detail"):
+            stderr = READ_CONFLICT if self.merge == "read_conflict" else READ_CONFLICT.replace("DETAIL", "NOTE")
+            return subprocess.CompletedProcess("psql", 3, "", stderr)
+        if self.merge == "invalid_read_set":
+            return subprocess.CompletedProcess("psql", 3, "", INVALID_READ_SET)
         return subprocess.CompletedProcess("psql", 0, NEW + "\n", "")
 
 
 COMMON = ["--database", DB]
+READS = '{"app.products": [{"id": 101}], "app.orders": []}'
 SCENARIOS = {
     "info": (["info", *COMMON], {}),
     "info_fixed": (["info", *COMMON, "--revision", BASE], {}),
@@ -84,6 +107,16 @@ SCENARIOS = {
     "merge_lock_timeout": (["merge", *COMMON, "--revision", NEW, "--expected", BASE, "--actor", "gpt-a"],
                            {"merge": "lock_timeout"}),
     "merge_no_actor": (["merge", *COMMON, "--revision", NEW, "--expected", BASE], {}),
+    "merge_reads": (["merge", *COMMON, "--revision", NEW, "--reads", READS, "--actor", "gpt-a"], {}),
+    "merge_reads_conflict": (["merge", *COMMON, "--revision", NEW, "--reads", READS, "--actor", "gpt-b"],
+                             {"merge": "read_conflict"}),
+    "merge_reads_invalid": (["merge", *COMMON, "--revision", NEW, "--reads", '{"app.products": [{"sku": "x"}]}',
+                             "--actor", "gpt-a"], {"merge": "invalid_read_set"}),
+    "merge_reads_and_expected": (["merge", *COMMON, "--revision", NEW, "--expected", BASE, "--reads", READS,
+                                  "--actor", "gpt-a"], {}),
+    "merge_reads_unknown_table": (["merge", *COMMON, "--revision", NEW, "--reads", '{"app.users": [{"id": 1}]}',
+                                   "--actor", "gpt-a"], {}),
+    "info_reads": (["info", *COMMON, "--reads", READS], {}),
     "verify": (["verify", *COMMON], {"product": {"id": 101, "price": 11, "stock": 95}}),
     "verify_fail": (["verify", *COMMON], {}),
     "bad_database": (["info", "--database", "agentdb"], {}),

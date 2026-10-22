@@ -1,8 +1,8 @@
 {
-  "database": "agentdb_test_gpt_38e46143be",
+  "database": "agentdb_test_gpt_30528b32b9",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-  "checks": 34,
-  "holds": 34,
+  "checks": 37,
+  "holds": 37,
   "gaps": [],
   "real_cloud_verified": false,
   "note": "Local dedicated test database on the existing PostgreSQL server; the project database was not touched.",
@@ -198,6 +198,24 @@
       "name": "path_outside_choices_rejected",
       "status": "HOLDS",
       "detail": "exit 2: agent_lab.py: error: argument --path: invalid choice: 'src/app.py' (choose from 'experiments/pricing.py', 'experiments/inventory.py')"
+    },
+    {
+      "group": "D",
+      "name": "read_set_naming_another_table_rejected",
+      "status": "HOLDS",
+      "detail": "exit 2: agent_lab.py: error: --reads must be a JSON object mapping app.products or app.orders to arrays of primary keys, such as {\"app.products\": [{\"id\": 101}]}"
+    },
+    {
+      "group": "D",
+      "name": "read_set_with_expected_rejected",
+      "status": "HOLDS",
+      "detail": "exit 2: agent_lab.py: error: merge takes --expected or --reads, not both"
+    },
+    {
+      "group": "D",
+      "name": "read_key_with_sql_refused",
+      "status": "HOLDS",
+      "detail": "exit 2: "
     },
     {
       "group": "D",

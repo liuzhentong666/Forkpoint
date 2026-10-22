@@ -20,9 +20,17 @@ from db import Connection, add_connection_arguments, sqlstate
 # lock_timeout instead of queueing behind a vanished client's open transaction
 # (docs/STAGING_S4_S5.md section 4).
 MERGE_LOCK_TIMEOUT = "10s"
-# Merge failures by SQLSTATE. Only merge_conflict is semantic; after stale_head
-# or lock_timeout main is unchanged and the same proposal may be tried again.
-MERGE_ERRORS = {"40001": "stale_head", "P0001": "merge_conflict", "55P03": "lock_timeout"}
+# Merge failures by SQLSTATE. merge_conflict and read_conflict are semantic: a row
+# the proposal wrote, or one its decision read (merge --reads), changed on main, so
+# the decision is made again from current main. After stale_head or lock_timeout
+# main is unchanged and the same proposal may be tried again. invalid_read_set is a
+# read-set key the engine refused (not the table's primary key, or a wrong type).
+MERGE_ERRORS = {"40001": "stale_head", "P0001": "merge_conflict", "55P03": "lock_timeout",
+                "RS001": "read_conflict", "22023": "invalid_read_set"}
+# merge --reads names rows by table; every lab database registers these two
+# (sql/002_demo_app.sql), so vc.table_id never sees an unregistered name.
+READ_TABLES = ("app.products", "app.orders")
+READS_LIMIT = 16384
 
 
 def connect(args, database, role=None):
@@ -47,6 +55,26 @@ def branch(value):
     return value
 
 
+def read_set(value):
+    """The --reads JSON, checked for shape; the engine checks each key against the primary key."""
+    shape = ("--reads must be a JSON object mapping app.products or app.orders to arrays of "
+             'primary keys, such as {"app.products": [{"id": 101}]}')
+    if len(value.encode()) > READS_LIMIT:
+        raise ValueError(f"--reads exceeds {READS_LIMIT} bytes")
+
+    def constant(name):
+        raise ValueError(name)
+    try:
+        reads = json.loads(value, parse_constant=constant)
+    except (ValueError, RecursionError):
+        raise ValueError(shape) from None
+    if not isinstance(reads, dict) or not all(
+            table in READ_TABLES and isinstance(keys, list) and all(isinstance(key, dict) and key for key in keys)
+            for table, keys in reads.items()):
+        raise ValueError(shape)
+    return reads
+
+
 def build_parser(parser_class=argparse.ArgumentParser, **options):
     parser = parser_class(description=__doc__, **options)
     add_connection_arguments(parser)
@@ -61,6 +89,9 @@ def build_parser(parser_class=argparse.ArgumentParser, **options):
     parser.add_argument("--code", help="Python policy code, at most 4096 UTF-8 bytes; stored, never executed")
     parser.add_argument("--path", choices=["experiments/pricing.py", "experiments/inventory.py"],
                         help="read-code: inspect a policy at an explicit fixed revision before merging")
+    parser.add_argument("--reads", help="merge, instead of --expected: the rows the decision read, as JSON, "
+                        'e.g. {"app.products": [{"id": 101}]}. Lands even if main moved, unless one of '
+                        "them changed since the proposal's base (read_conflict); rows it wrote are checked too")
     return parser
 
 
@@ -78,8 +109,17 @@ def validate(parser, args):
                 uuid.UUID(value)
             except ValueError:
                 parser.error(f"--{option} must be a revision UUID")
+    if args.reads is not None:
+        if args.action != "merge":
+            parser.error("--reads is only for merge")
+        if args.expected is not None:
+            parser.error("merge takes --expected or --reads, not both")
+        try:
+            read_set(args.reads)
+        except ValueError as error:
+            parser.error(str(error))
     needs = {"fork": ("branch", "base"), "propose": ("branch", "expected"), "diff": ("base", "revision"),
-             "merge": ("revision", "expected")}.get(args.action, ())
+             "merge": ("revision", "expected") if args.reads is None else ("revision",)}.get(args.action, ())
     missing = [f"--{name}" for name in needs if getattr(args, name) is None]
     if missing:
         parser.error(f"{args.action} requires {' and '.join(missing)}")
@@ -189,17 +229,28 @@ def perform(args, worker):
             'files',(SELECT coalesce(json_agg(d),'[]') FROM vc.diff_files('{base}','{proposed}') d));
         """))
     elif args.action == "merge":
+        if args.reads is None:
+            merge = f"vc.merge('main','{revision(args.revision)}','{revision(args.expected)}',{literal(args.actor)})"
+        else:
+            # Table names become the table ids vc.merge_validated takes. Hex keeps the
+            # JSON clear of psql's own syntax, as propose does with policy code.
+            reads = json.dumps(read_set(args.reads)).encode().hex()
+            merge = (f"vc.merge_validated('main','{revision(args.revision)}',"
+                     f"(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{{}}') "
+                     f"FROM jsonb_each(convert_from(decode('{reads}','hex'),'UTF8')::jsonb) r),{literal(args.actor)})")
         response = worker.execute(f"""
           BEGIN;
           SET LOCAL lock_timeout = '{MERGE_LOCK_TIMEOUT}';
-          SELECT vc.merge('main','{revision(args.revision)}','{revision(args.expected)}',{literal(args.actor)}) AS landed \gset
+          SELECT {merge} AS landed \gset
           COMMIT;
           SELECT :'landed';
         """)
         if response.returncode:
             state = sqlstate(response.stderr) or "unknown"
-            return json.dumps(dict(error=MERGE_ERRORS.get(state, "database_error"),
-                                   sqlstate=state, detail=response.stderr.strip())) + "\n", 2
+            failure = dict(error=MERGE_ERRORS.get(state, "database_error"), sqlstate=state)
+            if state == "RS001":
+                failure["changed"] = changed_rows(worker, response.stderr)
+            return json.dumps(dict(failure, detail=response.stderr.strip())) + "\n", 2
         result = dict(merged=True, main=response.stdout.strip())
     else:
         head = worker.sql("SELECT vc.head();")
@@ -217,6 +268,24 @@ def perform(args, worker):
                       effective_role=worker.sql("SELECT current_user;"), outcome_verified=True,
                       real_cloud_verified=False)
     return json.dumps(result, ensure_ascii=False, indent=2) + "\n", 0
+
+
+def changed_rows(worker, stderr):
+    """RS001's DETAIL rows with table names for table ids; None if DETAIL is unreadable."""
+    match = re.search(r"^DETAIL:\s+(\[.*\])\s*$", stderr, re.M)
+    try:
+        rows = json.loads(match.group(1)) if match else None
+    except ValueError:
+        rows = None
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        return None
+    try:
+        names = json.loads(worker.sql("SELECT json_build_object(" + ",".join(
+            f"vc.table_id('{table}')::text,'{table}'" for table in READ_TABLES) + ");"))
+    except (RuntimeError, ValueError):
+        names = {}  # The refusal stands; only the names are missing.
+    return [{key: names.get(row[key], row[key]) if key == "table" else row[key]
+             for key in ("table", "key", "base", "now", "written") if key in row} for row in rows]
 
 
 if __name__ == "__main__":

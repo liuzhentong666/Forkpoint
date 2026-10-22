@@ -166,6 +166,13 @@ def main():
                "info", "--database", "agentdb")
     lab_reject("path_outside_choices_rejected", "invalid choice",
                "read-code", *target, "--path", "src/app.py", "--revision", base)
+    merge = ["merge", *target, "--revision", base, "--actor", "gpt-a"]
+    lab_reject("read_set_naming_another_table_rejected", "--reads must be a JSON object",
+               *merge, "--reads", '{"vc.changeset": [{"id": 1}]}')
+    lab_reject("read_set_with_expected_rejected", "not both", *merge, "--expected", base, "--reads", "{}")
+    # Key values are the engine's to check: SQL in one is data, refused as a value the column cannot take.
+    lab_reject("read_key_with_sql_refused", "invalid_read_set",
+               *merge, "--reads", '{"app.products": [{"id": "1\'); DELETE FROM app.products; --"}]}')
     payload = 'PRICE = 11\nNOTE = "\'; DELETE FROM app.products; -- :\'revision\' \\\\gset $$ $x$"\n'
     stored, problems = None, ""
     fork_code, _, fork_err = lab("fork", *target, "--branch", "gpt-a-payload", "--base", base)

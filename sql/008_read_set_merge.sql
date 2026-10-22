@@ -23,8 +23,8 @@
 -- * The read set replaces the expected-head check, so it is the caller's own
 --   declaration: a row the decision used but the set leaves out is not checked
 --   (an empty set declares that the decision read nothing besides the rows it
---   wrote). Callers send every row their decision used; agent_lab.py does not
---   expose this function.
+--   wrote). Callers send every row their decision used; agent_lab.py exposes this
+--   function as merge --reads, naming tables instead of table ids.
 -- * Rows are compared by value at the two versions with vc._rows_at_keys, which
 --   follows vc.rows_at's first-parent lineage but resolves only the given keys:
 --   the cost follows that lineage and the number of keys, not the table size.
