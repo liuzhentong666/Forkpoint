@@ -2,7 +2,7 @@
 
 # Forkpoint：Agent 开发与维护约定
 
-适用范围：本目录及子目录。更新日期：2026-10-18。
+适用范围：本目录及子目录。更新日期：2026-10-22。
 
 **当前云服务状态：未经真实验证，云端部署暂缓。** OSS、GCS、S3 均无真实联调结果，ECS 尚未部署。用户当前不安排云资源采购或部署；只继续本地开发与模拟测试，不自动采购、部署或运行会访问真实云服务的测试。不得将 SDK 测试替身、内存服务模型、本机 HTTP 或本机 PostgreSQL 的结果表述为云存储已验证。
 
@@ -167,7 +167,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 # Forkpoint: Conventions for Agent Development and Maintenance
 
-Scope: this directory and its subdirectories. Last updated: 2026-10-18.
+Scope: this directory and its subdirectories. Last updated: 2026-10-22.
 
 **Current cloud service status: not verified against real cloud services; cloud deployment is on hold.** OSS, GCS and S3 have no real integration results, and ECS has not been deployed. The user is not currently scheduling cloud resource purchases or deployment; only continue local development and simulated testing, and do not automatically purchase, deploy, or run tests that access real cloud services. Results from SDK test doubles, the in-memory service model, local HTTP or the local PostgreSQL must not be described as cloud storage having been verified.
 

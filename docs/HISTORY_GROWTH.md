@@ -87,7 +87,7 @@
 
 ## 5. 剩余限制与后续
 
-- 预发布虚拟机上的 S4 增长测试尚未用新函数重跑：需要先在虚拟机的测试库上执行迁移，再运行 `scripts/staging_drills.py growth --snapshot-interval 100`。
+- 预发布虚拟机上的 S4 增长测试已用新函数重跑（只修复、修复加 interval 100 的快照策略），结果见 [S4/S5](STAGING_S4_S5.md)。
 - 策略需要有执行器定期运行；当前 `scripts/maintain_snapshot.py` 只处理单个目标，`run_due` 还没有命令行入口，也没有常驻调度。云端状态仍未经真实验证。
 - 祖先遍历仍与历史长度线性相关（见第 3 节）；快照没有回收机制。
 
@@ -184,6 +184,6 @@ The results of the three groups of reads are identical item by item (1,300 file 
 
 ## 5. Remaining limitations and next steps
 
-- The S4 growth test on the staging VM has not yet been rerun with the new functions: the migration first needs to be run on the VM's test database, then `scripts/staging_drills.py growth --snapshot-interval 100`.
+- The S4 growth test on the staging VM has been rerun with the new functions (the fix alone, and the fix with the interval-100 snapshot policy); results are in [S4/S5](STAGING_S4_S5.md).
 - The policy needs an executor to run it periodically; currently `scripts/maintain_snapshot.py` handles only a single target, `run_due` has no command-line entry point yet, and there is no resident scheduler. Cloud state is still not verified against real cloud services.
 - Ancestor traversal is still linear in the length of history (see section 3); snapshots have no reclamation mechanism.

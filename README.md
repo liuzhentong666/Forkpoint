@@ -153,7 +153,7 @@ If you need a mature, general-purpose versioned database, use Dolt. Forkpoint is
 - **Whole-row conflicts.** Two agents changing different columns of the same row still conflict; there is no per-column merge.
 - **Cross-row rules aren't inferred.** Native constraints are checked; for a rule like "orders can't exceed stock", merge with `vc.merge_validated` and the rows the decision read (rows it wrote are checked as well), and the merge is refused if they changed since the branch was forked (write skew).
 - **Branches may be temporarily invalid.** UNIQUE and foreign keys are checked only when merging into `main`.
-- **Reads replay history.** Branch views resolve from history plus snapshots, not the table's own indexes, so a maintenance job should create snapshots (`vc.snapshot_due` says when).
+- **Reads replay history.** Branch views resolve from history plus snapshots, not the table's own indexes, so a maintenance job should create snapshots (`vc.snapshot_due` says when). Snapshots and history are not reclaimed yet.
 - **Single node and single tenant.** There is no replication, quota or tenant isolation. Writes to one branch are serialized, and every merge into `main` takes `main`'s lock.
 - **Limited table types.** Tables need a primary key and must be registered while empty. Generated and identity columns aren't supported.
 - **The cloud state service is unverified.** The manager agent's state service has GCS, Alibaba Cloud OSS and S3 adapters, but none has run against a real cloud, and deployment is on hold. See [docs/STORAGE_BACKENDS.md](docs/STORAGE_BACKENDS.md).

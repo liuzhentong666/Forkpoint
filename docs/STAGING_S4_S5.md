@@ -54,7 +54,7 @@
 - **`vc.rows_at`** 沿第一父链回放到最近的快照。快照之后的提交越多，读取越慢；物化快照后立即回到约 10 ms。目前没有自动物化。
 - **`vc.merge`** 还要遍历全部祖先（`merge_base`、`_ancestors`）。三者叠加，使 1,000 个提交时一次 10 行合入约 20 s。
 
-这与 README“当前限制”第 5、6 条一致，现在有了具体数字。改进方向（尚未实现，属于版本引擎的行为保持修改，需要单独立项并用原有断言覆盖）：`_file_state` 在找到路径后停止回溯，或维护按快照的文件清单；按提交数或读取成本定期物化快照（可由现有维护执行器承担）；合入时缓存祖先集合。
+这与 README“限制”中“读取需要回放历史”一条一致，现在有了具体数字。改进方向（尚未实现，属于版本引擎的行为保持修改，需要单独立项并用原有断言覆盖）：`_file_state` 在找到路径后停止回溯，或维护按快照的文件清单；按提交数或读取成本定期物化快照（可由现有维护执行器承担）；合入时缓存祖先集合。
 
 后续（2026-10-18，本机）：以上三项已在分支 `perf/history-bounded-costs` 中实现，迁移为 `sql/005_bounded_history.sql`。另查明主因是递归遍历每一步都全表扫描 `vc.parent`。前后数字见 [历史增长](HISTORY_GROWTH.md)；预发布虚拟机上尚未重跑。
 
@@ -74,7 +74,7 @@
 
 这一情况在本次测试中真实发生过一次：首次增长测试期间笔记本进入 Modern Standby（Windows 事件日志 04:25:00–05:07:34），恢复后客户端 psql 已退出，服务器上的会话仍处于 “idle in transaction”，由所有者手动终止。断网演练随后按设计复现了同一现象（[记录](../results/staging/netcut-defaults.json)）。
 
-**处理（2026-10-18，已写入脚本，尚未应用到虚拟机）**：服务器端由 [configure_postgres.sh](../deploy/staging/configure_postgres.sh) 写入 `conf.d/agentdb-staging.conf`；客户端在合入时设置 `lock_timeout`。修改服务器配置由用户执行，步骤见 [本机虚拟机步骤](STAGING_VM.md#4a-给已配置的虚拟机加上失联客户端设置用户操作)。应用并重跑断网演练之前，第 3 节的断网结果仍代表虚拟机的实际状态。
+**处理（2026-10-18 写入脚本，之后已应用到虚拟机并复测通过，见本节末）**：服务器端由 [configure_postgres.sh](../deploy/staging/configure_postgres.sh) 写入 `conf.d/agentdb-staging.conf`；客户端在合入时设置 `lock_timeout`。修改服务器配置由用户执行，步骤见 [本机虚拟机步骤](STAGING_VM.md#4a-给已配置的虚拟机加上失联客户端设置用户操作)。应用并重跑断网演练之前，第 3 节的断网结果仍代表虚拟机的实际状态。
 
 ### 事务内最长的合法空闲
 
@@ -149,7 +149,7 @@
 
 - 仅修复时提交成本不再随历史增长（各级约 20 ms），合入在 2,000 个提交时降到修复前的约 1/80；合入与读取仍随“距上一个快照的提交数”缓慢增长。
 - 加上快照策略后，合入（124–181 ms）、提交与 head 读取（15–24 ms）从 0 到 2,000 个提交基本持平；每次物化约 165 ms，约每 100 个提交一次。
-- 代价是存储：每个快照保存一份 4,000 行的整表，2,000 个提交时库大小约为不物化时的 1.8 倍。快照的保留与回收尚未设计（README 当前限制第 9 条“版本保留/回收”）。
+- 代价是存储：每个快照保存一份 4,000 行的整表，2,000 个提交时库大小约为不物化时的 1.8 倍。快照的保留与回收尚未设计（见 README“限制”中“读取需要回放历史”一条）。
 - 原始结果：[修复前](../results/staging/growth-before.json)、[仅修复](../results/staging/growth-after.json)、[修复 + 快照策略](../results/staging/growth-after-policy100.json)。
 
 #### 合入的祖先遍历与代数（generation numbers）
@@ -241,7 +241,7 @@ Each growth commit changes 10 product rows on main and writes one of 50 files; t
 - **`vc.rows_at`** replays along the first-parent chain back to the most recent snapshot. The more commits after the snapshot, the slower the read; immediately after materializing a snapshot it is back to about 10 ms. There is currently no automatic materialization.
 - **`vc.merge`** also has to traverse all ancestors (`merge_base`, `_ancestors`). The three together make one 10-row merge take about 20 s at 1,000 commits.
 
-This is consistent with items 5 and 6 of the README's "Current limitations", now with concrete numbers. Directions for improvement (not yet implemented; they are behavior-preserving changes to the version engine that need their own project and coverage by the existing assertions): make `_file_state` stop walking back after finding the path, or maintain a per-snapshot file list; materialize snapshots periodically by number of commits or read cost (which the existing maintenance executor could take on); cache the ancestor set during merges.
+This is consistent with the README's "Reads replay history" limitation, now with concrete numbers. Directions for improvement (not yet implemented; they are behavior-preserving changes to the version engine that need their own project and coverage by the existing assertions): make `_file_state` stop walking back after finding the path, or maintain a per-snapshot file list; materialize snapshots periodically by number of commits or read cost (which the existing maintenance executor could take on); cache the ancestor set during merges.
 
 Follow-up (2026-10-18, local): the three items above have been implemented on the branch `perf/history-bounded-costs`, with the migration as `sql/005_bounded_history.sql`. It was also found that the main cause was that every step of the recursive traversal did a full-table scan of `vc.parent`. For the before/after numbers see [History growth](HISTORY_GROWTH.md); it has not yet been rerun on the staging VM.
 
@@ -261,7 +261,7 @@ The server uses PostgreSQL's default settings: `tcp_keepalives_idle` 7200 s, int
 
 This actually happened once during this testing: during the first growth test the laptop entered Modern Standby (Windows event log 04:25:00–05:07:34); after resuming, the client psql had exited, but the session on the server was still "idle in transaction", and was terminated manually by the owner. The network-cut drill then reproduced the same phenomenon by design ([record](../results/staging/netcut-defaults.json)).
 
-**Handling (2026-10-18, written into the scripts, not yet applied to the VM)**: on the server side [configure_postgres.sh](../deploy/staging/configure_postgres.sh) writes `conf.d/agentdb-staging.conf`; on the client side `lock_timeout` is set during merges. Changing the server configuration is done by the user; for the steps see [Local VM steps](STAGING_VM.md#4a-add-the-vanished-client-settings-to-an-already-configured-vm-user-action). Until they are applied and the network-cut drill is rerun, the network-cut result in section 3 still represents the actual state of the VM.
+**Handling (2026-10-18, written into the scripts; later applied to the VM and retested, see the end of this section)**: on the server side [configure_postgres.sh](../deploy/staging/configure_postgres.sh) writes `conf.d/agentdb-staging.conf`; on the client side `lock_timeout` is set during merges. Changing the server configuration is done by the user; for the steps see [Local VM steps](STAGING_VM.md#4a-add-the-vanished-client-settings-to-an-already-configured-vm-user-action). Until they are applied and the network-cut drill is rerun, the network-cut result in section 3 still represents the actual state of the VM.
 
 ### Longest legitimate idle time inside a transaction
 
@@ -336,7 +336,7 @@ A new test database installed 001–005, so it includes the fix. The same comman
 
 - With the fix only, commit cost no longer grows with history (about 20 ms at each level), and the merge at 2,000 commits drops to about 1/80 of the pre-fix value; merges and reads still grow slowly with "the number of commits since the last snapshot".
 - With the snapshot policy added, merges (124–181 ms), commits and head reads (15–24 ms) stay essentially flat from 0 to 2,000 commits; each materialization takes about 165 ms, about once every 100 commits.
-- The cost is storage: each snapshot saves a whole 4,000-row table, and at 2,000 commits the database is about 1.8× the size without materialization. Snapshot retention and reclamation have not been designed yet (README current limitation 9, "version retention/reclamation").
+- The cost is storage: each snapshot saves a whole 4,000-row table, and at 2,000 commits the database is about 1.8× the size without materialization. Snapshot retention and reclamation have not been designed yet (see the README's "Reads replay history" limitation).
 - Raw results: [before the fix](../results/staging/growth-before.json), [fix only](../results/staging/growth-after.json), [fix + snapshot policy](../results/staging/growth-after-policy100.json).
 
 #### Ancestor traversal in merges and generation numbers

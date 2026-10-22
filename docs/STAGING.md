@@ -2,7 +2,7 @@
 
 # 预发布 PostgreSQL 接入（S1）
 
-2026-10-18。[生产环境测试计划](PRODUCTION_TEST_PLAN.md) 第 S1 阶段的接入说明。用户已选择本机虚拟机作为预发布主机，逐步操作见 [本机虚拟机步骤](STAGING_VM.md)；本文是与主机形态无关的通用规则。**尚无预发布主机**：下文的代码与脚本已在本机核验到能核验的程度（见末节），真正的 S1 结果要在用户提供主机后才能产生。云服务仍未经真实验证，本阶段不涉及对象存储。
+2026-10-18。[生产环境测试计划](PRODUCTION_TEST_PLAN.md) 第 S1 阶段的接入说明。用户已选择本机虚拟机作为预发布主机，逐步操作见 [本机虚拟机步骤](STAGING_VM.md)；本文是与主机形态无关的通用规则。**S1 已于 2026-10-18 在本机虚拟机上通过**，结果见 [S1 结果](STAGING_S1_RESULTS.md)；末节是虚拟机建好之前在本机做的核验，保留作记录。云服务仍未经真实验证，本阶段不涉及对象存储。
 
 ## 连接规则
 
@@ -67,7 +67,7 @@ python scripts/check_merge_migration.py --config connection.staging.local.json
 
 ## 本机已核验的部分（2026-10-18）
 
-本机没有预发布主机，以下检查只能证明代码路径与脚本本身，不能代替 S1：
+以下检查做于虚拟机建好之前，只能证明代码路径与脚本本身；S1 本身的结果见 [S1 结果](STAGING_S1_RESULTS.md)：
 
 - **TLS 路径（真实 WSL PostgreSQL 16.15，经 TCP 127.0.0.1）**：服务器使用 Ubuntu 自签名证书 `<laptop-hostname>.localdomain`，TCP 登录需要口令，本次不设置、不索取口令。以该证书为 CA、`verify-ca` 时，TLS 握手与证书校验通过，连接停在认证步骤（`fe_sendauth: no password supplied`）；换成无关 CA 时报 `certificate verify failed`；`verify-full` 连 `127.0.0.1` 时报证书主机名不匹配。远程主机名不带 TLS 设置时由 `db.py` 直接拒绝。默认的 Unix socket 连接不变。`verify-full` 的成功路径需要一个按证书主机名监听的服务器，本机服务只监听 `localhost`，因此未覆盖。
 - **设置检查**：[tests/test_db_connection.py](../tests/test_db_connection.py) 共 10 项，不需要数据库：远程主机必须 `verify-full`、验证模式必须有 CA 文件、拒绝多主机列表与连接串、清除继承的 TLS 变量、配置文件中的 TLS 字段、WSL 传输把 TLS 变量传进发行版。
@@ -78,7 +78,7 @@ python scripts/check_merge_migration.py --config connection.staging.local.json
 
 - **Windows 原生 psql 客户端（2026-10-18）**：经 winget 安装 EDB 的 PostgreSQL 16.15 安装包，禁用 server、pgAdmin、Stack Builder 组件，安装器哈希校验通过。`bin` 中仍带有 `postgres.exe` 程序文件，但没有数据目录、没有 Windows 服务、Windows 侧没有进程监听 5432，因此没有运行中的服务器。经 `db.py`（`wsl_distribution` 留空）用 Windows psql 连本机 WSL 服务器（mirrored 模式下的 `127.0.0.1:5432`），结果与 WSL 客户端一致：正确 CA 配 `verify-ca` 到达认证步骤（`fe_sendauth: no password supplied`）；无关 CA 报 `certificate verify failed`；`verify-full` 连 `127.0.0.1` 报主机名不匹配。用 `connection.staging.local.json` 连 `192.168.56.10` 时，`db.py` 接受该远程配置并把连接交给 psql，因尚无虚拟机在 5 秒连接超时后报 `timeout expired`。Windows 的邻居表显示该地址的 ARP 请求发自 VirtualBox 仅主机网卡（状态 Incomplete，即暂无主机应答），说明 Windows 侧路由正确。（`Find-NetRoute` 报告的是经 WLAN 的默认路由，与实际发包不一致，不以其为准。）
 
-尚未覆盖：以 `agentdb_staging` 登录后完整运行三个套件（需要持久角色与口令）、远程网络与真实 CA 签发的证书。这些属于 S1 本身。
+当时未覆盖的以 `agentdb_staging` 经 TLS 登录运行三个套件，已由 S1 在虚拟机上完成；真实 CA 签发的证书与跨机器的网络仍未覆盖。
 
 ---
 
@@ -86,7 +86,7 @@ python scripts/check_merge_migration.py --config connection.staging.local.json
 
 # Staging PostgreSQL Connection (S1)
 
-2026-10-18. Connection instructions for phase S1 of the [Production test plan](PRODUCTION_TEST_PLAN.md). The user has chosen a local virtual machine as the staging host; for the step-by-step operations see [Local VM steps](STAGING_VM.md); this document gives the general rules independent of the host form. **There is no staging host yet**: the code and scripts below have been verified locally as far as they can be (see the last section), and real S1 results can only be produced after the user provides a host. Cloud services are still not verified against real cloud services, and this phase does not involve object storage.
+2026-10-18. Connection instructions for phase S1 of the [Production test plan](PRODUCTION_TEST_PLAN.md). The user has chosen a local virtual machine as the staging host; for the step-by-step operations see [Local VM steps](STAGING_VM.md); this document gives the general rules independent of the host form. **S1 passed on the local VM on 2026-10-18**; see [S1 results](STAGING_S1_RESULTS.md). The last section records the local checks made before the VM existed. Cloud services are still not verified against real cloud services, and this phase does not involve object storage.
 
 ## Connection rules
 
@@ -151,7 +151,7 @@ For the pass criteria see the S1 row of the plan: `check` shows `"ssl": true`, `
 
 ## What has been verified locally (2026-10-18)
 
-There is no staging host on this machine, so the following checks can only prove the code paths and the scripts themselves; they cannot replace S1:
+These checks were made before the VM existed, so they prove only the code paths and the scripts themselves; S1's own results are in [S1 results](STAGING_S1_RESULTS.md):
 
 - **TLS path (real WSL PostgreSQL 16.15, over TCP 127.0.0.1)**: the server uses the Ubuntu self-signed certificate `<laptop-hostname>.localdomain`; TCP login requires a password, which was not set or requested this time. With this certificate as the CA and `verify-ca`, the TLS handshake and certificate verification pass, and the connection stops at the authentication step (`fe_sendauth: no password supplied`); with an unrelated CA it reports `certificate verify failed`; `verify-full` to `127.0.0.1` reports a certificate hostname mismatch. A remote hostname without TLS settings is refused directly by `db.py`. The default Unix socket connection is unchanged. The success path of `verify-full` needs a server listening under the certificate's hostname; the local service listens only on `localhost`, so it was not covered.
 - **Settings checks**: [tests/test_db_connection.py](../tests/test_db_connection.py) has 10 items in total and needs no database: remote hosts must use `verify-full`, verification modes must have a CA file, host lists and connection strings are rejected, inherited TLS variables are cleared, TLS fields in the configuration file, and the WSL transport passes the TLS variables into the distribution.
@@ -162,4 +162,4 @@ There is no staging host on this machine, so the following checks can only prove
 
 - **Native Windows psql client (2026-10-18)**: EDB's PostgreSQL 16.15 installer was installed via winget, with the server, pgAdmin and Stack Builder components disabled, and the installer hash check passed. `bin` still contains the `postgres.exe` program file, but there is no data directory, no Windows service, and no process listening on 5432 on the Windows side, so there is no running server. Through `db.py` (with `wsl_distribution` left empty), Windows psql connected to the local WSL server (`127.0.0.1:5432` in mirrored mode), with results matching the WSL client: the correct CA with `verify-ca` reaches the authentication step (`fe_sendauth: no password supplied`); an unrelated CA reports `certificate verify failed`; `verify-full` to `127.0.0.1` reports a hostname mismatch. When connecting to `192.168.56.10` with `connection.staging.local.json`, `db.py` accepts the remote configuration and hands the connection to psql, which, since there is no VM yet, reports `timeout expired` after the 5-second connection timeout. Windows' neighbor table shows that the ARP requests for this address are sent from the VirtualBox host-only adapter (state Incomplete, i.e. no host has answered yet), showing that the routing on the Windows side is correct. (`Find-NetRoute` reports the default route via WLAN, which does not match the packets actually sent, and is not relied on.)
 
-Not yet covered: logging in as `agentdb_staging` and running the three suites in full (needs a persistent role and password), the remote network, and certificates issued by a real CA. These belong to S1 itself.
+What these checks did not cover, running the three suites as `agentdb_staging` over TLS, S1 then did on the VM; certificates issued by a real CA and a network between separate machines are still not covered.

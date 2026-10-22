@@ -82,7 +82,7 @@ EXPLAIN ANALYZE（模板状态和第 10 次合入前状态各测 5 次）：单�
 
 ## 实现长连接后的复测
 
-第 1 项建议已经实现，即 `db.Session`（见 [README](../README.md)）。`vc.merge` 与版本引擎仍未修改，第 2、3 项尚未实现。Session 每次调用都保持单次进程的语义：遇错即停、回滚未结束的事务、重置会话状态与 psql 变量。为此每次调用约多花 1 ms，探针中 `SELECT 1` 往返中位为 1.08 ms，而原型中的裸管道为 0.16 ms。`run_tests.py` 新增的检查逐项核对这些语义，并与单次进程的输出比较。
+第 1 项建议已经实现，即 `db.Session`（见 [README](../README.md)）。这一节测量时 `vc.merge` 尚未修改；第 2 项随后实现（见下一节），第 3 项本身是“不需要队列”，无须实现。Session 每次调用都保持单次进程的语义：遇错即停、回滚未结束的事务、重置会话状态与 psql 变量。为此每次调用约多花 1 ms，探针中 `SELECT 1` 往返中位为 1.08 ms，而原型中的裸管道为 0.16 ms。`run_tests.py` 新增的检查逐项核对这些语义，并与单次进程的输出比较。
 
 `scripts/benchmark_merge.py` 的常驻会话模式改用 `db.Session` 后，在新模板 `agentdb_test_mergebench_05e9004d_tpl` 上复测（各 3 次，[原始结果](../results/merge-benchmark-session-results.json)）：
 
@@ -222,7 +222,7 @@ EXPLAIN ANALYZE (5 measurements each in the template state and in the state befo
 
 ## Re-measurement after implementing long-lived connections
 
-Recommendation 1 has been implemented as `db.Session` (see [README](../README.md)). `vc.merge` and the version engine are still unmodified, and recommendations 2 and 3 are not yet implemented. Each Session call keeps the semantics of a single process: stop at the first error, roll back an unfinished transaction, reset session state and psql variables. This costs about 1 ms more per call: in the probe the `SELECT 1` round trip median is 1.08 ms, while the bare pipe in the prototype was 0.16 ms. A new check in `run_tests.py` verifies these semantics item by item and compares with the output of a single process.
+Recommendation 1 has been implemented as `db.Session` (see [README](../README.md)). When this section was measured `vc.merge` was still unmodified; recommendation 2 was implemented afterwards (next section), and recommendation 3 was that no queue is needed, so there is nothing to implement. Each Session call keeps the semantics of a single process: stop at the first error, roll back an unfinished transaction, reset session state and psql variables. This costs about 1 ms more per call: in the probe the `SELECT 1` round trip median is 1.08 ms, while the bare pipe in the prototype was 0.16 ms. A new check in `run_tests.py` verifies these semantics item by item and compares with the output of a single process.
 
 After the resident session modes of `scripts/benchmark_merge.py` were switched to `db.Session`, the measurement was repeated on a new template `agentdb_test_mergebench_05e9004d_tpl` (3 times each, [raw results](../results/merge-benchmark-session-results.json)):
 
