@@ -1,0 +1,955 @@
+{
+  "recorded_at_utc": "2026-10-22T17:01:21.348283+00:00",
+  "token_model": {
+    "fits": {
+      "without_signatures": {
+        "intercept": 2572.4,
+        "tokens_per_byte": 0.51864,
+        "points": 211,
+        "rmse": 308.0,
+        "max_abs_residual": 1451.5,
+        "r2": 0.99521
+      },
+      "with_signatures": {
+        "intercept": 3126.2,
+        "tokens_per_byte": 0.35689,
+        "points": 211,
+        "rmse": 551.0,
+        "max_abs_residual": 1989.6,
+        "r2": 0.98466
+      }
+    },
+    "chosen": "without_signatures",
+    "recorded": "F:\\2026-10-14\\https-www-anthropic-com-engineering-redesigning\\agentdb-postgres\\experiments\\gpt_repeat\\results\\2026-10-20-claude"
+  },
+  "task": {
+    "prompt": "You are the inventory agent (gpt-b). Common baseline revision: {base}.\nBefore changing anything, audit product 101's stock history: read product 101 at each of these {k} earlier revisions, in this order:\n{revisions}\nThen, at the common baseline, set product 101's stock to the lowest stock seen in the audit minus 5, without changing other fields.\nSave a Python policy that starts with one comment line per audited revision, in the order above, exactly \"# <first 8 characters of the revision>: <stock>\", followed by a literal STOCK constant matching the resulting stock.\nCreate your own gpt-b proposal branch, submit code and data together, inspect the diff and code.\nThis is preparation only: do not merge yet. Report your proposal revision and original expected main.\n",
+    "stock_history": [
+      118,
+      104,
+      111,
+      100,
+      109,
+      115,
+      103,
+      121,
+      107,
+      112,
+      105,
+      119,
+      102,
+      116,
+      108,
+      113
+    ],
+    "target_stock": 95,
+    "rule": "lowest stock seen in the audit minus 5",
+    "call_budget": 60,
+    "recovery_calls_assumed": 15,
+    "batch": 4,
+    "spread": 0.2,
+    "limit_tokens": 10000,
+    "in_full_bytes": 4096
+  },
+  "database": {
+    "name": "agentdb_test_gpt_a2b0553e79",
+    "dropped": true
+  },
+  "rows": [
+    {
+      "k": 8,
+      "pattern": "sequential",
+      "estimate": "low",
+      "switch": null,
+      "passed": false,
+      "reasons": [
+        "no switch before the end of the preparation phase"
+      ]
+    },
+    {
+      "k": 8,
+      "pattern": "sequential",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 14,
+        "after_action": "diff",
+        "request_tokens": 10173,
+        "entries_before": 31,
+        "in_full_lines": 6,
+        "catalog_lines": 12,
+        "collapsed": null,
+        "handoff_bytes": 4858
+      },
+      "audited_before_switch": 8,
+      "audited_values_fetch_only": 8,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 15,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 32
+      },
+      "passed": false,
+      "reasons": [
+        "switch after diff, not after an audit read"
+      ]
+    },
+    {
+      "k": 8,
+      "pattern": "sequential",
+      "estimate": "high",
+      "switch": {
+        "after_call": 11,
+        "after_action": "info",
+        "request_tokens": 10104,
+        "entries_before": 24,
+        "in_full_lines": 6,
+        "catalog_lines": 9,
+        "collapsed": null,
+        "handoff_bytes": 5251
+      },
+      "audited_before_switch": 8,
+      "audited_values_fetch_only": 5,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 15,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 31
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 8,
+      "pattern": "batched",
+      "estimate": "low",
+      "switch": null,
+      "passed": false,
+      "reasons": [
+        "no switch before the end of the preparation phase"
+      ]
+    },
+    {
+      "k": 8,
+      "pattern": "batched",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 14,
+        "after_action": "diff",
+        "request_tokens": 10173,
+        "entries_before": 31,
+        "in_full_lines": 6,
+        "catalog_lines": 12,
+        "collapsed": null,
+        "handoff_bytes": 4858
+      },
+      "audited_before_switch": 8,
+      "audited_values_fetch_only": 8,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 15,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 32
+      },
+      "passed": false,
+      "reasons": [
+        "switch after diff, not after an audit read"
+      ]
+    },
+    {
+      "k": 8,
+      "pattern": "batched",
+      "estimate": "high",
+      "switch": {
+        "after_call": 12,
+        "after_action": "fork",
+        "request_tokens": 10869,
+        "entries_before": 26,
+        "in_full_lines": 6,
+        "catalog_lines": 10,
+        "collapsed": null,
+        "handoff_bytes": 4639
+      },
+      "audited_before_switch": 8,
+      "audited_values_fetch_only": 6,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 15,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 31
+      },
+      "passed": false,
+      "reasons": [
+        "switch after fork, not after an audit read"
+      ]
+    },
+    {
+      "k": 10,
+      "pattern": "sequential",
+      "estimate": "low",
+      "switch": {
+        "after_call": 17,
+        "after_action": "read-code",
+        "request_tokens": 10402,
+        "entries_before": 37,
+        "in_full_lines": 8,
+        "catalog_lines": 14,
+        "collapsed": null,
+        "handoff_bytes": 6135
+      },
+      "audited_before_switch": 10,
+      "audited_values_fetch_only": 10,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 17,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 34
+      },
+      "passed": false,
+      "reasons": [
+        "switch after read-code, not after an audit read"
+      ]
+    },
+    {
+      "k": 10,
+      "pattern": "sequential",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 13,
+        "after_action": "info",
+        "request_tokens": 10165,
+        "entries_before": 28,
+        "in_full_lines": 6,
+        "catalog_lines": 11,
+        "collapsed": null,
+        "handoff_bytes": 5469
+      },
+      "audited_before_switch": 10,
+      "audited_values_fetch_only": 7,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 17,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 33
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 10,
+      "pattern": "sequential",
+      "estimate": "high",
+      "switch": {
+        "after_call": 11,
+        "after_action": "info",
+        "request_tokens": 10155,
+        "entries_before": 24,
+        "in_full_lines": 6,
+        "catalog_lines": 9,
+        "collapsed": null,
+        "handoff_bytes": 5251
+      },
+      "audited_before_switch": 8,
+      "audited_values_fetch_only": 5,
+      "revisions_unread": 2,
+      "unread_revisions": {
+        "fetch only": 2
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 17,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 33
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 10,
+      "pattern": "batched",
+      "estimate": "low",
+      "switch": {
+        "after_call": 17,
+        "after_action": "read-code",
+        "request_tokens": 10402,
+        "entries_before": 37,
+        "in_full_lines": 8,
+        "catalog_lines": 14,
+        "collapsed": null,
+        "handoff_bytes": 6135
+      },
+      "audited_before_switch": 10,
+      "audited_values_fetch_only": 10,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 17,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 34
+      },
+      "passed": false,
+      "reasons": [
+        "switch after read-code, not after an audit read"
+      ]
+    },
+    {
+      "k": 10,
+      "pattern": "batched",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 14,
+        "after_action": "fork",
+        "request_tokens": 10802,
+        "entries_before": 30,
+        "in_full_lines": 6,
+        "catalog_lines": 12,
+        "collapsed": null,
+        "handoff_bytes": 4860
+      },
+      "audited_before_switch": 10,
+      "audited_values_fetch_only": 8,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 17,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 34
+      },
+      "passed": false,
+      "reasons": [
+        "switch after fork, not after an audit read"
+      ]
+    },
+    {
+      "k": 10,
+      "pattern": "batched",
+      "estimate": "high",
+      "switch": {
+        "after_call": 13,
+        "after_action": "info",
+        "request_tokens": 10919,
+        "entries_before": 28,
+        "in_full_lines": 6,
+        "catalog_lines": 11,
+        "collapsed": null,
+        "handoff_bytes": 5469
+      },
+      "audited_before_switch": 10,
+      "audited_values_fetch_only": 7,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 17,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 33
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 12,
+      "pattern": "sequential",
+      "estimate": "low",
+      "switch": {
+        "after_call": 16,
+        "after_action": "fork",
+        "request_tokens": 10208,
+        "entries_before": 34,
+        "in_full_lines": 6,
+        "catalog_lines": 14,
+        "collapsed": null,
+        "handoff_bytes": 5078
+      },
+      "audited_before_switch": 12,
+      "audited_values_fetch_only": 10,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 19,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 36
+      },
+      "passed": false,
+      "reasons": [
+        "switch after fork, not after an audit read"
+      ]
+    },
+    {
+      "k": 12,
+      "pattern": "sequential",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 13,
+        "after_action": "info",
+        "request_tokens": 10206,
+        "entries_before": 28,
+        "in_full_lines": 6,
+        "catalog_lines": 11,
+        "collapsed": null,
+        "handoff_bytes": 5469
+      },
+      "audited_before_switch": 10,
+      "audited_values_fetch_only": 7,
+      "revisions_unread": 2,
+      "unread_revisions": {
+        "fetch only": 2
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 19,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 35
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 12,
+      "pattern": "sequential",
+      "estimate": "high",
+      "switch": {
+        "after_call": 11,
+        "after_action": "info",
+        "request_tokens": 10204,
+        "entries_before": 24,
+        "in_full_lines": 6,
+        "catalog_lines": 9,
+        "collapsed": null,
+        "handoff_bytes": 5251
+      },
+      "audited_before_switch": 8,
+      "audited_values_fetch_only": 5,
+      "revisions_unread": 4,
+      "unread_revisions": {
+        "fetch only": 4
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 19,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 35
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 12,
+      "pattern": "batched",
+      "estimate": "low",
+      "switch": {
+        "after_call": 16,
+        "after_action": "fork",
+        "request_tokens": 10208,
+        "entries_before": 34,
+        "in_full_lines": 6,
+        "catalog_lines": 14,
+        "collapsed": null,
+        "handoff_bytes": 5078
+      },
+      "audited_before_switch": 12,
+      "audited_values_fetch_only": 10,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 19,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 36
+      },
+      "passed": false,
+      "reasons": [
+        "switch after fork, not after an audit read"
+      ]
+    },
+    {
+      "k": 12,
+      "pattern": "batched",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 16,
+        "after_action": "fork",
+        "request_tokens": 12117,
+        "entries_before": 34,
+        "in_full_lines": 6,
+        "catalog_lines": 14,
+        "collapsed": null,
+        "handoff_bytes": 5078
+      },
+      "audited_before_switch": 12,
+      "audited_values_fetch_only": 10,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 19,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 36
+      },
+      "passed": false,
+      "reasons": [
+        "switch after fork, not after an audit read"
+      ]
+    },
+    {
+      "k": 12,
+      "pattern": "batched",
+      "estimate": "high",
+      "switch": {
+        "after_call": 15,
+        "after_action": "info",
+        "request_tokens": 10969,
+        "entries_before": 32,
+        "in_full_lines": 6,
+        "catalog_lines": 13,
+        "collapsed": null,
+        "handoff_bytes": 5687
+      },
+      "audited_before_switch": 12,
+      "audited_values_fetch_only": 9,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 19,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 36
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 14,
+      "pattern": "sequential",
+      "estimate": "low",
+      "switch": {
+        "after_call": 16,
+        "after_action": "info",
+        "request_tokens": 10241,
+        "entries_before": 34,
+        "in_full_lines": 6,
+        "catalog_lines": 14,
+        "collapsed": null,
+        "handoff_bytes": 5796
+      },
+      "audited_before_switch": 13,
+      "audited_values_fetch_only": 10,
+      "revisions_unread": 1,
+      "unread_revisions": {
+        "fetch only": 1
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 21,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 38
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 14,
+      "pattern": "sequential",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 13,
+        "after_action": "info",
+        "request_tokens": 10248,
+        "entries_before": 28,
+        "in_full_lines": 6,
+        "catalog_lines": 11,
+        "collapsed": null,
+        "handoff_bytes": 5469
+      },
+      "audited_before_switch": 10,
+      "audited_values_fetch_only": 7,
+      "revisions_unread": 4,
+      "unread_revisions": {
+        "fetch only": 4
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 21,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 37
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 14,
+      "pattern": "sequential",
+      "estimate": "high",
+      "switch": {
+        "after_call": 11,
+        "after_action": "info",
+        "request_tokens": 10254,
+        "entries_before": 24,
+        "in_full_lines": 6,
+        "catalog_lines": 9,
+        "collapsed": null,
+        "handoff_bytes": 5251
+      },
+      "audited_before_switch": 8,
+      "audited_values_fetch_only": 5,
+      "revisions_unread": 6,
+      "unread_revisions": {
+        "fetch only": 6
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 21,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 37
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 14,
+      "pattern": "batched",
+      "estimate": "low",
+      "switch": {
+        "after_call": 17,
+        "after_action": "info",
+        "request_tokens": 10241,
+        "entries_before": 36,
+        "in_full_lines": 6,
+        "catalog_lines": 15,
+        "collapsed": null,
+        "handoff_bytes": 5905
+      },
+      "audited_before_switch": 14,
+      "audited_values_fetch_only": 11,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 21,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 38
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 14,
+      "pattern": "batched",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 17,
+        "after_action": "info",
+        "request_tokens": 12158,
+        "entries_before": 36,
+        "in_full_lines": 6,
+        "catalog_lines": 15,
+        "collapsed": null,
+        "handoff_bytes": 5905
+      },
+      "audited_before_switch": 14,
+      "audited_values_fetch_only": 11,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 21,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 38
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 14,
+      "pattern": "batched",
+      "estimate": "high",
+      "switch": {
+        "after_call": 15,
+        "after_action": "info",
+        "request_tokens": 11019,
+        "entries_before": 32,
+        "in_full_lines": 6,
+        "catalog_lines": 13,
+        "collapsed": null,
+        "handoff_bytes": 5687
+      },
+      "audited_before_switch": 12,
+      "audited_values_fetch_only": 9,
+      "revisions_unread": 2,
+      "unread_revisions": {
+        "fetch only": 2
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 21,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 38
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 16,
+      "pattern": "sequential",
+      "estimate": "low",
+      "switch": {
+        "after_call": 16,
+        "after_action": "info",
+        "request_tokens": 10274,
+        "entries_before": 34,
+        "in_full_lines": 6,
+        "catalog_lines": 14,
+        "collapsed": null,
+        "handoff_bytes": 5796
+      },
+      "audited_before_switch": 13,
+      "audited_values_fetch_only": 10,
+      "revisions_unread": 3,
+      "unread_revisions": {
+        "fetch only": 3
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 23,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 40
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 16,
+      "pattern": "sequential",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 13,
+        "after_action": "info",
+        "request_tokens": 10289,
+        "entries_before": 28,
+        "in_full_lines": 6,
+        "catalog_lines": 11,
+        "collapsed": null,
+        "handoff_bytes": 5469
+      },
+      "audited_before_switch": 10,
+      "audited_values_fetch_only": 7,
+      "revisions_unread": 6,
+      "unread_revisions": {
+        "fetch only": 6
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 23,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 39
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 16,
+      "pattern": "sequential",
+      "estimate": "high",
+      "switch": {
+        "after_call": 11,
+        "after_action": "info",
+        "request_tokens": 10304,
+        "entries_before": 24,
+        "in_full_lines": 6,
+        "catalog_lines": 9,
+        "collapsed": null,
+        "handoff_bytes": 5251
+      },
+      "audited_before_switch": 8,
+      "audited_values_fetch_only": 5,
+      "revisions_unread": 8,
+      "unread_revisions": {
+        "fetch only": 8
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 1,
+      "calls_estimate": {
+        "preparation": 23,
+        "recovery": 15,
+        "fetch": 1,
+        "total": 39
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 16,
+      "pattern": "batched",
+      "estimate": "low",
+      "switch": {
+        "after_call": 19,
+        "after_action": "info",
+        "request_tokens": 10274,
+        "entries_before": 40,
+        "in_full_lines": 6,
+        "catalog_lines": 17,
+        "collapsed": null,
+        "handoff_bytes": 6123
+      },
+      "audited_before_switch": 16,
+      "audited_values_fetch_only": 13,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 23,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 40
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 16,
+      "pattern": "batched",
+      "estimate": "fitted",
+      "switch": {
+        "after_call": 19,
+        "after_action": "info",
+        "request_tokens": 12200,
+        "entries_before": 40,
+        "in_full_lines": 6,
+        "catalog_lines": 17,
+        "collapsed": null,
+        "handoff_bytes": 6123
+      },
+      "audited_before_switch": 16,
+      "audited_values_fetch_only": 13,
+      "revisions_unread": 0,
+      "unread_revisions": {},
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 23,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 40
+      },
+      "passed": true,
+      "reasons": []
+    },
+    {
+      "k": 16,
+      "pattern": "batched",
+      "estimate": "high",
+      "switch": {
+        "after_call": 15,
+        "after_action": "info",
+        "request_tokens": 11068,
+        "entries_before": 32,
+        "in_full_lines": 6,
+        "catalog_lines": 13,
+        "collapsed": null,
+        "handoff_bytes": 5687
+      },
+      "audited_before_switch": 12,
+      "audited_values_fetch_only": 9,
+      "revisions_unread": 4,
+      "unread_revisions": {
+        "fetch only": 4
+      },
+      "audit_rule": "fetch only",
+      "fetch_calls": 2,
+      "calls_estimate": {
+        "preparation": 23,
+        "recovery": 15,
+        "fetch": 2,
+        "total": 40
+      },
+      "passed": true,
+      "reasons": []
+    }
+  ],
+  "gate": {
+    "rule": "smallest K in CANDIDATES that passes in all six layouts",
+    "candidates": [
+      8,
+      10,
+      12,
+      14,
+      16
+    ],
+    "passing": [
+      14,
+      16
+    ],
+    "chosen_k": 14,
+    "passed": true
+  },
+  "sources_sha256": {
+    "experiments/context_archive/archive.py": "3df2f11e3524eb78ea2fa1f5d604d4619355c0f00696d236f50b874a0aaca9b8",
+    "experiments/context_archive/long_task.py": "861159d99bc4460f3d8694e8b71eae535d66a70f0464b579e4359ceb5306c092",
+    "agent_lab.py": "b9aae29f2646c52420f6c0cb64f05dd4d955665308751137cc77df55ad5a9e89"
+  },
+  "model_calls": 0,
+  "real_cloud_verified": false
+}
