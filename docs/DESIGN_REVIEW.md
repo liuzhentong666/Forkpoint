@@ -114,7 +114,7 @@ event trigger 能观察一部分 DDL 事件，但不能单独解决历史类型�
 | 快照物化前后 | 固定版本读取结果一致 |
 | 普通角色尝试追加旧 changeset | 权限拒绝 |
 
-实际通过情况只以 `test-results.json` 和测试运行输出为准。单次本机实验不等同于生产容量规划。
+实际通过情况只以 `run_tests.py` 的结果文件（当时为 `test-results.json`，现为 `test-results-local.json`）和测试运行输出为准。单次本机实验不等同于生产容量规划。
 
 ## 后续顺序
 
@@ -251,7 +251,7 @@ If sharding by workspace in the future, code and data should as far as possible 
 | Before and after snapshot materialization | Pinned-version read results are identical |
 | Ordinary role tries to append to an old changeset | Permission denied |
 
-Actual pass status is determined only by `test-results.json` and the test run output. A single local experiment is not equivalent to production capacity planning.
+Actual pass status is determined only by `run_tests.py`'s results file (then `test-results.json`, now `test-results-local.json`) and the test run output. A single local experiment is not equivalent to production capacity planning.
 
 ## Next steps, in order
 

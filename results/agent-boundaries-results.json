@@ -1,8 +1,8 @@
 {
-  "database": "agentdb_test_gpt_30528b32b9",
+  "database": "agentdb_test_gpt_98ff0d72e2",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-  "checks": 37,
-  "holds": 37,
+  "checks": 39,
+  "holds": 39,
   "gaps": [],
   "real_cloud_verified": false,
   "note": "Local dedicated test database on the existing PostgreSQL server; the project database was not touched.",
@@ -214,6 +214,18 @@
     {
       "group": "D",
       "name": "read_key_with_sql_refused",
+      "status": "HOLDS",
+      "detail": "exit 2: "
+    },
+    {
+      "group": "D",
+      "name": "read_set_repeating_a_table_rejected",
+      "status": "HOLDS",
+      "detail": "exit 2: agent_lab.py: error: --reads repeats a table or column name; give each once"
+    },
+    {
+      "group": "D",
+      "name": "merge_of_an_unknown_revision_is_not_found",
       "status": "HOLDS",
       "detail": "exit 2: "
     },
