@@ -119,7 +119,7 @@ event trigger 能观察一部分 DDL 事件，但不能单独解决历史类型�
 ## 后续顺序
 
 1. 补充真实应用数据类型、查询形态、约束和连接池集成测试。
-2. 优化分支点查与谓词下推，批量读取合并目标状态，避免逐行重复解析全表。
+2. 优化分支点查与谓词下推，批量读取合并目标状态，避免逐行重复解析全表。（2026-10-22：批量读取合并目标状态已由迁移 004 完成，历史遍历的上限由 005 完成，见 [合入耗时](MERGE_BENCHMARK.md) 与 [历史增长](HISTORY_GROWTH.md)；分支视图的点查与谓词下推尚未做，仍按历史加快照解析。）
 3. 增加严格定义的字段级合并；冲突报告返回 base/ours/theirs 与 schema 版本。
 4. 设计版本保留和回收；不可变历史不代表可以无限保留而没有成本。
 5. 支持受限迁移，并处理原始表已有触发器和外部副作用。
@@ -256,7 +256,7 @@ Actual pass status is determined only by `run_tests.py`'s results file (then `te
 ## Next steps, in order
 
 1. Add integration tests for real application data types, query shapes, constraints and connection pools.
-2. Optimize branch point lookups and predicate pushdown, read the merge target state in batches, and avoid repeatedly resolving the whole table row by row.
+2. Optimize branch point lookups and predicate pushdown, read the merge target state in batches, and avoid repeatedly resolving the whole table row by row. (2026-10-22: reading the merge target state in batches was done by migration 004 and bounding history walks by 005, see [merge timing](MERGE_BENCHMARK.md) and [history growth](HISTORY_GROWTH.md); point lookups and predicate pushdown on branch views are not done, and they still resolve from history plus snapshots.)
 3. Add strictly defined field-level merging; conflict reports return base/ours/theirs and the schema version.
 4. Design version retention and reclamation; immutable history does not mean it can be retained indefinitely at no cost.
 5. Support restricted migrations, and handle triggers already on the original tables and external side effects.

@@ -311,7 +311,7 @@ OSS 的 `PutObject` 不支持 `If-Match` / `If-None-Match` 这组条件参数，
 
 云端联调和常驻部署当前暂缓，`smoke_cloud.py` 与部署草案仅保留供未来使用。当前继续本地开发和模拟测试，不把购买服务器作为继续项目的前提。
 
-本地可以继续优化版本查询。当前一些读取仍依赖祖先回放，行合并会反复解析目标状态，文件合并会枚举已记录路径；不能因为 changeset 只保存变化，就宣称所有操作成本都只取决于变化量。点查、谓词下推、批量状态解析与长历史负载，应成为下一组测量对象。
+本地可以继续优化版本查询。当前一些读取仍依赖祖先回放，行合并会反复解析目标状态，文件合并会枚举已记录路径；不能因为 changeset 只保存变化，就宣称所有操作成本都只取决于变化量。点查、谓词下推、批量状态解析与长历史负载，应成为下一组测量对象。（2026-10-22 补注：此后行合并改为每张表一次批量读取目标状态（迁移 004），历史遍历有了上限、文件合并只检查可能不同的路径，并新增快照策略（005），见 [合入耗时](MERGE_BENCHMARK.md) 与 [历史增长](HISTORY_GROWTH.md)；分支读取仍依赖历史回放加快照。）
 
 长期保存则需要明确的生命周期协议：哪些版本必须保留，哪些快照可以重建，如何识别孤儿对象，如何保证 GC 不删除并发发布中的内容，以及 OSS 入口如何安全轮转。省下恢复扫描，不等于省下历史存储。
 
@@ -640,7 +640,7 @@ The current implementation gives branching, joint commits and bounded recovery a
 
 Cloud integration testing and resident deployment are currently on hold; `smoke_cloud.py` and the deployment draft are kept only for future use. Local development and simulated testing continue for now, and buying servers is not a precondition for continuing the project.
 
-Version queries can continue to be optimized locally. Some current reads still depend on ancestor replay, row merges repeatedly resolve the target state, and file merges enumerate recorded paths; one cannot claim that the cost of every operation depends only on the amount changed just because a changeset stores only changes. Point lookups, predicate pushdown, batched state resolution and long-history loads should be the next group of things to measure.
+Version queries can continue to be optimized locally. Some current reads still depend on ancestor replay, row merges repeatedly resolve the target state, and file merges enumerate recorded paths; one cannot claim that the cost of every operation depends only on the amount changed just because a changeset stores only changes. Point lookups, predicate pushdown, batched state resolution and long-history loads should be the next group of things to measure. (Note added 2026-10-22: since then row merges read the target state in one batch per table (migration 004), history walks are bounded, file merges check only paths that may differ, and there is a snapshot policy (005), see [merge timing](MERGE_BENCHMARK.md) and [history growth](HISTORY_GROWTH.md); branch reads still replay history plus snapshots.)
 
 Long-term retention needs a clear lifecycle protocol: which versions must be kept, which snapshots can be rebuilt, how orphan objects are identified, how GC is guaranteed not to delete content in concurrent publishing, and how the OSS entry point is rotated safely. Saving the recovery scan does not save the history storage.
 
