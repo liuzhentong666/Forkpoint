@@ -1,0 +1,264 @@
+{
+  "recorded_at_utc": "2026-10-22T16:47:17.998448+00:00",
+  "recorded": "experiments/gpt_repeat/results/2026-10-20-claude",
+  "database": {
+    "name": "agentdb_test_xcreplay_64982901",
+    "dropped": true
+  },
+  "constants": {
+    "limit_tokens": 10000,
+    "in_full_bytes": 4096,
+    "handoff_bytes": 8192
+  },
+  "sources_sha256": {
+    "experiments/context_archive/archive.sql": "b240c4e9a598b8489fdeaada5f9cf2564a931870f31685be0c23f55383439801",
+    "experiments/context_archive/archive.py": "3df2f11e3524eb78ea2fa1f5d604d4619355c0f00696d236f50b874a0aaca9b8",
+    "experiments/context_archive/replay.py": "db2ed6421a1d581130e8df23e15266f56fc091eb92f13b10202cfbd20465e51b"
+  },
+  "processes": 20,
+  "entries": 886,
+  "entry_bytes": 1460247,
+  "round_trip": {
+    "entries_compared": 886,
+    "mismatches": 0
+  },
+  "where_needed_ids_are_at_the_switch": {
+    "base_revision": {
+      "in full": 2,
+      "label prefix only": 8
+    },
+    "proposal_revision": {
+      "in full": 10
+    }
+  },
+  "gate": {
+    "rule": "passes if at least 5 recorded processes reach a switch and, at no fewer than half of them, the proposal revision is outside the in-full part",
+    "switches": 10,
+    "proposal_outside_in_full": 0,
+    "passed": false
+  },
+  "rows": [
+    {
+      "task": "run-01/gpt-a",
+      "entries": 28,
+      "bytes": 41907,
+      "switch": null
+    },
+    {
+      "task": "run-01/gpt-b",
+      "entries": 64,
+      "bytes": 117972,
+      "switch": {
+        "after_entry": 37,
+        "request_tokens": 10905,
+        "turn": 2,
+        "handoff_bytes": 6084,
+        "in_full_lines": 7,
+        "catalog_lines": 15,
+        "collapsed": null,
+        "base_revision": "in full",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-02/gpt-a",
+      "entries": 28,
+      "bytes": 42696,
+      "switch": null
+    },
+    {
+      "task": "run-02/gpt-b",
+      "entries": 60,
+      "bytes": 99296,
+      "switch": {
+        "after_entry": 37,
+        "request_tokens": 10634,
+        "turn": 2,
+        "handoff_bytes": 4991,
+        "in_full_lines": 7,
+        "catalog_lines": 16,
+        "collapsed": null,
+        "base_revision": "label prefix only",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-03/gpt-a",
+      "entries": 28,
+      "bytes": 43063,
+      "switch": null
+    },
+    {
+      "task": "run-03/gpt-b",
+      "entries": 61,
+      "bytes": 97292,
+      "switch": {
+        "after_entry": 38,
+        "request_tokens": 10995,
+        "turn": 2,
+        "handoff_bytes": 5100,
+        "in_full_lines": 7,
+        "catalog_lines": 17,
+        "collapsed": null,
+        "base_revision": "label prefix only",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-04/gpt-a",
+      "entries": 28,
+      "bytes": 42686,
+      "switch": null
+    },
+    {
+      "task": "run-04/gpt-b",
+      "entries": 58,
+      "bytes": 98285,
+      "switch": {
+        "after_entry": 37,
+        "request_tokens": 10835,
+        "turn": 2,
+        "handoff_bytes": 6379,
+        "in_full_lines": 7,
+        "catalog_lines": 16,
+        "collapsed": null,
+        "base_revision": "label prefix only",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-05/gpt-a",
+      "entries": 28,
+      "bytes": 42244,
+      "switch": null
+    },
+    {
+      "task": "run-05/gpt-b",
+      "entries": 60,
+      "bytes": 101450,
+      "switch": {
+        "after_entry": 36,
+        "request_tokens": 10878,
+        "turn": 2,
+        "handoff_bytes": 4874,
+        "in_full_lines": 7,
+        "catalog_lines": 14,
+        "collapsed": null,
+        "base_revision": "label prefix only",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-06/gpt-a",
+      "entries": 28,
+      "bytes": 42298,
+      "switch": null
+    },
+    {
+      "task": "run-06/gpt-b",
+      "entries": 60,
+      "bytes": 103114,
+      "switch": {
+        "after_entry": 37,
+        "request_tokens": 10837,
+        "turn": 2,
+        "handoff_bytes": 6064,
+        "in_full_lines": 7,
+        "catalog_lines": 15,
+        "collapsed": null,
+        "base_revision": "label prefix only",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-07/gpt-a",
+      "entries": 28,
+      "bytes": 43072,
+      "switch": null
+    },
+    {
+      "task": "run-07/gpt-b",
+      "entries": 60,
+      "bytes": 101128,
+      "switch": {
+        "after_entry": 37,
+        "request_tokens": 10785,
+        "turn": 2,
+        "handoff_bytes": 6078,
+        "in_full_lines": 7,
+        "catalog_lines": 16,
+        "collapsed": null,
+        "base_revision": "label prefix only",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-08/gpt-a",
+      "entries": 28,
+      "bytes": 42017,
+      "switch": null
+    },
+    {
+      "task": "run-08/gpt-b",
+      "entries": 62,
+      "bytes": 108913,
+      "switch": {
+        "after_entry": 38,
+        "request_tokens": 10945,
+        "turn": 2,
+        "handoff_bytes": 6267,
+        "in_full_lines": 7,
+        "catalog_lines": 15,
+        "collapsed": null,
+        "base_revision": "label prefix only",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-09/gpt-a",
+      "entries": 28,
+      "bytes": 41911,
+      "switch": null
+    },
+    {
+      "task": "run-09/gpt-b",
+      "entries": 61,
+      "bytes": 104083,
+      "switch": {
+        "after_entry": 38,
+        "request_tokens": 10823,
+        "turn": 2,
+        "handoff_bytes": 6277,
+        "in_full_lines": 7,
+        "catalog_lines": 17,
+        "collapsed": null,
+        "base_revision": "label prefix only",
+        "proposal_revision": "in full"
+      }
+    },
+    {
+      "task": "run-10/gpt-a",
+      "entries": 28,
+      "bytes": 42490,
+      "switch": null
+    },
+    {
+      "task": "run-10/gpt-b",
+      "entries": 60,
+      "bytes": 104330,
+      "switch": {
+        "after_entry": 37,
+        "request_tokens": 10782,
+        "turn": 2,
+        "handoff_bytes": 6176,
+        "in_full_lines": 7,
+        "catalog_lines": 15,
+        "collapsed": null,
+        "base_revision": "in full",
+        "proposal_revision": "in full"
+      }
+    }
+  ],
+  "model_calls": 0,
+  "real_cloud_verified": false
+}
