@@ -2,7 +2,7 @@
 
 # Forkpoint：Agent 开发与维护约定
 
-适用范围：本目录及子目录。更新日期：2026-10-22。
+适用范围：本目录及子目录。更新日期：2026-10-23。
 
 **当前云服务状态：未经真实验证，云端部署暂缓。** OSS、GCS、S3 均无真实联调结果，ECS 尚未部署。用户当前不安排云资源采购或部署；只继续本地开发与模拟测试，不自动采购、部署或运行会访问真实云服务的测试。不得将 SDK 测试替身、内存服务模型、本机 HTTP 或本机 PostgreSQL 的结果表述为云存储已验证。
 
@@ -98,6 +98,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `agent_lab_gateway.py` | 可选的回环常驻进程，为 `agent_lab.py` 的工作动作复用 `db.Session`；默认关闭，未运行时 `agent_lab.py` 行为不变；不重试，不并入 `agent_state/server.py`（见 [设计](docs/AGENT_LAB_GATEWAY.md)） |
 | `experiments/gpt_repeat/` | 真实 GPT 重复实验、原始 RPC JSONL、独立 SQL 核验及离线统计；不修改生产版本算法，不把预期冲突或服务中断隐藏为成功 |
 | `experiments/readset/` | 读集校验实验：`xr` 原型只装入测试库，不修改 `vc.*`；见 [设计与结果](docs/READSET_EXPERIMENT.md) |
+| `experiments/context_archive/` | 上下文存档实验：`xc` 原型只装入测试库，不修改 `vc.*`；`replay.py`、`long_task.py` 与替身 `fake_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | `scripts/` | 基准、迁移核验与预发布演练；在项目根目录以 `python scripts/<name>.py` 运行，脚本自行把根目录加入 `sys.path`；纳入版本库的结果默认写入 `results/` |
 | `results/`、`examples/` | 文档中数字对应的原始结果（`results/staging/` 为预发布虚拟机）；可直接用 psql 运行的 SQL 示例 |
 
@@ -151,6 +152,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | Agent 边界对抗检查 | `.\.venv-cloud\Scripts\python.exe scripts/check_agent_boundaries.py`：经 `agent_lab.py init` 新建 `agentdb_test_gpt_*`，审计 `agentdb_client` 可执行的函数、可访问的表、可建对象的 schema 与设置了 search_path 的函数（含全部 SECURITY DEFINER 函数）的 search_path；以 `agentdb_client` 自写 SQL 尝试目录审计看不到的操作（停用捕获触发器、关闭会话触发器、未开启变更就写分支视图）、经授权函数破坏版本历史，并向 `agent_lab.py` 传入应被拒绝的参数（须由对应检查拒绝：参数错误，或 agent_lab 以 JSON 报告的引擎拒绝；退出码 2、无 Python traceback）；最后核对 main 不变。越界记为 GAP 并以退出码 1 结束；连接参数只接受 `--config` |
 | 预发布虚拟机 S4/S5 | `.\.venv-cloud\Scripts\python.exe scripts/staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`：只对 [预发布虚拟机](docs/STAGING_VM.md) 运行；restart/crash/netcut 会通过 VBoxManage 断电、重启或断网，切勿指向重要数据库；结果见 [S4/S5](docs/STAGING_S4_S5.md) |
 | 读集校验实验 | 单元测试、契约测试、变异检查、实验与两项核查的命令见 [设计文档](docs/READSET_EXPERIMENT.md)“文件与运行”一节 |
+| 上下文存档实验 | 测试、重放闸门、长任务离线检查、替身试运行与真实轮次的命令见 [实验设计](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)“文件与运行”一节 |
 | 真实云端（未执行，当前暂缓） | `smoke_cloud.py` 仅保留为以后联调入口；当前不运行，不据此宣称任何提供商已通过验证 |
 
 真实模型实验遵循预登记协议：记录接口返回的精确模型 ID、推理强度、运行器版本、提示词与源文件哈希；不把未暴露的权重快照猜成确定版本。固定样本数并保留失败，不以新轮次替换失败轮次。保存未经摘要或截断的工具请求/响应 JSONL，逐 Agent 保存累计用量最后值；缓存输入与推理输出是子项，缺失用量保持未知。每次实际写入后独立核查已发布内容和对方分支，发生覆盖后又恢复仍计为失败。区分受控恢复提示、脚本压力测试和模型自主行为；云端状态仍未经真实验证。
@@ -167,7 +169,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 # Forkpoint: Conventions for Agent Development and Maintenance
 
-Scope: this directory and its subdirectories. Last updated: 2026-10-22.
+Scope: this directory and its subdirectories. Last updated: 2026-10-23.
 
 **Current cloud service status: not verified against real cloud services; cloud deployment is on hold.** OSS, GCS and S3 have no real integration results, and ECS has not been deployed. The user is not currently scheduling cloud resource purchases or deployment; only continue local development and simulated testing, and do not automatically purchase, deploy, or run tests that access real cloud services. Results from SDK test doubles, the in-memory service model, local HTTP or the local PostgreSQL must not be described as cloud storage having been verified.
 
@@ -263,6 +265,7 @@ The rule text that a formal task will adopt is stored as cloud evidence, and its
 | `agent_lab_gateway.py` | Optional loopback long-running process that reuses `db.Session` for `agent_lab.py`'s work actions; off by default, and when it is not running `agent_lab.py` behaves unchanged; no retries, not merged into `agent_state/server.py` (see [design](docs/AGENT_LAB_GATEWAY.md)) |
 | `experiments/gpt_repeat/` | Real GPT repeat experiment, raw RPC JSONL, independent SQL verification and offline statistics; does not modify the production version algorithm, and does not hide expected conflicts or service interruptions as successes |
 | `experiments/readset/` | Read-set validation experiment: the `xr` prototype goes only into test databases and does not modify `vc.*`; see the [design and results](docs/READSET_EXPERIMENT.md) |
+| `experiments/context_archive/` | Context archive experiment: the `xc` prototype goes only into test databases and does not modify `vc.*`; `replay.py`, `long_task.py` and the stand-in `fake_claude.py` call no model, and real rounds need the user's approval; see the [design](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | `scripts/` | Benchmarks, migration checks and staging drills; run from the project root as `python scripts/<name>.py`, each script adds the root to `sys.path` itself; committed results go to `results/` by default |
 | `results/`, `examples/` | Raw results behind the numbers in the docs (`results/staging/` is the staging VM); SQL examples that run directly with psql |
 
@@ -316,6 +319,7 @@ From the project root, choose checks according to the scope of the change; after
 | Agent boundary adversarial check | `.\.venv-cloud\Scripts\python.exe scripts/check_agent_boundaries.py`: creates `agentdb_test_gpt_*` through `agent_lab.py init`, audits the functions `agentdb_client` can execute, the tables it can reach, the schemas it can create in and the search_path of every function that sets one (all SECURITY DEFINER functions included); tries with `agentdb_client`'s own SQL what the catalog cannot show (disabling the capture trigger, turning off triggers for the session, writing a branch view with no open change), tries to break version history through the granted functions, and passes `agent_lab.py` arguments it must reject (each by the check under test, as an argument error or an engine refusal agent_lab reports as JSON: exit code 2, no Python traceback); finally checks that main is unchanged. A crossed boundary is a GAP and exits 1; takes only `--config` for the connection |
 | Staging VM S4/S5 | `.\.venv-cloud\Scripts\python.exe scripts/staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`: run only against the [staging VM](docs/STAGING_VM.md); restart/crash/netcut power off, restart or disconnect the network through VBoxManage, so never point it at an important database; results are in [S4/S5](docs/STAGING_S4_S5.md) |
 | Read-set experiment | Commands for the unit and contract tests, the mutation check, the experiment and the two audits are in "Files and running" in the [design](docs/READSET_EXPERIMENT.md) |
+| Context archive experiment | Commands for the tests, the replay gate, the long-task check, the stand-in dry run and real rounds are in "Files and running" in the [design](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | Real cloud (not run, currently on hold) | `smoke_cloud.py` is kept only as a future integration entry point; it is not run now, and no provider is claimed to have passed verification on its basis |
 
 Real-model experiments follow a pre-registered protocol: record the exact model ID returned by the interface, reasoning effort, runner version, and hashes of the prompts and source files; do not guess an unexposed weight snapshot as a definite version. Fix the sample size and keep failures; do not replace failed rounds with new ones. Save tool request/response JSONL without summarizing or truncating, and save the last value of each Agent's cumulative usage; cached input and reasoning output are sub-items, and missing usage stays unknown. After each actual write, independently check the published content and the other party's branch; an overwrite that is later restored still counts as a failure. Distinguish controlled recovery prompts, scripted stress tests and autonomous model behavior; cloud state is still not verified against real cloud services.

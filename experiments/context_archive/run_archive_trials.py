@@ -78,9 +78,10 @@ def audit_lines(code, revisions, stocks):
 
 
 def after_switch(summary, actor):
-    """The actor's calls after its reset began: repeats of an earlier call whose result could not have
-    changed (a fixed-version read, a fetch, or a write), failed calls (other than the arranged refusals),
-    and fetches. Calls refused while the process was being replaced did not run and are counted apart."""
+    """The actor's calls after its reset began: repeats of an identical earlier call that reads fixed data
+    again (a read at a fixed revision, a fetch) or does the same write again (fork, propose, merge),
+    failed calls (other than the arranged refusals), and fetches. Calls refused while the process was
+    being replaced did not run and are counted apart."""
     starts = [s["call_sequence"] for s in summary["switches"] if s["actor"] == actor]
     if not starts:
         return None
@@ -525,9 +526,9 @@ def register(args):
                               "request answered), plus: main's inventory.py records all 14 audited stocks correctly "
                               "(audit_lines all_correct) and no archive error. A stream tool use cut off by a reset's "
                               "interrupt is listed as abandoned, not unanswered.",
-        "primary_metric": "Per round, after the reset began: repeats of an earlier call whose result could not have changed "
-                          "(a read at a fixed revision, a fetch, or a fork/propose/merge identical to an earlier one) plus "
-                          "failed calls other than stale_head and merge_conflict; calls refused while the process was "
+        "primary_metric": "Per round, after the reset began: repeats of an identical earlier call that reads fixed data "
+                          "again (a read at a fixed revision, a fetch) or does the same write again (fork, propose, merge), "
+                          "plus failed calls other than stale_head and merge_conflict; calls refused while the process was "
                           "replaced did not run and are reported apart.",
         "counting": "All registered rounds kept; no replacement of failed rounds; no manual rescue. Tokens as in the "
                     "2026-10-20 Claude run, per process; tokens_after_switch is every turn of the later process plus "

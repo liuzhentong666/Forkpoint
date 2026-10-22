@@ -17,6 +17,7 @@ local-review-results.json
 
 # Raw model transcripts and local experiment metadata stay on this machine.
 experiments/gpt_repeat/results/
+experiments/context_archive/results/
 
 # Read-set experiment: the verbatim SQL log of every call (several MB per run)
 # stays local; results.json beside it holds what the reported numbers need.
