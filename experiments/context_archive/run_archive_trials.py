@@ -193,8 +193,8 @@ class ArchivingAgent(ClaudeAgent):
                 self.stdout_log.flush()
                 try:
                     self.writer.put(self.actor, received_entry(raw))
-                except ArchiveError as error:
-                    self.writer.fail(str(error))
+                except Exception as error:  # any capture failure stops the round; the line is still logged and passed on
+                    self.writer.fail(str(error) if isinstance(error, ArchiveError) else f"capture failed: {error!r}")
                 self.inbox.put((time.time_ns(), raw))
         finally:
             self.inbox.put((time.time_ns(), None))

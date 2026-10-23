@@ -171,6 +171,29 @@ class TrialTests(unittest.TestCase):
         self.assertEqual([c.get("error") for c in self.summary["calls"]], [None, "invalid_entries", "unknown_entry"])
 
 
+class NullSession:
+    def sql(self, statement):
+        return "1"
+
+    def close(self):
+        pass
+
+
+class CaptureFailureTests(unittest.TestCase):
+    def test_a_line_the_capture_cannot_read_stops_the_round_but_not_the_log(self):
+        lines = [{"type": "user", "message": {"content": ["not a block"]}}, {"type": "system", "subtype": "init"}]
+        script = "import sys; sys.stdout.write(%r)" % "".join(json.dumps(line) + "\n" for line in lines)
+        with tempfile.TemporaryDirectory() as temp:
+            writer = archive.Writer(NullSession)
+            agent = runner.ArchivingAgent([sys.executable, "-c", script], None, temp, temp, "gpt-b", writer, runner.Count())
+            with self.assertRaisesRegex(archive.ArchiveError, "capture failed: AttributeError"):
+                agent.pump(30)
+            agent.close()
+            writer.close()
+            logged = (Path(temp) / "gpt-b.stdout.jsonl").read_bytes().splitlines()
+            self.assertEqual([json.loads(line) for line in logged], lines)  # the reader kept logging
+
+
 class McpToolTests(unittest.TestCase):
     def tools_list(self, *extra):
         process = subprocess.run([sys.executable, str(runner.GPT_REPEAT / "agentdb_mcp_server.py"), "--port", "1",
