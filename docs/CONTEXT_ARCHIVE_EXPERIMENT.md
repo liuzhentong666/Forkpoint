@@ -2,7 +2,7 @@
 
 # 上下文存档：实验设计
 
-状态：2026-10-23 在任何模型运行之前登记。同日经用户同意完成了试运行（见下文“试运行”，不计入样本），样本尚未运行。真实轮次须经用户同意使用模型额度。下文的离线检查和替身试运行都不调用模型。仅限本机，不访问任何云服务。
+状态：2026-10-23 在任何模型运行之前登记。同日经用户同意完成了试运行（见下文“试运行”，不计入样本）和 20 轮样本（见下文“样本结果”）：按采纳标准，在这个任务上没有证据支持存档。真实轮次须经用户同意使用模型额度。下文的离线检查和替身试运行都不调用模型。仅限本机，不访问任何云服务。
 
 ## 问题
 
@@ -124,6 +124,36 @@ CONTINUE:     Continue your current task from where you were.
 
 2026-10-23 19:35 在提交 24d0d55 上登记的 20 轮样本（`experiments/context_archive/results/2026-10-23`）被用户中途叫停：第 1 轮（A）和第 2 轮（B）已完成，均成功、各重置一次，主要指标均为 0（B 取回 3 次）；第 3、4 轮在准备阶段被中断；第 5–20 轮没有开始。运行器不能接着一次登记继续运行，因此样本在新目录中重新完整登记；这次中止的运行保留并在此报告，不计入样本，也不替换样本中的任何轮次。
 
+## 样本结果（2026-10-23）
+
+样本于 2026-10-23 22:22（北京时间）在提交 fb3072f 上重新完整登记并运行，20 轮全部记录：Claude Code 2.1.308，claude-opus-5-5，推理强度 xhigh。原始记录在 `experiments/context_archive/results/2026-10-23-run2`（不纳入版本库）；每轮的测试库名记录在各轮的 result.json 中，均保留。
+
+| | A（说明） | B（存档） |
+|---|---|---|
+| 成功 | 10 轮中 9 轮 | 10 轮中 8 轮 |
+| 失败的轮次 | 第 19 轮：Pro 订阅的会话额度用尽 | 第 2 轮：策略文件没有 14 行审计记录；第 20 轮：Pro 订阅的会话额度用尽 |
+| 重置 | 10 轮都在准备阶段重置一次；触发请求 10,385–13,040 token | 10 轮都在准备阶段重置一次；触发请求 12,210–13,185 token |
+| 重置前已读的审计版本 | 9 轮读完全部 14 个；第 7 轮读了 11 个 | 10 轮都读完全部 14 个 |
+| 交接 | 说明 2,244–2,896 字节（交接 2,396–3,048 字节） | 5,340–6,238 字节 |
+| 主要指标 | 10 轮均为 0 | 10 轮均为 0 |
+| 取回 | — | 8 轮各 3 次；第 2 轮和第 20 轮为 0 次 |
+| 重置后的调用（完成的轮次） | 16–21 次 | 16–24 次 |
+| gpt-b 重置后的输入 token（完成的轮次），中位数（范围） | 134,089（123,908–166,977） | 277,935（157,968–303,067） |
+| gpt-b 重置后的输出 token 中位数 | 6,175 | 6,192 |
+| 按标价估算合计 | 4.93 美元 | 5.78 美元 |
+
+20 轮中没有未回复的 MCP 请求、没有被重置截断的调用、没有重置期间被拒绝的调用；所有回复都来自 claude-opus-5-5，只有第 19、20 轮中 Claude Code 报告额度用尽的那条消息标为 `<synthetic>`。重复调用和失败调用（主要指标的两部分）在 20 轮中都是 0。
+
+第 2 轮（B）是唯一由 Agent 行为造成的失败：重置后的新进程说要先重读原始任务提示，却没有调用取回；它写出的 inventory.py 只有一行注释和 `STOCK = 95`，没有 14 行审计记录。`agent_lab.py verify` 只检查 `STOCK`，所以通过了；主要指标也没有计入它（没有重复，也没有失败的调用），只有成功标准中的审计表一项发现了它。
+
+与预测对照：
+
+- “重置发生在审计期间”：20 轮中只有第 7 轮（A）符合；其余 19 轮与试运行相同，模型并行读取，重置发生在 14 个版本都读完之后、提案之前。
+- “B 组需要 1–2 次取回”：未符合；完成的 B 轮中取回过的都用了 3 次。
+- “重置后 B 组的上下文更大”：符合；重置后的输入 token 中位数约为 A 组的两倍，大部分来自缓存读取。
+
+采纳标准：B 组主要指标的中位数（0）没有比 A 组（0）低至少 2，成功率（8/10）也低于 A 组（9/10）。结论：在这个任务上没有证据支持存档。A 组完成的 9 轮中，模型自己写的 2.2–2.9 KB 说明都保留了需要的 14 个值；存档没有减少重复或失败，重置后的输入 token 约为两倍。本结论的适用范围见上文“本实验回答不了的问题”。
+
 ## 回滚
 
 全部内容在 `experiments/context_archive/`、`results/context_archive/` 和本文件中，另有 `agentdb_mcp_server.py` 的可选 `--tool-file`，以及 `run_claude_repeats.py` 中拆出的调用处理步骤（`Trial.answer_without_helper` 等）和 `claude_command` 的 `instructions` 参数；后两项不改变 2026-10-20 运行器的行为（同一组调用逐条对比，回复、调用记录和命令行都相同）。删除或还原它们即恢复原状；`vc.*` 与项目数据库都没有改动。
@@ -134,7 +164,7 @@ CONTINUE:     Continue your current task from where you were.
 
 # Context Archive: Experiment Design
 
-Status: registered on 2026-10-23, before any model run. The pilot ran the same day with the user's approval (see "Pilot" below; not part of the sample); the sample has not run yet. Real rounds need the user's approval for model quota. The offline checks and the stand-in dry run below call no model. Local only; no cloud service is accessed.
+Status: registered on 2026-10-23, before any model run. The pilot (see "Pilot" below; not part of the sample) and the 20-round sample (see "Sample results" below) ran the same day with the user's approval: by the adoption rule, there is no evidence for the archive on this task. Real rounds need the user's approval for model quota. The offline checks and the stand-in dry run below call no model. Local only; no cloud service is accessed.
 
 ## Question
 
@@ -255,6 +285,36 @@ The design is unchanged; the sample runs as registered.
 ## Stopped first sample attempt (2026-10-23, not part of the sample)
 
 The 20-round sample registered at 19:35 on 2026-10-23 at commit 24d0d55 (`experiments/context_archive/results/2026-10-23`) was stopped by the user partway: round 1 (A) and round 2 (B) had completed, both successful with one reset each and a primary count of 0 (B fetched 3 times); rounds 3 and 4 were cut off in the preparation phase; rounds 5–20 never started. The runner cannot continue a registration, so the sample was registered again in full in a new folder; this stopped attempt is kept and reported here, is not part of the sample, and replaces no round in it.
+
+## Sample results (2026-10-23)
+
+The sample was registered again in full and run at 22:22 (Beijing time) on 2026-10-23 at commit fb3072f, with all 20 rounds recorded: Claude Code 2.1.308, claude-opus-5-5 at xhigh effort. Raw records are in `experiments/context_archive/results/2026-10-23-run2` (not in the repository); each round's test database is named in its result.json and kept.
+
+| | A (note) | B (archive) |
+|---|---|---|
+| Success | 9 of 10 rounds | 8 of 10 rounds |
+| Failed rounds | round 19: the Pro subscription's session limit | round 2: the policy had none of the 14 audit lines; round 20: the Pro subscription's session limit |
+| Reset | once in every round, in the preparation phase; trigger request 10,385–13,040 tokens | once in every round, in the preparation phase; trigger request 12,210–13,185 tokens |
+| Audited revisions read before the reset | all 14 in 9 rounds; 11 in round 7 | all 14 in all 10 rounds |
+| Handoff | note 2,244–2,896 bytes (handoff 2,396–3,048 bytes) | 5,340–6,238 bytes |
+| Primary metric | 0 in all 10 rounds | 0 in all 10 rounds |
+| Fetches | — | 3 in each of 8 rounds; 0 in rounds 2 and 20 |
+| Calls after the reset (completed rounds) | 16–21 | 16–24 |
+| gpt-b input tokens after the reset (completed rounds), median (range) | 134,089 (123,908–166,977) | 277,935 (157,968–303,067) |
+| gpt-b output tokens after the reset, median | 6,175 | 6,192 |
+| List-price estimate, total | $4.93 | $5.78 |
+
+Across the 20 rounds no MCP request went unanswered, no call was cut off by a reset and none was refused during one; every response came from claude-opus-5-5, except the message in which Claude Code reported the exhausted limit in rounds 19 and 20, which is labelled `<synthetic>`. Repeats and failed calls, the two parts of the primary metric, were 0 in all 20 rounds.
+
+Round 2 (B) is the only failure caused by the agent's behaviour: after the reset the new process said it would first re-read the original task prompt, but never called fetch; the inventory.py it wrote had one comment line and `STOCK = 95`, and none of the 14 audit lines. `agent_lab.py verify` checks only `STOCK`, so it passed, and the primary metric did not count it either (no repeat, no failed call); only the audit-table part of the success rule caught it.
+
+Against the predictions:
+
+- "The reset lands during the audit": met only in round 7 (A). In the other 19 rounds, as in the pilot, the model read in parallel and the reset came after all 14 revisions had been read, before the proposal.
+- "B needs 1–2 fetches": not met; every completed B round that fetched used 3.
+- "B's context is larger after the reset": met; B's median input tokens after the reset were about twice A's, mostly cache reads.
+
+Adoption rule: B's median primary count (0) is not at least 2 below A's (0), and its success rate (8/10) is lower than A's (9/10). Conclusion: no evidence for the archive on this task. In all 9 completed A rounds, the model's own 2.2–2.9 KB note kept the 14 values it needed; the archive did not reduce repeats or failures, and roughly doubled the input tokens after the reset. How far this conclusion reaches is set out in "What this experiment cannot tell us" above.
 
 ## Rollback
 
