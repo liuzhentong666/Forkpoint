@@ -64,7 +64,13 @@ class Coordinator(socketserver.ThreadingTCPServer):
 
 
 class Trial:
-    """Per-round tool handler: identical gating, budget, helper call and audit to the GPT run."""
+    """Per-round tool handler: identical gating, budget, helper call and audit to the GPT run.
+
+    handle() runs its steps in order; a subclass (experiments/context_archive) overrides
+    answer_without_helper or budget rather than copying them.
+    """
+
+    budget = 40  # tool calls per agent across its phases
 
     def __init__(self, args, folder, summary):
         self.args, self.folder, self.summary = args, folder, summary
@@ -84,32 +90,50 @@ class Trial:
                       "tool": params.get("name"), "arguments": values, "started_ns": time.time_ns(),
                       "tool_use_id": (params.get("_meta") or {}).get("claudecode/toolUseId")}
             self.summary["calls"].append(record)
-            if actor not in self.call_counts or params.get("name") != "agentdb":
-                return {"error": "unknown_tool_or_actor"}
-            self.call_counts[actor] += 1
-            if self.call_counts[actor] > 40:
-                return {"error": "tool_budget_exhausted"}
-            if not isinstance(values, dict) or set(values)-({"action"} | set(FIELDS)) or any(not isinstance(v, str) for v in values.values()):
-                return {"error": "invalid_arguments"}
-            action = values.get("action")
-            if action not in ACTIONS:
-                return {"error": "unknown_action"}
-            if self.phase == "prepare_inventory" and action == "merge":
-                return {"error": "phase_gate", "detail": "Prepare only; the coordinator will start the merge phase later."}
-            before = self.current
-            record["executed"] = True
-            try:
-                response = run_helper(self.args, self.database, action, actor, values)
-            finally:
-                # Includes failed mutations: catch a committed effect even if a client response failed.
-                if action in ("fork", "propose", "merge"):
-                    self.audit_after(record, actor, action, before)
-            record.update(finished_ns=time.time_ns(), exit_code=response["exit_code"], error=response.get("error"))
-            decoded = response.get("result")
-            if isinstance(decoded, dict) and "sqlstate" in decoded:
-                record["sqlstate"] = decoded["sqlstate"]
-            save(self.folder / "result.json", self.summary)
-            return response
+            reply = self.answer_without_helper(actor, params, values, record)
+            return reply if reply is not None else self.run_call(actor, values, record)
+
+    def answer_without_helper(self, actor, params, values, record):
+        """The reply to a call that must not reach agent_lab.py (a refusal), or None to run it."""
+        return self.count_call(actor, params) or self.check_arguments(values)
+
+    def count_call(self, actor, params):
+        """Count the call against its agent's budget; a refusal if it may not run."""
+        if actor not in self.call_counts or params.get("name") != "agentdb":
+            return {"error": "unknown_tool_or_actor"}
+        self.call_counts[actor] += 1
+        if self.call_counts[actor] > self.budget:
+            return {"error": "tool_budget_exhausted"}
+        return None
+
+    def check_arguments(self, values):
+        """A refusal for arguments or an action the tool does not take now, else None."""
+        if not isinstance(values, dict) or set(values)-({"action"} | set(FIELDS)) or any(not isinstance(v, str) for v in values.values()):
+            return {"error": "invalid_arguments"}
+        action = values.get("action")
+        if action not in ACTIONS:
+            return {"error": "unknown_action"}
+        if self.phase == "prepare_inventory" and action == "merge":
+            return {"error": "phase_gate", "detail": "Prepare only; the coordinator will start the merge phase later."}
+        return None
+
+    def run_call(self, actor, values, record):
+        """Run the call through agent_lab.py, audit a write, and record the outcome."""
+        action = values["action"]
+        before = self.current
+        record["executed"] = True
+        try:
+            response = run_helper(self.args, self.database, action, actor, values)
+        finally:
+            # Includes failed mutations: catch a committed effect even if a client response failed.
+            if action in ("fork", "propose", "merge"):
+                self.audit_after(record, actor, action, before)
+        record.update(finished_ns=time.time_ns(), exit_code=response["exit_code"], error=response.get("error"))
+        decoded = response.get("result")
+        if isinstance(decoded, dict) and "sqlstate" in decoded:
+            record["sqlstate"] = decoded["sqlstate"]
+        save(self.folder / "result.json", self.summary)
+        return response
 
     def audit_after(self, record, actor, action, before):
         summary, call_id = self.summary, record["call_id"]
@@ -139,13 +163,13 @@ class Trial:
         record["audit_recorded"] = True
 
 
-def claude_command(args, mcp_config):
+def claude_command(args, mcp_config, instructions=CLAUDE_INSTRUCTIONS):
     launcher = [args.python, str(args.claude)] if args.claude.suffix == ".py" else [str(args.claude)]
     return launcher + ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
                        "--model", args.model, "--effort", args.effort,
                        "--tools", "", "--mcp-config", str(mcp_config), "--strict-mcp-config",
                        "--allowedTools", args.tool_name, "--permission-mode", "dontAsk",
-                       "--append-system-prompt", CLAUDE_INSTRUCTIONS,
+                       "--append-system-prompt", instructions,
                        "--disable-slash-commands", "--no-session-persistence", "--no-chrome"]
 
 

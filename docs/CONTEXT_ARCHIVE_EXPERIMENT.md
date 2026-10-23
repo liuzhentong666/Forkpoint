@@ -96,7 +96,7 @@ CONTINUE:     Continue your current task from where you were.
 
 ## 回滚
 
-全部内容在 `experiments/context_archive/`、`results/context_archive/` 和本文件中，另有 `agentdb_mcp_server.py` 的可选 `--tool-file`。删除它们即恢复原状；`vc.*` 与项目数据库都没有改动。
+全部内容在 `experiments/context_archive/`、`results/context_archive/` 和本文件中，另有 `agentdb_mcp_server.py` 的可选 `--tool-file`，以及 `run_claude_repeats.py` 中拆出的调用处理步骤（`Trial.answer_without_helper` 等）和 `claude_command` 的 `instructions` 参数；后两项不改变 2026-10-20 运行器的行为（同一组调用逐条对比，回复、调用记录和命令行都相同）。删除或还原它们即恢复原状；`vc.*` 与项目数据库都没有改动。
 
 ---
 
@@ -198,4 +198,4 @@ As with gpt_repeat, raw records (stream-json, MCP logs, each round's result.json
 
 ## Rollback
 
-Everything is in `experiments/context_archive/`, `results/context_archive/` and this document, plus the optional `--tool-file` of `agentdb_mcp_server.py`. Removing them restores the previous state; `vc.*` and the project database are unchanged.
+Everything is in `experiments/context_archive/`, `results/context_archive/` and this document, plus the optional `--tool-file` of `agentdb_mcp_server.py`, and in `run_claude_repeats.py` the call-handling steps split out of `Trial.handle` (`answer_without_helper` and the steps it calls) and the `instructions` parameter of `claude_command`; neither changes what the 2026-10-20 runner does (the same calls, compared one by one, give the same replies, call records and command line). Removing or reverting them restores the previous state; `vc.*` and the project database are unchanged.

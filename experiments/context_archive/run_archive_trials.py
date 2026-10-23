@@ -37,7 +37,8 @@ from claude_scoring import TOKEN_KEYS, add_tokens, model_usage_tokens, read_json
 from claude_stream import ClaudeAgent, child_environment  # noqa: E402
 from codex_rpc import wire  # noqa: E402
 from repeat_scoring import wilson  # noqa: E402
-from run_claude_repeats import ACTORS, CLAUDE_INSTRUCTIONS, Coordinator, Trial, check_init, save, sha256  # noqa: E402
+from run_claude_repeats import (ACTORS, CLAUDE_INSTRUCTIONS, Coordinator, Trial, check_init, claude_command,  # noqa: E402
+                                save, sha256)
 from run_gpt_repeats import ACTIONS, FIELDS, LAND_B, RUN_A, TOOL, audit, connect_owner, run_helper  # noqa: E402
 
 K = 14
@@ -236,76 +237,46 @@ class ArchivingAgent(ClaudeAgent):
 
 
 class ArchiveTrial(Trial):
-    """Trial's gating, helper calls and audits with a 60-call budget, setup B's fetch, and a refusal
-    for an agent whose process is being replaced. Every call is recorded, refusals included."""
+    """Trial with a 60-call budget, a refusal for an agent whose process is being replaced, and setup B's
+    fetch. Every call is recorded with its sequence number and every refusal with its error, which
+    after_switch counts; Trial records neither."""
+
+    budget = CALL_BUDGET
 
     def __init__(self, args, folder, summary, setup):
         super().__init__(args, folder, summary)
         self.setup, self.switching, self.fetch_sql = setup, set(), None
 
-    def handle(self, actor, params):
-        with self.lock:  # one tool call at a time per round, as in Trial
-            self.sequence += 1
-            values = params.get("arguments")
-            record = {"call_id": f"{self.sequence:03d}-{actor}", "sequence": self.sequence, "actor": actor,
-                      "phase": self.phase, "tool": params.get("name"), "arguments": values,
-                      "started_ns": time.time_ns(), "tool_use_id": (params.get("_meta") or {}).get("claudecode/toolUseId")}
-            self.summary["calls"].append(record)
+    def answer_without_helper(self, actor, params, values, record):
+        record["sequence"] = self.sequence
+        if params.get("name") == "agentdb" and actor in self.switching:
+            record["refused"] = "context_switch"
+            refusal = {"error": "context_switch", "detail": "Your context is being reset; this call did not run."}
+        else:
+            refusal = self.count_call(actor, params)
+            if refusal is None:
+                fetched = self.fetch(actor, values, record)
+                if fetched is not None:
+                    return fetched
+                refusal = self.check_arguments(values)
+        if refusal is not None:
+            record.update(refusal)
+        return refusal
 
-            def refuse(error, **extra):
-                record.update(error=error, **extra)
-                return {"error": error, **({"detail": extra["detail"]} if "detail" in extra else {})}
-            if actor not in self.call_counts or params.get("name") != "agentdb":
-                return refuse("unknown_tool_or_actor")
-            if actor in self.switching:
-                record["refused"] = "context_switch"
-                return refuse("context_switch", detail="Your context is being reset; this call did not run.")
-            self.call_counts[actor] += 1
-            if self.call_counts[actor] > CALL_BUDGET:
-                return refuse("tool_budget_exhausted")
-            allowed = {"action"} | set(FIELDS) | ({"entries"} if self.setup == "B" else set())
-            if not isinstance(values, dict) or set(values) - allowed:
-                return refuse("invalid_arguments")
-            action = values.get("action")
-            if action == "fetch" and self.setup == "B":
-                requested = values.get("entries")
-                valid = fetch_reply({}, requested).get("error") != "invalid_entries"
-                found = {e[0]: e for e in load_entries(self.fetch_sql, actor, requested)} if valid else {}
-                reply = fetch_reply(found, requested)
-                record.update(executed=True, finished_ns=time.time_ns(), exit_code=2 if "error" in reply else 0,
-                              error=reply.get("error"))
-                save(self.folder / "result.json", self.summary)
-                return reply
-            if "entries" in values or any(not isinstance(v, str) for v in values.values()):
-                return refuse("invalid_arguments")
-            if action not in ACTIONS:
-                return refuse("unknown_action")
-            if self.phase == "prepare_inventory" and action == "merge":
-                return refuse("phase_gate", detail="Prepare only; the coordinator will start the merge phase later.")
-            before = self.current
-            record["executed"] = True
-            try:
-                response = run_helper(self.args, self.database, action, actor, values)
-            finally:
-                if action in ("fork", "propose", "merge"):
-                    self.audit_after(record, actor, action, before)
-            record.update(finished_ns=time.time_ns(), exit_code=response["exit_code"], error=response.get("error"))
-            decoded = response.get("result")
-            if isinstance(decoded, dict) and "sqlstate" in decoded:
-                record["sqlstate"] = decoded["sqlstate"]
-            save(self.folder / "result.json", self.summary)
-            return response
-
-
-def command(args, mcp_config):
-    """run_claude_repeats.claude_command with this experiment's instructions (60-call budget)."""
-    launcher = [args.python, str(args.claude)] if args.claude.suffix == ".py" else [str(args.claude)]
-    return launcher + ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
-                       "--model", args.model, "--effort", args.effort,
-                       "--tools", "", "--mcp-config", str(mcp_config), "--strict-mcp-config",
-                       "--allowedTools", args.tool_name, "--permission-mode", "dontAsk",
-                       "--append-system-prompt", INSTRUCTIONS,
-                       "--disable-slash-commands", "--no-session-persistence", "--no-chrome"]
+    def fetch(self, actor, values, record):
+        """Setup B's fetch, answered from the archive; None for any other call (check_arguments refuses
+        a fetch with unknown arguments)."""
+        if (self.setup != "B" or not isinstance(values, dict) or values.get("action") != "fetch"
+                or set(values) - ({"action", "entries"} | set(FIELDS))):
+            return None
+        requested = values.get("entries")
+        valid = fetch_reply({}, requested).get("error") != "invalid_entries"
+        found = {e[0]: e for e in load_entries(self.fetch_sql, actor, requested)} if valid else {}
+        reply = fetch_reply(found, requested)
+        record.update(executed=True, finished_ns=time.time_ns(), exit_code=2 if "error" in reply else 0,
+                      error=reply.get("error"))
+        save(self.folder / "result.json", self.summary)
+        return reply
 
 
 class Round:
@@ -331,7 +302,7 @@ class Round:
         mcp_config = self.folder / f"{actor}.{name}.mcp-config.json"
         save(mcp_config, {"mcpServers": {"agentdb": {"type": "stdio", "command": self.args.python,
                                                      "args": server, "env": {}}}})
-        agent = ArchivingAgent(command(self.args, mcp_config), self.env, self.workdir, directory, actor,
+        agent = ArchivingAgent(claude_command(self.args, mcp_config, INSTRUCTIONS), self.env, self.workdir, directory, actor,
                                self.writer, self.counts[actor], limit)
         self.contexts[actor].append(name)
         self.processes.setdefault(name, []).append(actor)
@@ -515,7 +486,7 @@ def register(args):
                       "handoff_bytes": archive.HANDOFF_BYTES, "fetch_entries": archive.FETCH_ENTRIES,
                       "fetch_bytes": archive.FETCH_BYTES, "max_switches_per_agent": archive.MAX_SWITCHES},
         "tools": {"A": TOOL, "B": TOOL_B}, "tool_name_seen_by_model": args.tool_name,
-        "claude_command": command(args, Path("<run>/<actor>.<ctx>.mcp-config.json")),
+        "claude_command": claude_command(args, Path("<run>/<actor>.<ctx>.mcp-config.json"), INSTRUCTIONS),
         "child_environment": {"CLAUDE_CONFIG_DIR": str(args.config_dir), **{
             k: v for k, v in child_environment(args.config_dir, args.child_env).items() if k.startswith(("CLAUDE", "DISABLE"))}},
         "agent_working_directory": str(args.workdir) + "/run-NN (empty, outside any git repository, no CLAUDE.md or AGENTS.md)",
