@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-23T04:30:27.375058+00:00",
+  "recorded_at_utc": "2026-10-23T09:38:53.334210+00:00",
   "token_model": {
     "fits": {
       "without_signatures": {
@@ -52,7 +52,7 @@
     "in_full_bytes": 4096
   },
   "database": {
-    "name": "agentdb_test_gpt_8be77538ad",
+    "name": "agentdb_test_gpt_581cefdd28",
     "dropped": true
   },
   "rows": [
@@ -946,7 +946,7 @@
     "passed": true
   },
   "sources_sha256": {
-    "experiments/context_archive/archive.py": "1843de7aef61a62badea10127fd7d23c5c153203a972eadced41c10767060a4d",
+    "experiments/context_archive/archive.py": "a3ff913839cace42d718359e70b81afe3c23985016f3a899ae66ef0714905e11",
     "experiments/context_archive/long_task.py": "b72a3fd88557586f990b08ea4cfa3e78c167fe62353119caccbe8a29a3ec6191",
     "agent_lab.py": "b9aae29f2646c52420f6c0cb64f05dd4d955665308751137cc77df55ad5a9e89"
   },

@@ -19,7 +19,7 @@ Agent 的上下文在任务中途被重置后，如果每一条上下文条目�
 - `experiments/context_archive/archive.sql`（schema `xc`，只装入本实验的测试库）：`xc.blob` 以 SHA-256 为键，每个不同的正文只存一次（CHECK 要求键等于正文的 SHA-256）；`xc.entry` 为每个任务的条目依次编号 1、2、3……；`xc.append` 拒绝与正文不符的哈希（22023）；`xc.fetch` 按编号取回。
 - 采集（`archive.py`）：Claude Code 输出的每一行带消息内容的 stream-json，以及发给它的每一条提示，各是一个条目，按原始字节保存。一个写入线程用一个 `db.Session` 依次追加；写入失败或积压时整轮停止（`archive_error`），不留空缺。
 - 交接（B 组，`render_handoff`）：固定的开头；较早的每对调用与结果、或单个条目，各一行由代码生成的标签，以 JSON 字符串写出；最新的条目原样写出，最多 4,096 字节；全文最多 8 KB；不写出思考块的签名和空的思考块。相同的条目生成相同的字节。
-- 取回（B 组）：`entries` 为 1–8 个条目编号；一次回复最多 16 KB，放不下的条目会列出编号。
+- 取回（B 组）：`entries` 为 1–8 个条目编号（每个在 1 到 2,147,483,647 之间，即 PostgreSQL 整数范围，查询前检查）；一次回复最多 16 KB，放不下的条目会列出编号。
 
 ## 任务
 
@@ -85,7 +85,7 @@ CONTINUE:     Continue your current task from where you were.
 
 | 内容 | 命令 |
 |---|---|
-| 测试 | `python -m unittest discover -s experiments/context_archive -v`：46 项，自建并删除测试库；其中替身试运行约需 2 分钟 |
+| 测试 | `python -m unittest discover -s experiments/context_archive -v`：48 项，自建并删除测试库；其中替身试运行约需 2 分钟 |
 | 重放闸门 | `python experiments/context_archive/replay.py` |
 | 长任务离线检查 | `python experiments/context_archive/long_task.py` |
 | 替身试运行 | `python experiments/context_archive/run_archive_trials.py --claude experiments/context_archive/fake_claude.py --config-dir <目录> --workdir <新目录> --output <新目录> --runs-per-setup 1 --pilot` |
@@ -121,7 +121,7 @@ When an agent's context is reset mid-task, does keeping every context entry word
 - `experiments/context_archive/archive.sql` (schema `xc`, installed only into this experiment's test databases): `xc.blob` keeps each distinct body once under its SHA-256 (a CHECK requires the key to equal the body's SHA-256); `xc.entry` numbers each task's entries 1, 2, 3 …; `xc.append` refuses a hash that does not match its body (22023); `xc.fetch` returns entries by number.
 - Capture (`archive.py`): each stream-json line from Claude Code that carries message content, and each prompt sent to it, is one entry, stored as its exact bytes. A writer thread with one `db.Session` appends them in order; a failed or backed-up write stops the round (`archive_error`) rather than leave a gap.
 - Handoff (setup B, `render_handoff`): a fixed header; one label made by code per older call-and-result pair or single entry, written as a JSON string; the newest entries word for word, up to 4,096 bytes; at most 8 KB in all; no thinking signatures and no empty thinking blocks. The same entries give the same bytes.
-- Fetch (setup B): `entries` is 1–8 entry numbers; one reply is at most 16 KB, and entries that did not fit are named.
+- Fetch (setup B): `entries` is 1–8 entry numbers, each from 1 to 2,147,483,647 (PostgreSQL's integer range, checked before the query); one reply is at most 16 KB, and entries that did not fit are named.
 
 ## Task
 
@@ -187,7 +187,7 @@ The archive is kept for further work only if B's median primary count is at leas
 
 | Purpose | Command |
 |---|---|
-| Tests | `python -m unittest discover -s experiments/context_archive -v`: 46 tests, building and dropping their own test databases; the stand-in dry run takes about 2 minutes of it |
+| Tests | `python -m unittest discover -s experiments/context_archive -v`: 48 tests, building and dropping their own test databases; the stand-in dry run takes about 2 minutes of it |
 | Replay gate | `python experiments/context_archive/replay.py` |
 | Long-task check | `python experiments/context_archive/long_task.py` |
 | Stand-in dry run | `python experiments/context_archive/run_archive_trials.py --claude experiments/context_archive/fake_claude.py --config-dir <dir> --workdir <new dir> --output <new dir> --runs-per-setup 1 --pilot` |

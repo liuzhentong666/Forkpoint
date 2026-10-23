@@ -1,8 +1,8 @@
 {
-  "recorded_at_utc": "2026-10-23T04:29:32.651986+00:00",
+  "recorded_at_utc": "2026-10-23T09:38:03.200980+00:00",
   "recorded": "experiments/gpt_repeat/results/2026-10-20-claude",
   "database": {
-    "name": "agentdb_test_xcreplay_cd7b0f37",
+    "name": "agentdb_test_xcreplay_a7e4c1d5",
     "dropped": true
   },
   "constants": {
@@ -12,8 +12,8 @@
   },
   "sources_sha256": {
     "experiments/context_archive/archive.sql": "b240c4e9a598b8489fdeaada5f9cf2564a931870f31685be0c23f55383439801",
-    "experiments/context_archive/archive.py": "1843de7aef61a62badea10127fd7d23c5c153203a972eadced41c10767060a4d",
-    "experiments/context_archive/replay.py": "db2ed6421a1d581130e8df23e15266f56fc091eb92f13b10202cfbd20465e51b"
+    "experiments/context_archive/archive.py": "a3ff913839cace42d718359e70b81afe3c23985016f3a899ae66ef0714905e11",
+    "experiments/context_archive/replay.py": "60bfdef4694dc3e084e9b4ac6b774a1c258ecd1e82bf565ffae0d16b94b9f42e"
   },
   "processes": 20,
   "entries": 886,
