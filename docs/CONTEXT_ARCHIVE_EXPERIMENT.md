@@ -2,7 +2,7 @@
 
 # 上下文存档：实验设计
 
-状态：2026-10-23 在任何模型运行之前登记。尚未运行任何模型。真实轮次须经用户同意使用模型额度；先各跑一轮试运行（pilot），单独报告，不计入样本。下文的离线检查和替身试运行都不调用模型。仅限本机，不访问任何云服务。
+状态：2026-10-23 在任何模型运行之前登记。同日经用户同意完成了试运行（见下文“试运行”，不计入样本），样本尚未运行。真实轮次须经用户同意使用模型额度。下文的离线检查和替身试运行都不调用模型。仅限本机，不访问任何云服务。
 
 ## 问题
 
@@ -94,6 +94,32 @@ CONTINUE:     Continue your current task from where you were.
 
 原始记录（stream-json、MCP 日志、每轮的 result.json）与 gpt_repeat 一样只保存在作者的机器上：`experiments/context_archive/results/` 不纳入版本库。每轮的测试库 `agentdb_test_gpt_*` 保留以便核查。`agentdb_mcp_server.py` 新增的 `--tool-file` 为可选项；不给出时 tools/list 的回复与之前逐字节相同（有测试）。
 
+## 试运行（2026-10-23，不计入样本）
+
+经用户同意，在提交 dde9c46 上以 `--pilot` 每组各跑一轮：Claude Code 2.1.308（2026-10-20 用的 2.1.299 已不在本机），claude-opus-5-5，推理强度 xhigh。原始记录在 `experiments/context_archive/results/2026-10-23-pilot`（不纳入版本库）；测试库为 `agentdb_test_gpt_a76ca4b793`（A）和 `agentdb_test_gpt_af244ce109`（B）。
+
+| | A | B |
+|---|---|---|
+| 是否成功 | 是 | 是 |
+| 重置（gpt-b，准备阶段） | 读完全部 14 个版本、read-code 和 fork 之后；请求 12,409 token | 读完全部 14 个版本和 read-code 之后；请求 12,177 token |
+| 交接 | 说明 2,181 字节（交接 2,333 字节） | 5,443 字节 |
+| 重置后的调用 | 21 次；重复 0，失败 0 | 21 次，其中取回 3 次（共 15 个条目）；重复 0，失败 0 |
+| 主要指标 | 0 | 0 |
+| 审计表 | 格式完全符合；14 个全部正确 | 格式完全符合；14 个全部正确 |
+| gpt-b 重置后的 token：输入（其中缓存读取）/ 输出 | 159,299（140,967）/ 7,445 | 264,312（236,730）/ 5,641 |
+| 本轮按标价估算 | 0.57 美元 | 0.62 美元 |
+
+两轮中每个 MCP 调用都有回复并记录在案（49 和 48 次），没有被重置截断的调用，每个回复都来自 claude-opus-5-5，最终 verify 退出码为 0。
+
+与预测对照：
+
+- “重置发生在审计期间”：未符合。模型并行发出审计读取，每次回复 7–8 个，请求大小从约 3.4K 到 8.2K 再到 12.2–12.4K token；第一个超过 10,000 的请求出现在 14 个版本都读完之后。离线检查假设每次回复最多读 4 个。重置仍在提案之前，此时 14 个值、规则和格式只在上下文中。
+- “B 组需要 1–2 次取回”：未符合，用了 3 次。
+- “重置后 B 组的上下文更大”：符合，重置后的输入 token 多约 66%，大部分来自缓存读取。
+- A 组的说明里没有完整的版本 ID，但有全部 14 个 8 字符前缀及其库存、基线、目标 95 和分支名。
+
+设计不变，样本按登记执行。
+
 ## 回滚
 
 全部内容在 `experiments/context_archive/`、`results/context_archive/` 和本文件中，另有 `agentdb_mcp_server.py` 的可选 `--tool-file`，以及 `run_claude_repeats.py` 中拆出的调用处理步骤（`Trial.answer_without_helper` 等）和 `claude_command` 的 `instructions` 参数；后两项不改变 2026-10-20 运行器的行为（同一组调用逐条对比，回复、调用记录和命令行都相同）。删除或还原它们即恢复原状；`vc.*` 与项目数据库都没有改动。
@@ -104,7 +130,7 @@ CONTINUE:     Continue your current task from where you were.
 
 # Context Archive: Experiment Design
 
-Status: registered on 2026-10-23, before any model run. No model has run. Real rounds need the user's approval for model quota; a pilot round of each setup comes first and is reported separately, outside the sample. The offline checks and the stand-in dry run below call no model. Local only; no cloud service is accessed.
+Status: registered on 2026-10-23, before any model run. The pilot ran the same day with the user's approval (see "Pilot" below; not part of the sample); the sample has not run yet. Real rounds need the user's approval for model quota. The offline checks and the stand-in dry run below call no model. Local only; no cloud service is accessed.
 
 ## Question
 
@@ -195,6 +221,32 @@ The archive is kept for further work only if B's median primary count is at leas
 | Sample (needs the user's approval) | The same without `--pilot`, with `--runs-per-setup 10` and output to `experiments/context_archive/results/<date>` |
 
 As with gpt_repeat, raw records (stream-json, MCP logs, each round's result.json) stay on the author's machine only: `experiments/context_archive/results/` is not in the repository. Each round's `agentdb_test_gpt_*` test database is kept for checking. The new `--tool-file` of `agentdb_mcp_server.py` is optional; without it the tools/list reply is byte for byte what it was (tested).
+
+## Pilot (2026-10-23, not part of the sample)
+
+With the user's approval, one round of each setup was run with `--pilot` at commit dde9c46: Claude Code 2.1.308 (the 2.1.299 used on 2026-10-20 is no longer on this machine), claude-opus-5-5 at xhigh effort. Raw records are in `experiments/context_archive/results/2026-10-23-pilot` (not in the repository); the test databases are `agentdb_test_gpt_a76ca4b793` (A) and `agentdb_test_gpt_af244ce109` (B).
+
+| | A | B |
+|---|---|---|
+| Success | yes | yes |
+| Reset (gpt-b, preparation) | after all 14 audit reads, read-code and fork; request 12,409 tokens | after all 14 audit reads and read-code; request 12,177 tokens |
+| Handoff | note 2,181 bytes (handoff 2,333 bytes) | 5,443 bytes |
+| Calls after the reset | 21; 0 repeats, 0 failed | 21, of which 3 fetches (15 entries); 0 repeats, 0 failed |
+| Primary metric | 0 | 0 |
+| Audit table | exact layout; all 14 correct | exact layout; all 14 correct |
+| gpt-b tokens after the reset: input (of which cache read) / output | 159,299 (140,967) / 7,445 | 264,312 (236,730) / 5,641 |
+| List-price estimate for the round | $0.57 | $0.62 |
+
+In both rounds every MCP call was answered and recorded (49 and 48), no call was cut off by the reset, every response came from claude-opus-5-5, and the final verify exited 0.
+
+Against the predictions:
+
+- "The reset lands during the audit": not met. The model issued the audit reads in parallel, 7–8 per response, so its requests went from about 3.4K to 8.2K to 12.2–12.4K tokens; the first request over 10,000 came after all 14 reads. The offline check had assumed at most 4 reads per response. The reset still came before the proposal, when the 14 values, the rule and the format were only in context.
+- "B needs 1–2 fetches": not met; it used 3.
+- "B's context is larger after the reset": met; about 66% more input tokens after the reset, most of them cache reads.
+- A's note held no full revision ID, but all 14 eight-character prefixes with their stocks, the baseline, the target 95 and the branch.
+
+The design is unchanged; the sample runs as registered.
 
 ## Rollback
 
