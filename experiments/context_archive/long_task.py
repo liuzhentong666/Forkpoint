@@ -41,8 +41,11 @@ from codex_rpc import wire  # noqa: E402
 from run_gpt_repeats import run_helper  # noqa: E402
 
 STOCK_HISTORY = (118, 104, 111, 100, 109, 115, 103, 121, 107, 112, 105, 119, 102, 116, 108, 113)
-TARGET_STOCK = min(STOCK_HISTORY) - 5
 CANDIDATES = (8, 10, 12, 14, 16)
+# agent_lab verify and the success check require stock 95. The prompt's rule, the lowest audited stock
+# minus 5, must give that for every candidate K, so it is checked over the first K values, not all of them.
+TARGET_STOCK = 95
+assert all(min(STOCK_HISTORY[:k]) - 5 == TARGET_STOCK for k in CANDIDATES)
 CALL_BUDGET = 60        # per agent, both phases; 40 in the recorded rounds
 RECOVERY_CALLS = 15     # gpt-b's median calls in the recorded recovery phase (2026-10-20)
 BATCH = 4               # audit reads per response in the batched pattern
@@ -59,7 +62,7 @@ Save a Python policy that starts with one comment line per audited revision, in 
 Create your own gpt-b proposal branch, submit code and data together, inspect the diff and code.
 This is preparation only: do not merge yet. Report your proposal revision and original expected main.
 """
-assert RULE in PREPARE_AUDIT and TARGET_STOCK == 95
+assert RULE in PREPARE_AUDIT
 
 
 def context_bytes(block, signatures):
