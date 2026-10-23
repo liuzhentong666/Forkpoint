@@ -179,8 +179,11 @@ class TrialTests(unittest.TestCase):
         reply = self.handle(trial, action="fetch", entries=[1])
         self.assertEqual(reply["result"]["entries"], [{"entry": 1, "kind": "prompt", "content": {"type": "text", "text": "the prompt"}}])
         self.assertEqual(self.handle(trial, action="fetch", entries=["1"])["error"], "invalid_entries")
+        # Beyond PostgreSQL's integer range: refused before the query, and recorded as a failed call.
+        self.assertEqual(self.handle(trial, action="fetch", entries=[3000000000])["error"], "invalid_entries")
         self.assertEqual(self.handle(self.reset(self.trial("B")), action="fetch", entries=[2])["error"], "unknown_entry")
-        self.assertEqual([c.get("error") for c in self.summary["calls"]], [None, "invalid_entries", "unknown_entry"])
+        self.assertEqual([c.get("error") for c in self.summary["calls"]],
+                         [None, "invalid_entries", "invalid_entries", "unknown_entry"])
 
 
 class NullSession:

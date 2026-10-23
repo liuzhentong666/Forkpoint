@@ -55,7 +55,7 @@ TOOL_B = {"type": "function", "name": TOOL["name"],
                          "returns your own earlier entries word for word.",
           "inputSchema": {"type": "object", "properties": {
               **TOOL["inputSchema"]["properties"], "action": {"type": "string", "enum": ACTIONS + ["fetch"]},
-              "entries": {"type": "array", "items": {"type": "integer", "minimum": 1},
+              "entries": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": archive.MAX_ENTRY},
                           "minItems": 1, "maxItems": archive.FETCH_ENTRIES}},
               "required": ["action"], "additionalProperties": False}}
 # Every project file a run loads or runs (a test checks the loaded modules are all here).

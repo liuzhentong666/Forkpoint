@@ -23,6 +23,7 @@ LIMIT_TOKENS = 10000   # a request with more input than this triggers a switch
 IN_FULL_BYTES = 4096   # newest entries shown word for word after a switch
 HANDOFF_BYTES = 8192   # the whole rendered handoff, header included
 FETCH_ENTRIES = 8      # entries per fetch call
+MAX_ENTRY = 2**31 - 1  # entry numbers are PostgreSQL integers; a larger one is refused before any SQL
 FETCH_BYTES = 16384    # one fetch result, below Claude Code's 10,000-token MCP output warning
 # One reset per agent and round. The 10,000-token limit is a scaled-down window: after a
 # reset, B's handoff (~2.9K tokens) and the system prompt (~2.6K) leave ~4.5K tokens, which
@@ -353,8 +354,10 @@ def fetch_reply(found, requested):
     found maps entry numbers to the stored (seq, kind, label, body) of the requested ones.
     """
     if (not isinstance(requested, list) or not 1 <= len(requested) <= FETCH_ENTRIES
-            or any(type(n) is not int for n in requested) or len(set(requested)) != len(requested)):
-        return {"error": "invalid_entries", "detail": f"entries must be 1-{FETCH_ENTRIES} distinct entry numbers"}
+            or any(type(n) is not int or not 1 <= n <= MAX_ENTRY for n in requested)
+            or len(set(requested)) != len(requested)):
+        return {"error": "invalid_entries",
+                "detail": f"entries must be 1-{FETCH_ENTRIES} distinct entry numbers from 1 to {MAX_ENTRY}"}
     unknown = [n for n in requested if n not in found]
     if unknown:
         return {"error": "unknown_entry", "detail": unknown}

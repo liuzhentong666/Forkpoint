@@ -185,7 +185,7 @@ class FetchTests(unittest.TestCase):
         self.entries = {e[0]: e for e in entries_of(history(pairs=3))}
 
     def test_refuses_bad_lists_and_unknown_numbers(self):
-        for bad in ([], list(range(1, 10)), [3, 3], ["3"], [True], "3,4", None):
+        for bad in ([], list(range(1, 10)), [3, 3], ["3"], [True], "3,4", None, [0], [-1], [2**31]):
             self.assertEqual(fetch_reply(self.entries, bad)["error"], "invalid_entries", bad)
         self.assertEqual(fetch_reply(self.entries, [3, 99]), {"error": "unknown_entry", "detail": [99]})
 
