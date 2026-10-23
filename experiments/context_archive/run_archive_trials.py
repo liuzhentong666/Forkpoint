@@ -15,6 +15,7 @@ Rounds alternate A, B. --claude may name a .py stand-in (fake_claude.py) for a d
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import contextlib
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -216,11 +217,29 @@ class ArchivingAgent(ClaudeAgent):
         self.writer.check()
         return event
 
-    def interrupt(self):
+    def interrupt(self, timeout):
+        """Interrupt the current turn and wait up to timeout seconds for its result event.
+
+        Raises TimeoutError if it does not come; the next turn (setup A's note) would otherwise
+        read the interrupted turn's late result as its own. A process that exits sends no more.
+        """
         self.requests += 1
         self.send({"type": "control_request", "request_id": f"interrupt-{self.requests}",
                    "request": {"subtype": "interrupt"}})
-        self._drain_until_result(60)
+        end = time.monotonic() + timeout
+        while True:
+            left = end - time.monotonic()
+            if left <= 0:
+                raise TimeoutError(f"Interrupt not answered within {timeout}s")
+            try:
+                if self.pump(min(5, left)).get("type") == "result":
+                    return
+            except queue.Empty:
+                continue
+            except ArchiveError:
+                raise
+            except RuntimeError:
+                return  # the process exited, so no late result can follow
 
     def turn(self, prompt, timeout=900, switching=True):
         """ClaudeAgent.turn, stopping at the trigger's boundary: ("result", event) or ("switch", entries so far)."""
@@ -229,7 +248,8 @@ class ArchivingAgent(ClaudeAgent):
         end = time.monotonic() + timeout
         while True:
             if time.monotonic() >= end:
-                self.interrupt()
+                with contextlib.suppress(TimeoutError):  # the turn's own timeout is what is reported
+                    self.interrupt(60)
                 raise TimeoutError(f"Turn exceeded {timeout}s")
             try:
                 event = self.pump(min(10, max(0.1, end - time.monotonic())))
@@ -326,7 +346,7 @@ def switch(args, trial, rnd, actor, agent, boundary):
                   "after_entry": boundary, "request_tokens": agent.trigger.crossed,
                   "call_sequence": trial.sequence, "started_ns": time.time_ns()}
         trial.summary["switches"].append(record)
-    agent.interrupt()
+    agent.interrupt(args.turn_timeout)
     if trial.setup == "A":
         kind, event = agent.turn(NOTE_REQUEST, args.turn_timeout, switching=False)
         note = str(event.get("result") or "")

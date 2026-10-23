@@ -209,6 +209,46 @@ class CaptureFailureTests(unittest.TestCase):
             self.assertEqual([json.loads(line) for line in logged], lines)  # the reader kept logging
 
 
+# A process that answers an interrupt only after argv[1] seconds and each prompt with a note.
+SLOW_INTERRUPT = """
+import json, sys, time
+for line in sys.stdin:
+    message = json.loads(line)
+    if message.get("type") == "control_request":
+        time.sleep(float(sys.argv[1]))
+        reply = {"type": "result", "subtype": "error_during_execution", "is_error": True, "result": "Interrupted"}
+    elif message.get("type") == "user":
+        reply = {"type": "result", "subtype": "success", "is_error": False,
+                 "result": "note for " + message["message"]["content"][0]["text"]}
+    else:
+        continue
+    print(json.dumps(reply), flush=True)
+"""
+
+
+class InterruptTests(unittest.TestCase):
+    def agent(self, delay):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)  # cleanups run last-in first-out: the agent closes its logs first
+        writer = archive.Writer(NullSession)
+        self.addCleanup(writer.close)
+        agent = runner.ArchivingAgent([sys.executable, "-c", SLOW_INTERRUPT, str(delay)], None, directory.name,
+                                      directory.name, "gpt-b", writer, runner.Count(), limit=None)
+        self.addCleanup(agent.close)
+        return agent
+
+    def test_the_note_turn_reads_its_own_result_after_a_slow_interrupt(self):
+        agent = self.agent(1.5)
+        agent.interrupt(10)
+        kind, event = agent.turn("write the note", 30, switching=False)
+        self.assertEqual((kind, event["result"]), ("result", "note for write the note"))
+
+    def test_an_interrupt_that_is_not_answered_stops_the_switch(self):
+        agent = self.agent(3)
+        with self.assertRaisesRegex(TimeoutError, "Interrupt not answered within 1s"):
+            agent.interrupt(1)
+
+
 class McpToolTests(unittest.TestCase):
     def tools_list(self, *extra):
         process = subprocess.run([sys.executable, str(runner.GPT_REPEAT / "agentdb_mcp_server.py"), "--port", "1",
