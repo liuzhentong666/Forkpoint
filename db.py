@@ -318,7 +318,7 @@ class Session:
     def __init__(self, connection, database=None):
         self.connection = connection
         self.database = database_name(database or connection.settings["database"])
-        self.process, self.script_path = None, None
+        self.process, self.script_path, self.drains = None, None, {}
         self.lock = threading.Lock()
         try:
             self._start(120)
@@ -332,8 +332,10 @@ class Session:
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             env=self.connection.env, creationflags=FLAGS)
         self.lines = {"stdout": queue.Queue(), "stderr": queue.Queue()}
-        for name in self.lines:
-            threading.Thread(target=self._drain, args=(self.process, name), daemon=True).start()
+        self.drains = {name: threading.Thread(target=self._drain, args=(self.process, name), daemon=True)
+                       for name in self.lines}
+        for thread in self.drains.values():
+            thread.start()
         deadline = time.monotonic() + timeout
         if self.script_path:
             pass  # A restarted process reuses the file it was given before.
@@ -429,6 +431,17 @@ class Session:
             if self.process.poll() is None:
                 self.process.kill()
             self.process.wait(timeout=30)
+            # Once psql has exited its readers reach EOF; then close the pipes instead of leaving them
+            # to the garbage collector. A pipe whose reader is still running is left alone.
+            for thread in self.drains.values():
+                thread.join(timeout=5)
+            pipes = [self.process.stdin] + [getattr(self.process, name) for name, thread in self.drains.items()
+                                            if not thread.is_alive()]
+            for pipe in pipes:
+                try:
+                    pipe.close()
+                except OSError:
+                    pass  # stdin's last flush can meet a closed pipe
         self.process = None
 
     def execute(self, statement, database=None, timeout=120):

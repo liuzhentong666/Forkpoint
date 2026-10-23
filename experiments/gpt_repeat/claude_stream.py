@@ -127,5 +127,11 @@ class ClaudeAgent:
                 self.pump(0.1)
             except (queue.Empty, RuntimeError):
                 break
+        # The process's own pipes too, not only the logs; stdout only once the reader has reached its end.
+        for pipe in [self.process.stdin] + ([] if self.reader.is_alive() else [self.process.stdout]):
+            try:
+                pipe.close()
+            except OSError:
+                pass
         for stream in (self.stdin_log, self.stdout_log, self.timing, self.errors):
             stream.close()
