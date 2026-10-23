@@ -117,6 +117,10 @@ def main():
                     if entry:
                         writer.put(task, entry)
                         captured[task].append(entry)
+                        # The queue's limit is for a live run whose database falls behind; replay reads
+                        # files far faster than psql appends, so it lets the writer catch up instead.
+                        if writer.queue.qsize() >= writer.queue.maxsize // 2:
+                            writer.flush(600)
                     if direction == "sent" or task in switches:
                         continue
                     try:
