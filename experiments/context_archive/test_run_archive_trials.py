@@ -283,6 +283,48 @@ class FailedCallTests(unittest.TestCase):
         self.assertEqual(runner.after_switch(self.summary, "gpt-b")["failed"], 1)
 
 
+class NoteTurnTests(unittest.TestCase):
+    """Setup A's switch with stand-ins for the agent processes: the note turn's outcome decides."""
+
+    class Agent:
+        trigger = SimpleNamespace(crossed=10500)
+        process = SimpleNamespace(pid=1)
+
+        def __init__(self, note_event=None):
+            self.note_event = note_event
+
+        def interrupt(self, timeout):
+            pass
+
+        def turn(self, prompt, timeout, switching=True):
+            return "result", self.note_event
+
+        def close(self):
+            pass
+
+    def switch(self, note_event):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.folder = Path(temp.name)
+        self.summary = {"calls": [], "switches": [], "agents": {"gpt-b": {"processes": []}}}
+        trial = runner.ArchiveTrial(None, self.folder, self.summary, "A")
+        rnd = SimpleNamespace(contexts={"gpt-b": ["ctx-1"]}, switched=set(), writer=SimpleNamespace(flush=lambda: None),
+                              start=lambda actor, limit=None, fetch=False: self.Agent())
+        return runner.switch(SimpleNamespace(turn_timeout=60), trial, rnd, "gpt-b", self.Agent(note_event), 27)
+
+    def test_the_note_is_handed_over(self):
+        fresh, handoff = self.switch({"type": "result", "subtype": "success", "is_error": False, "result": "the note"})
+        self.assertEqual(handoff, archive.HEADER_A + "the note\n" + archive.CONTINUE)
+        self.assertTrue(self.summary["switches"][0]["note_turn_ok"])
+
+    def test_a_failed_note_turn_stops_the_round(self):
+        failed = {"type": "result", "subtype": "error_during_execution", "is_error": True, "result": "API Error: 529"}
+        with self.assertRaisesRegex(RuntimeError, "note_turn_failed: error_during_execution: API Error: 529"):
+            self.switch(failed)
+        self.assertFalse(self.summary["switches"][0]["note_turn_ok"])
+        self.assertEqual(list(self.folder.glob("handoff.*")), [])  # nothing was handed over
+
+
 class McpToolTests(unittest.TestCase):
     def tools_list(self, *extra):
         process = subprocess.run([sys.executable, str(runner.GPT_REPEAT / "agentdb_mcp_server.py"), "--port", "1",

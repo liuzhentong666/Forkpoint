@@ -369,6 +369,9 @@ def switch(args, trial, rnd, actor, agent, boundary):
         note = str(event.get("result") or "")
         record.update(note_bytes=len(note.encode("utf-8")),
                       note_turn_ok=event.get("subtype") == "success" and not event.get("is_error"))
+        if not record["note_turn_ok"]:
+            # There is no note to hand over: the round stops and is kept as a failure (no retry, no rescue).
+            raise RuntimeError(f"note_turn_failed: {event.get('subtype')}: {note[:300]}")
         handoff = HEADER_A + note + "\n" + CONTINUE
     agent.close()
     rnd.switched.add((rnd.contexts[actor][-1], actor))
