@@ -85,7 +85,7 @@ CONTINUE:     Continue your current task from where you were.
 
 | 内容 | 命令 |
 |---|---|
-| 测试 | `python -m unittest discover -s experiments/context_archive -v`：48 项，自建并删除测试库；其中替身试运行约需 2 分钟 |
+| 测试 | `python -m unittest discover -s experiments/context_archive -v`：53 项，自建并删除测试库；其中替身试运行约需 2 分钟 |
 | 重放闸门 | `python experiments/context_archive/replay.py` |
 | 长任务离线检查 | `python experiments/context_archive/long_task.py` |
 | 替身试运行 | `python experiments/context_archive/run_archive_trials.py --claude experiments/context_archive/fake_claude.py --config-dir <目录> --workdir <新目录> --output <新目录> --runs-per-setup 1 --pilot` |
@@ -187,7 +187,7 @@ The archive is kept for further work only if B's median primary count is at leas
 
 | Purpose | Command |
 |---|---|
-| Tests | `python -m unittest discover -s experiments/context_archive -v`: 48 tests, building and dropping their own test databases; the stand-in dry run takes about 2 minutes of it |
+| Tests | `python -m unittest discover -s experiments/context_archive -v`: 53 tests, building and dropping their own test databases; the stand-in dry run takes about 2 minutes of it |
 | Replay gate | `python experiments/context_archive/replay.py` |
 | Long-task check | `python experiments/context_archive/long_task.py` |
 | Stand-in dry run | `python experiments/context_archive/run_archive_trials.py --claude experiments/context_archive/fake_claude.py --config-dir <dir> --workdir <new dir> --output <new dir> --runs-per-setup 1 --pilot` |

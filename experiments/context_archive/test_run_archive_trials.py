@@ -66,6 +66,11 @@ class SourcesTests(unittest.TestCase):
         self.assertIn("agent_state/objects.py", loaded)
         self.assertEqual([path for path in loaded if path not in runner.SOURCES], [])
 
+    def test_protocol_hashes_every_sql_file_init_installs(self):
+        installed = sorted(p.relative_to(archive.ROOT).as_posix() for p in (archive.ROOT / "sql").glob("*.sql"))
+        self.assertEqual(len(installed), 9)
+        self.assertEqual([path for path in installed if path not in runner.SOURCES], [])
+
 
 class AfterSwitchTests(unittest.TestCase):
     def test_counts_repeats_of_fixed_reads_and_failures_after_the_reset(self):

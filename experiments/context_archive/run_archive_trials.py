@@ -67,7 +67,11 @@ SOURCES = ("experiments/context_archive/archive.sql", "experiments/context_archi
            "experiments/gpt_repeat/agentdb_mcp_server.py", "experiments/gpt_repeat/claude_scoring.py",
            "experiments/gpt_repeat/repeat_scoring.py", "experiments/gpt_repeat/run_gpt_repeats.py",
            "experiments/gpt_repeat/codex_rpc.py", "agent_state/__init__.py", "agent_state/objects.py",
-           "agent_state/storage.py", "agent_lab.py", "db.py", "review_local.py", "docs/CONTEXT_ARCHIVE_EXPERIMENT.md")
+           "agent_state/storage.py", "agent_lab.py", "db.py", "review_local.py", "docs/CONTEXT_ARCHIVE_EXPERIMENT.md",
+           # agent_lab.py init installs the version engine with db.Connection.install
+           "sql/001_core.sql", "sql/002_demo_app.sql", "sql/003_manager_role.sql", "sql/004_merge_batch.sql",
+           "sql/005_bounded_history.sql", "sql/006_history_health.sql", "sql/007_search_path_pg_temp.sql",
+           "sql/008_read_set_merge.sql", "sql/009_canonical_row_docs.sql")
 
 
 def audit_lines(code, revisions, stocks):
