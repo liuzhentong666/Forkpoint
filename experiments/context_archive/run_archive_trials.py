@@ -58,12 +58,15 @@ TOOL_B = {"type": "function", "name": TOOL["name"],
               "entries": {"type": "array", "items": {"type": "integer", "minimum": 1},
                           "minItems": 1, "maxItems": archive.FETCH_ENTRIES}},
               "required": ["action"], "additionalProperties": False}}
+# Every project file a run loads or runs (a test checks the loaded modules are all here).
 SOURCES = ("experiments/context_archive/archive.sql", "experiments/context_archive/archive.py",
-           "experiments/context_archive/long_task.py", "experiments/context_archive/run_archive_trials.py",
+           "experiments/context_archive/long_task.py", "experiments/context_archive/replay.py",
+           "experiments/context_archive/run_archive_trials.py",
            "experiments/gpt_repeat/run_claude_repeats.py", "experiments/gpt_repeat/claude_stream.py",
            "experiments/gpt_repeat/agentdb_mcp_server.py", "experiments/gpt_repeat/claude_scoring.py",
-           "experiments/gpt_repeat/run_gpt_repeats.py", "experiments/gpt_repeat/codex_rpc.py",
-           "agent_lab.py", "db.py", "review_local.py", "docs/CONTEXT_ARCHIVE_EXPERIMENT.md")
+           "experiments/gpt_repeat/repeat_scoring.py", "experiments/gpt_repeat/run_gpt_repeats.py",
+           "experiments/gpt_repeat/codex_rpc.py", "agent_state/__init__.py", "agent_state/objects.py",
+           "agent_state/storage.py", "agent_lab.py", "db.py", "review_local.py", "docs/CONTEXT_ARCHIVE_EXPERIMENT.md")
 
 
 def audit_lines(code, revisions, stocks):

@@ -53,6 +53,18 @@ def call(sequence, action, error=None, refused=None, **arguments):
     return record
 
 
+class SourcesTests(unittest.TestCase):
+    def test_protocol_hashes_every_project_module_the_runner_loads(self):
+        listing = ("import json, sys; from pathlib import Path; import run_archive_trials as r; "
+                   "root = r.archive.ROOT; print(json.dumps(sorted(Path(m.__file__).resolve().relative_to(root).as_posix() "
+                   "for m in list(sys.modules.values()) if getattr(m, '__file__', None) "
+                   "and Path(m.__file__).resolve().is_relative_to(root))))")
+        loaded = json.loads(subprocess.run([sys.executable, "-c", listing], cwd=archive.HERE, capture_output=True,
+                                           text=True, check=True).stdout)
+        self.assertIn("agent_state/objects.py", loaded)
+        self.assertEqual([path for path in loaded if path not in runner.SOURCES], [])
+
+
 class AfterSwitchTests(unittest.TestCase):
     def test_counts_repeats_of_fixed_reads_and_failures_after_the_reset(self):
         calls = [call(1, "info"), call(2, "info", revision=REVISIONS[0]), call(3, "info", revision=REVISIONS[1]),
