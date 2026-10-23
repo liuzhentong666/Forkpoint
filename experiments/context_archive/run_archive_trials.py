@@ -297,12 +297,29 @@ class ArchiveTrial(Trial):
             return None
         requested = values.get("entries")
         valid = fetch_reply({}, requested).get("error") != "invalid_entries"
-        found = {e[0]: e for e in load_entries(self.fetch_sql, actor, requested)} if valid else {}
+        record["executed"] = True
+        try:
+            found = {e[0]: e for e in load_entries(self.fetch_sql, actor, requested)} if valid else {}
+        except Exception as error:
+            self.record_failure(record, error)
+            raise
         reply = fetch_reply(found, requested)
-        record.update(executed=True, finished_ns=time.time_ns(), exit_code=2 if "error" in reply else 0,
+        record.update(finished_ns=time.time_ns(), exit_code=2 if "error" in reply else 0,
                       error=reply.get("error"))
         save(self.folder / "result.json", self.summary)
         return reply
+
+    def run_call(self, actor, values, record):
+        try:
+            return super().run_call(actor, values, record)
+        except Exception as error:  # e.g. agent_lab.py timed out
+            self.record_failure(record, error)
+            raise
+
+    def record_failure(self, record, error):
+        """Record an exception as the call's outcome, as the coordinator reports it (type and text), so
+        after_switch counts the call as failed."""
+        record.update(error=type(error).__name__, detail=str(error), finished_ns=time.time_ns())
 
 
 class Round:

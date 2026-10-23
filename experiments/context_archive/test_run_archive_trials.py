@@ -13,7 +13,9 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 import archive
 import run_archive_trials as runner
@@ -247,6 +249,38 @@ class InterruptTests(unittest.TestCase):
         agent = self.agent(3)
         with self.assertRaisesRegex(TimeoutError, "Interrupt not answered within 1s"):
             agent.interrupt(1)
+
+
+class FailedCallTests(unittest.TestCase):
+    """A call that raises gets the coordinator's reply (error type and text) as its recorded outcome."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.summary = {"calls": [], "switches": [{"actor": "gpt-b", "call_sequence": 0}]}
+        self.trial = runner.ArchiveTrial(None, Path(self.temp.name), self.summary, "B")
+        self.trial.fetching.add("gpt-b")
+
+    def call(self, **arguments):
+        with self.assertRaises(Exception) as raised:
+            self.trial.handle("gpt-b", {"name": "agentdb", "arguments": arguments})
+        return raised.exception
+
+    def test_a_failed_archive_read_counts_as_a_failed_call(self):
+        def broken(statement):
+            raise RuntimeError("ERROR:  57P01: terminating connection")
+        self.trial.fetch_sql = broken
+        error = self.call(action="fetch", entries=[1])
+        record = self.summary["calls"][-1]
+        self.assertEqual((record["error"], record["detail"]), ("RuntimeError", str(error)))
+        self.assertEqual(runner.after_switch(self.summary, "gpt-b")["failed"], 1)
+
+    def test_an_agent_lab_call_that_raises_counts_as_a_failed_call(self):
+        timeout = subprocess.TimeoutExpired("agent_lab.py", 120)
+        with mock.patch.object(sys.modules["run_claude_repeats"], "run_helper", side_effect=timeout):
+            self.call(action="info")
+        self.assertEqual(self.summary["calls"][-1]["error"], "TimeoutExpired")
+        self.assertEqual(runner.after_switch(self.summary, "gpt-b")["failed"], 1)
 
 
 class McpToolTests(unittest.TestCase):
