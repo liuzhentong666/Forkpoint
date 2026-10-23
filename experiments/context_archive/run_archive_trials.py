@@ -393,12 +393,12 @@ def run_trial(args, number, setup):
         save(folder / "setup.json", initial)
         if initial["exit_code"]:
             raise RuntimeError("Database setup failed: " + initial["stderr"])
-        trial.database = initial["result"]["database"]
+        trial.database = summary["database"] = initial["result"]["database"]  # named even if the round fails next
         trial.owner = connect_owner(args, trial.database)
         revisions = [long_task.commit_stock(trial.owner, stock) for stock in long_task.STOCK_HISTORY[:K]]
         trial.base = long_task.commit_stock(trial.owner, 100)
         trial.owner.sql((archive.HERE / "archive.sql").read_text(encoding="utf-8"))
-        summary.update(database=trial.database, base=trial.base, audited_revisions=revisions)
+        summary.update(base=trial.base, audited_revisions=revisions)
         trial.current = audit(trial.owner, trial.base)
         trial.audit_log = (folder / "database_audit.jsonl").open("xb")
         trial.audit_log.write(wire({"stage": "initial", "snapshot": trial.current}))

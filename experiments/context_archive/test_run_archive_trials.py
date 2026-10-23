@@ -281,9 +281,13 @@ class DryRunTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.directory = tempfile.TemporaryDirectory()
+        cls.directory = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        cls.addClassCleanup(cls.directory.cleanup)
         temp = Path(cls.directory.name)
         cls.output = temp / "out"
+        # Registered before the run (class cleanups run last-in first-out, before the folder goes), so the
+        # round databases are dropped even if the run fails or times out.
+        cls.addClassCleanup(cls.drop_round_databases)
         cls.completed = subprocess.run([sys.executable, str(archive.HERE / "run_archive_trials.py"),
                                   "--claude", str(archive.HERE / "fake_claude.py"), "--config-dir", str(temp / "config"),
                                   "--workdir", str(temp / "work"), "--output", str(cls.output),
@@ -295,13 +299,12 @@ class DryRunTests(unittest.TestCase):
             cls.rounds[result["setup"]] = result
 
     @classmethod
-    def tearDownClass(cls):
+    def drop_round_databases(cls):
         maintenance = Connection(argparse.Namespace(config=None, password=False, role=None, database=None))
-        for result in cls.rounds.values():
-            if result.get("database"):
-                maintenance.sql(f'DROP DATABASE IF EXISTS "{result["database"]}" WITH (FORCE);',
-                                maintenance.settings["maintenance_database"])
-        cls.directory.cleanup()
+        for path in cls.output.glob("run-*/result.json"):
+            name = json.loads(path.read_text(encoding="utf-8")).get("database")
+            if name:
+                maintenance.sql(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE);', maintenance.settings["maintenance_database"])
 
     def test_both_rounds_complete_with_one_reset_during_the_audit(self):
         self.assertEqual(self.completed.returncode, 0, self.completed.stdout[-3000:] + self.completed.stderr[-3000:])

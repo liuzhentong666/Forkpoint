@@ -280,12 +280,11 @@ class ArchiveSqlTests(unittest.TestCase):
         cls.name = "agentdb_test_xccontract_" + uuid.uuid4().hex[:8]
         cls.maintenance = connect()
         cls.maintenance.create_database(cls.name)
+        # A class cleanup runs even if the rest of setUpClass fails; tearDownClass would not.
+        cls.addClassCleanup(cls.maintenance.sql, f'DROP DATABASE "{cls.name}" WITH (FORCE);',
+                            cls.maintenance.settings["maintenance_database"])
         cls.db = connect(cls.name)
         cls.db.sql((archive.HERE / "archive.sql").read_text(encoding="utf-8"))
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.maintenance.sql(f'DROP DATABASE "{cls.name}" WITH (FORCE);', cls.maintenance.settings["maintenance_database"])
 
     def append(self, task, body, kind="text", label="l"):
         return int(self.db.sql(append_sql(task, (kind, label, body))))
