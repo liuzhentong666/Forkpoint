@@ -120,6 +120,10 @@ CONTINUE:     Continue your current task from where you were.
 
 设计不变，样本按登记执行。
 
+## 中止的第一次样本运行（2026-10-23，不计入样本）
+
+2026-10-23 19:35 在提交 24d0d55 上登记的 20 轮样本（`experiments/context_archive/results/2026-10-23`）被用户中途叫停：第 1 轮（A）和第 2 轮（B）已完成，均成功、各重置一次，主要指标均为 0（B 取回 3 次）；第 3、4 轮在准备阶段被中断；第 5–20 轮没有开始。运行器不能接着一次登记继续运行，因此样本在新目录中重新完整登记；这次中止的运行保留并在此报告，不计入样本，也不替换样本中的任何轮次。
+
 ## 回滚
 
 全部内容在 `experiments/context_archive/`、`results/context_archive/` 和本文件中，另有 `agentdb_mcp_server.py` 的可选 `--tool-file`，以及 `run_claude_repeats.py` 中拆出的调用处理步骤（`Trial.answer_without_helper` 等）和 `claude_command` 的 `instructions` 参数；后两项不改变 2026-10-20 运行器的行为（同一组调用逐条对比，回复、调用记录和命令行都相同）。删除或还原它们即恢复原状；`vc.*` 与项目数据库都没有改动。
@@ -247,6 +251,10 @@ Against the predictions:
 - A's note held no full revision ID, but all 14 eight-character prefixes with their stocks, the baseline, the target 95 and the branch.
 
 The design is unchanged; the sample runs as registered.
+
+## Stopped first sample attempt (2026-10-23, not part of the sample)
+
+The 20-round sample registered at 19:35 on 2026-10-23 at commit 24d0d55 (`experiments/context_archive/results/2026-10-23`) was stopped by the user partway: round 1 (A) and round 2 (B) had completed, both successful with one reset each and a primary count of 0 (B fetched 3 times); rounds 3 and 4 were cut off in the preparation phase; rounds 5–20 never started. The runner cannot continue a registration, so the sample was registered again in full in a new folder; this stopped attempt is kept and reported here, is not part of the sample, and replaces no round in it.
 
 ## Rollback
 
