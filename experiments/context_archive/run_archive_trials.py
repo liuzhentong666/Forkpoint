@@ -7,8 +7,10 @@ tool, agent_lab.py, an SQL audit after every write), with these changes:
 - every prompt sent and every content line received is archived as it passes (archive.py);
 - the first time a request's input passes archive.LIMIT_TOKENS, the agent's process is
   replaced at the next tool-call boundary by a fresh one that starts from the round's handoff:
-  setup A, the note the old process writes when asked; setup B, archive.render_handoff, with
-  the fetch action. One reset per agent and round (archive.MAX_SWITCHES).
+  setup A, the note the old process writes when asked; setup B, archive.render_handoff, and a
+  tool with the fetch action. Until its reset, an agent has the same tool in both setups, so
+  every request before the switch is the same size in A and B. One reset per agent and round
+  (archive.MAX_SWITCHES).
 Rounds alternate A, B. --claude may name a .py stand-in (fake_claude.py) for a dry run.
 """
 import argparse
@@ -246,6 +248,7 @@ class ArchiveTrial(Trial):
     def __init__(self, args, folder, summary, setup):
         super().__init__(args, folder, summary)
         self.setup, self.switching, self.fetch_sql = setup, set(), None
+        self.fetching = set()  # setup B: agents whose process since the reset has the fetch tool
 
     def answer_without_helper(self, actor, params, values, record):
         record["sequence"] = self.sequence
@@ -264,10 +267,10 @@ class ArchiveTrial(Trial):
         return refusal
 
     def fetch(self, actor, values, record):
-        """Setup B's fetch, answered from the archive; None for any other call (check_arguments refuses
-        a fetch with unknown arguments)."""
-        if (self.setup != "B" or not isinstance(values, dict) or values.get("action") != "fetch"
-                or set(values) - ({"action", "entries"} | set(FIELDS))):
+        """Setup B's fetch after the agent's reset, answered from the archive; None for any other call
+        (check_arguments then refuses a fetch, as in setup A)."""
+        if (self.setup != "B" or actor not in self.fetching or not isinstance(values, dict)
+                or values.get("action") != "fetch" or set(values) - ({"action", "entries"} | set(FIELDS))):
             return None
         requested = values.get("entries")
         valid = fetch_reply({}, requested).get("error") != "invalid_entries"
@@ -291,13 +294,13 @@ class Round:
         self.switched = set()  # (folder, actor) of processes replaced at a reset
         self.counts = {actor: Count() for actor in ACTORS}
 
-    def start(self, actor, limit=archive.LIMIT_TOKENS):
+    def start(self, actor, limit=archive.LIMIT_TOKENS, fetch=False):
         name = f"ctx-{len(self.contexts[actor]) + 1}"
         directory = self.raw / name
         directory.mkdir(exist_ok=True)
         server = [str(GPT_REPEAT / "agentdb_mcp_server.py"), "--port", str(self.port), "--token", self.tokens[actor],
                   "--raw", str(directory), "--actor", actor]
-        if self.tool_file:
+        if fetch:  # setup B after a reset; before it, both setups serve the same tool
             server += ["--tool-file", str(self.tool_file)]
         mcp_config = self.folder / f"{actor}.{name}.mcp-config.json"
         save(mcp_config, {"mcpServers": {"agentdb": {"type": "stdio", "command": self.args.python,
@@ -335,10 +338,13 @@ def switch(args, trial, rnd, actor, agent, boundary):
     data = handoff.encode("utf-8")
     (trial.folder / f"handoff.{actor}.{number}.txt").write_bytes(data)
     record.update(handoff_bytes=len(data), handoff_sha256=hashlib.sha256(data).hexdigest(), finished_ns=time.time_ns())
-    fresh = rnd.start(actor, limit=None)  # archive.MAX_SWITCHES == 1: no trigger after the reset
+    # archive.MAX_SWITCHES == 1: no trigger after the reset
+    fresh = rnd.start(actor, limit=None, fetch=trial.setup == "B")
     trial.summary["agents"][actor]["processes"].append({"context": rnd.contexts[actor][-1], "pid": fresh.process.pid})
     with trial.lock:
         trial.switching.discard(actor)
+        if trial.setup == "B":
+            trial.fetching.add(actor)
     save(trial.folder / "result.json", trial.summary)
     return fresh, handoff
 
@@ -485,7 +491,8 @@ def register(args):
         "constants": {"limit_tokens": archive.LIMIT_TOKENS, "in_full_bytes": archive.IN_FULL_BYTES,
                       "handoff_bytes": archive.HANDOFF_BYTES, "fetch_entries": archive.FETCH_ENTRIES,
                       "fetch_bytes": archive.FETCH_BYTES, "max_switches_per_agent": archive.MAX_SWITCHES},
-        "tools": {"A": TOOL, "B": TOOL_B}, "tool_name_seen_by_model": args.tool_name,
+        "tools": {"before_reset": TOOL, "A_after_reset": TOOL, "B_after_reset": TOOL_B},
+        "tool_name_seen_by_model": args.tool_name,
         "claude_command": claude_command(args, Path("<run>/<actor>.<ctx>.mcp-config.json"), INSTRUCTIONS),
         "child_environment": {"CLAUDE_CONFIG_DIR": str(args.config_dir), **{
             k: v for k, v in child_environment(args.config_dir, args.child_env).items() if k.startswith(("CLAUDE", "DISABLE"))}},

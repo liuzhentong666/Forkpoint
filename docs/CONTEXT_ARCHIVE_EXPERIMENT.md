@@ -34,7 +34,7 @@ Agent 的上下文在任务中途被重置后，如果每一条上下文条目�
 两组相同的部分：某次请求的输入（未缓存 + 缓存读取 + 缓存写入的 token）第一次超过 10,000 时，运行器等正在进行的工具调用返回（即下一个工具调用边界），此后拒绝该 Agent 的调用（`context_switch`，记录在案，不计入预算），中断该进程，再启动一个新的 Claude Code 进程。每个 Agent 每轮只重置一次：在缩小的上限下，B 组的交接（约 2.9K token）加上系统提示（约 2.6K）只剩约 4.5K token，一次取回就可能用完，第二次触发测到的是这种缩小，而不是记忆。
 
 - A：先向旧进程发送 NOTE_REQUEST；新进程收到 HEADER_A、说明和 CONTINUE。工具不变。
-- B：新进程收到截至边界的条目经 `render_handoff` 生成的交接；工具增加 `fetch`。
+- B：新进程收到截至边界的条目经 `render_handoff` 生成的交接；只有这个新进程的工具增加 `fetch`。重置之前两组的工具相同，因此重置之前每次请求的大小在两组中相同（若 B 一开始就带 `fetch`，工具定义多出 220 字节、约 114 token，在请求大小随轮次变化时，约六分之一的情形下 B 会早一次调用重置）。
 
 原文（`archive.py`）：
 
@@ -136,7 +136,7 @@ When an agent's context is reset mid-task, does keeping every context entry word
 Common to both: the first time a request's input (uncached + cache read + cache write tokens) exceeds 10,000, the runner waits for the pending tool call to return (the next tool-call boundary), refuses that agent's calls from then on (`context_switch`, recorded and not counted against the budget), interrupts the process and starts a fresh Claude Code process. One reset per agent and round: with the scaled-down limit, B's handoff (~2.9K tokens) plus the system prompt (~2.6K) leave ~4.5K tokens, which one fetch can use up, so a second trigger would measure the scaling, not memory.
 
 - A: the old process is first sent NOTE_REQUEST; the new process gets HEADER_A, the note and CONTINUE. The tool is unchanged.
-- B: the new process gets the handoff `render_handoff` makes from the entries up to the boundary; the tool adds `fetch`.
+- B: the new process gets the handoff `render_handoff` makes from the entries up to the boundary, and only this new process's tool adds `fetch`. Before the reset both setups have the same tool, so every request before the reset is the same size in A and B (with `fetch` from the start, B's tool definition is 220 bytes, about 114 tokens, larger, and with request sizes varying between rounds B resets one call earlier in about one case in six).
 
 The texts (`archive.py`):
 

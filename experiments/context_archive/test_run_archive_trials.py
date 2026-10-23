@@ -151,18 +151,23 @@ class TrialTests(unittest.TestCase):
         self.assertEqual(self.handle(trial, action="info")["error"], "tool_budget_exhausted")
         self.assertEqual(self.summary["calls"][0]["error"], "tool_budget_exhausted")
 
-    def test_fetch_exists_only_in_setup_b(self):
-        self.assertEqual(self.handle(self.trial("A"), action="fetch", entries=[1])["error"], "invalid_arguments")
-        self.assertEqual(self.handle(self.trial("A"), action="fetch")["error"], "unknown_action")
-        self.assertEqual(self.handle(self.trial("B"), action="info", entries=[1])["error"], "invalid_arguments")
+    def reset(self, trial):
+        trial.fetching.add("gpt-b")  # what switch() does in setup B once the fresh process runs
+        return trial
+
+    def test_fetch_exists_only_in_setup_b_after_the_reset(self):
+        for trial in (self.trial("A"), self.trial("B")):  # before the reset B's tool is A's
+            self.assertEqual(self.handle(trial, action="fetch", entries=[1])["error"], "invalid_arguments")
+            self.assertEqual(self.handle(trial, action="fetch")["error"], "unknown_action")
+        self.assertEqual(self.handle(self.reset(self.trial("B")), action="info", entries=[1])["error"], "invalid_arguments")
 
     def test_fetch_returns_stored_entries_and_refuses_bad_numbers(self):
         body = wire({"type": "user", "message": {"content": [{"type": "text", "text": "the prompt"}]}}).rstrip(b"\n")
-        trial = self.trial("B", rows=[(1, "prompt", "prompt: the prompt", body)])
+        trial = self.reset(self.trial("B", rows=[(1, "prompt", "prompt: the prompt", body)]))
         reply = self.handle(trial, action="fetch", entries=[1])
         self.assertEqual(reply["result"]["entries"], [{"entry": 1, "kind": "prompt", "content": {"type": "text", "text": "the prompt"}}])
         self.assertEqual(self.handle(trial, action="fetch", entries=["1"])["error"], "invalid_entries")
-        self.assertEqual(self.handle(self.trial("B"), action="fetch", entries=[2])["error"], "unknown_entry")
+        self.assertEqual(self.handle(self.reset(self.trial("B")), action="fetch", entries=[2])["error"], "unknown_entry")
         self.assertEqual([c.get("error") for c in self.summary["calls"]], [None, "invalid_entries", "unknown_entry"])
 
 
@@ -232,6 +237,11 @@ class DryRunTests(unittest.TestCase):
             self.assertEqual(result["metrics"]["tool_calls"], len(result["calls"]))
             self.assertTrue(result["audit_table"]["all_correct"])
             self.assertIn("gpt-b", result["tokens_after_switch"])
+            # Only setup B's process after the reset is given the fetch tool.
+            folder = self.output / f"run-{result['run']:02d}"
+            for name in ("gpt-a.ctx-1", "gpt-b.ctx-1", "gpt-b.ctx-2"):
+                server = json.loads((folder / f"{name}.mcp-config.json").read_text(encoding="utf-8"))["mcpServers"]["agentdb"]
+                self.assertEqual("--tool-file" in server["args"], setup == "B" and name == "gpt-b.ctx-2", (setup, name))
 
     def test_setup_a_hands_over_its_note_and_setup_b_fetches_from_the_archive(self):
         a, b = self.rounds["A"], self.rounds["B"]
