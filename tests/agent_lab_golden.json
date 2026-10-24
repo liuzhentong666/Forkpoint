@@ -54,6 +54,15 @@
   "stderr_last_line": "agent_lab.py: error: fork requires --base",
   "stdout": ""
  },
+ "fork_unknown_base": {
+  "exit_code": 2,
+  "statements": [
+   "SELECT vc.fork('gpt-a-1','22222222-2222-2222-2222-222222222222');"
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\"error\": \"not_found\", \"sqlstate\": \"23503\", \"detail\": \"ERROR:  23503: insert or update on table \\\"branch\\\" violates foreign key constraint \\\"branch_head_fkey\\\"\\nDETAIL:  Key (head)=(22222222-2222-2222-2222-222222222222) is not present in table \\\"changeset\\\".\\nCONTEXT:  SQL statement \\\"INSERT INTO vc.branch VALUES(p_name,p_revision,p_revision)\\\"\\nPL/pgSQL function fork(text,uuid) line 3 at SQL statement\\nSCHEMA NAME:  vc\\nTABLE NAME:  branch\\nCONSTRAINT NAME:  branch_head_fkey\\nLOCATION:  ri_ReportViolation, ri_triggers.c:2608\"}\n"
+ },
  "info": {
   "exit_code": 0,
   "statements": [
@@ -187,6 +196,15 @@
   "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    [--reads READS]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Finite nonnegative value up to 100000 required\n",
   "stderr_last_line": "agent_lab.py: error: Finite nonnegative value up to 100000 required",
   "stdout": ""
+ },
+ "propose_stale": {
+  "exit_code": 2,
+  "statements": [
+   "\n          BEGIN;\n          SELECT vc.begin_change('gpt-a-1','22222222-2222-2222-2222-222222222222','gpt-a','real GPT proposal') AS draft \\gset\n          UPDATE agent.products SET price=11 WHERE id=101;\n          SELECT vc.write_file('experiments/pricing.py',decode('5052494345203d2031310a','hex')) AS blob \\gset\n          SELECT vc.finish_change() AS revision \\gset\n          COMMIT;\n          SELECT :'revision';\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\"error\": \"stale_branch_head\", \"sqlstate\": \"40001\", \"detail\": \"ERROR:  40001: Stale head: expected 22222222-2222-2222-2222-222222222222, actual 11111111-1111-1111-1111-111111111111\\nCONTEXT:  PL/pgSQL function begin_change(text,uuid,text,text) line 10 at RAISE\\nLOCATION:  exec_stmt_raise, pl_exec.c:3897\"}\n"
  },
  "propose_stock_fraction": {
   "exit_code": 2,

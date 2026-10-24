@@ -34,21 +34,46 @@ BRANCH_EXISTS = (
     "PL/pgSQL function fork(text,uuid) line 3 at SQL statement\n"
     "SCHEMA NAME:  vc\nTABLE NAME:  branch\nCONSTRAINT NAME:  branch_pkey\n"
     "LOCATION:  _bt_check_unique, nbtinsert.c:666\n")
+# The same for a fork of a base revision the engine does not know, and for a proposal
+# whose --expected is not the branch head.
+UNKNOWN_BASE = (
+    'ERROR:  23503: insert or update on table "branch" violates foreign key constraint "branch_head_fkey"\n'
+    f'DETAIL:  Key (head)=({BASE}) is not present in table "changeset".\n'
+    'CONTEXT:  SQL statement "INSERT INTO vc.branch VALUES(p_name,p_revision,p_revision)"\n'
+    "PL/pgSQL function fork(text,uuid) line 3 at SQL statement\n"
+    "SCHEMA NAME:  vc\nTABLE NAME:  branch\nCONSTRAINT NAME:  branch_head_fkey\n"
+    "LOCATION:  ri_ReportViolation, ri_triggers.c:2608\n")
+STALE_BRANCH_HEAD = (
+    f"ERROR:  40001: Stale head: expected {BASE}, actual {HEAD}\n"
+    "CONTEXT:  PL/pgSQL function begin_change(text,uuid,text,text) line 10 at RAISE\n"
+    "LOCATION:  exec_stmt_raise, pl_exec.c:3897\n")
 
 
 class FakeWorker:
     """Answers the statements agent_lab sends; records them in order."""
 
-    def __init__(self, product=None, pricing="PRICE = 11\n", inventory="STOCK = 95\n", merge=None, fork=None):
+    def __init__(self, product=None, pricing="PRICE = 11\n", inventory="STOCK = 95\n", merge=None, fork=None,
+                 propose=None):
         self.product = product or {"id": 101, "price": 10, "stock": 100}
-        self.pricing, self.inventory, self.merge, self.fork = pricing, inventory, merge, fork
+        self.pricing, self.inventory, self.merge = pricing, inventory, merge
+        self.fork, self.propose = fork, propose
         self.statements, self.closed = [], False
 
     def close(self):
         self.closed = True
 
+    def failure(self, statement):
+        """psql's stderr for the scripted fork or propose failure this statement meets, or None."""
+        if "vc.fork(" in statement:
+            return {"exists": BRANCH_EXISTS, "unknown": UNKNOWN_BASE}.get(self.fork)
+        if "vc.begin_change(" in statement:
+            return {"stale": STALE_BRANCH_HEAD}.get(self.propose)
+        return None
+
     def sql(self, statement, database=None):
         self.statements.append(statement)
+        if self.failure(statement):
+            raise RuntimeError(self.failure(statement))  # What db.py's sql() raises for it.
         if "SELECT vc.head();" == statement:
             return HEAD
         if "SELECT current_user;" == statement:
@@ -62,8 +87,6 @@ class FakeWorker:
         if "experiments/inventory.py')" in statement:
             return self.inventory
         if "vc.fork(" in statement:
-            if self.fork == "exists":
-                raise RuntimeError(BRANCH_EXISTS)  # What db.py's sql() raises for it.
             return NEW
         if "vc.finish_change()" in statement:
             return NEW
@@ -73,8 +96,8 @@ class FakeWorker:
 
     def execute(self, statement, database=None, timeout=120):
         self.statements.append(statement)
-        if self.fork == "exists":
-            return subprocess.CompletedProcess("psql", 3, "", BRANCH_EXISTS)
+        if self.failure(statement):
+            return subprocess.CompletedProcess("psql", 3, "", self.failure(statement))
         if self.merge == "stale":
             return subprocess.CompletedProcess("psql", 3, "", "ERROR:  40001: stale head\n")
         if self.merge == "lock_timeout":
@@ -101,11 +124,14 @@ SCENARIOS = {
     "read_code_missing_path": (["read-code", *COMMON, "--revision", BASE], {}),
     "fork": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE], {}),
     "fork_exists": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE], {"fork": "exists"}),
+    "fork_unknown_base": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE], {"fork": "unknown"}),
     "fork_bad_branch": (["fork", *COMMON, "--branch", "main", "--base", BASE], {}),
     "fork_bad_uuid": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", "x' OR 1=1"], {}),
     "fork_missing_base": (["fork", *COMMON, "--branch", "gpt-a-1"], {}),
     "propose": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a",
                  "--field", "price", "--value", "11", "--code", "PRICE = 11\n"], {}),
+    "propose_stale": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a",
+                       "--field", "price", "--value", "11", "--code", "PRICE = 11\n"], {"propose": "stale"}),
     "propose_missing": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a"], {}),
     "propose_stock_fraction": (["propose", *COMMON, "--branch", "gpt-b-1", "--expected", BASE, "--actor", "gpt-b",
                                 "--field", "stock", "--value", "94.5", "--code", "STOCK = 94.5\n"], {}),

@@ -29,10 +29,14 @@ MERGE_LOCK_TIMEOUT = "10s"
 # vc.merge_validated does not know (vc.merge still reports that as P0001).
 MERGE_ERRORS = {"40001": "stale_head", "P0001": "merge_conflict", "55P03": "lock_timeout",
                 "RS001": "read_conflict", "22023": "invalid_read_set", "P0002": "not_found"}
-# Fork failures reported the same way. vc.fork inserts one vc.branch row, so 23505
-# (branch_pkey) means a branch of that name already exists, perhaps made by an
-# earlier process; nothing changed. Any other fork failure is raised as before.
-FORK_ERRORS = {"23505": "branch_exists"}
+# Fork and propose failures reported the same way; in each, nothing changed. vc.fork
+# inserts one vc.branch row: 23505 (branch_pkey) is a branch of that name that already
+# exists, perhaps made by an earlier process, and 23503 a base revision the engine does
+# not know. propose's 40001 is a branch head other than --expected, from vc.begin_change
+# (or vc.finish_change, if the branch moved meanwhile); it is not merge's stale_head,
+# whose head is main's. Any other failure is raised as before.
+FORK_ERRORS = {"23505": "branch_exists", "23503": "not_found"}
+PROPOSE_ERRORS = {"40001": "stale_branch_head"}
 # merge --reads names rows by table; every lab database registers these two
 # (sql/002_demo_app.sql), so vc.table_id never sees an unregistered name.
 READ_TABLES = ("app.products", "app.orders")
@@ -224,18 +228,16 @@ def perform(args, worker):
             'content',convert_from(vc.read_file('{fixed}',{literal(args.path)}),'UTF8'));
         """))
     elif args.action == "fork":
-        response = worker.execute(f"SELECT vc.fork({literal(branch(args.branch))},'{revision(args.base)}');")
-        if response.returncode:
-            state = sqlstate(response.stderr)
-            if state not in FORK_ERRORS:
-                raise RuntimeError(response.stdout + response.stderr)  # What worker.sql raises.
-            return json.dumps(dict(error=FORK_ERRORS[state], sqlstate=state, detail=response.stderr.strip())) + "\n", 2
-        result = dict(branch=args.branch, head=response.stdout.strip())
+        created, refusal = checked(worker, f"SELECT vc.fork({literal(branch(args.branch))},'{revision(args.base)}');",
+                                   FORK_ERRORS)
+        if refusal:
+            return refusal, 2
+        result = dict(branch=args.branch, head=created)
     elif args.action == "propose":
         value = Decimal(args.value)
         path = "experiments/" + ("pricing.py" if args.field == "price" else "inventory.py")
         content = args.code.encode().hex()
-        created = worker.sql(f"""
+        created, refusal = checked(worker, f"""
           BEGIN;
           SELECT vc.begin_change({literal(branch(args.branch))},'{revision(args.expected)}',{literal(args.actor)},'real GPT proposal') AS draft \gset
           UPDATE agent.products SET {args.field}={value} WHERE id=101;
@@ -243,7 +245,9 @@ def perform(args, worker):
           SELECT vc.finish_change() AS revision \gset
           COMMIT;
           SELECT :'revision';
-        """)
+        """, PROPOSE_ERRORS)
+        if refusal:
+            return refusal, 2
         result = dict(branch=args.branch, revision=created, code_path=path)
     elif args.action == "diff":
         base, proposed = revision(args.base), revision(args.revision)
@@ -299,6 +303,20 @@ def perform(args, worker):
                       effective_role=worker.sql("SELECT current_user;"), outcome_verified=True,
                       real_cloud_verified=False)
     return json.dumps(result, ensure_ascii=False, indent=2) + "\n", 0
+
+
+def checked(worker, statement, errors):
+    """(stdout, None) as worker.sql returns it, or (None, JSON refusal) for an SQLSTATE in errors.
+
+    Any other failure raises what worker.sql raises.
+    """
+    response = worker.execute(statement)
+    if not response.returncode:
+        return response.stdout.strip(), None
+    state = sqlstate(response.stderr)
+    if state not in errors:
+        raise RuntimeError(response.stdout + response.stderr)
+    return None, json.dumps(dict(error=errors[state], sqlstate=state, detail=response.stderr.strip())) + "\n"
 
 
 def changed_rows(stdout, stderr):
