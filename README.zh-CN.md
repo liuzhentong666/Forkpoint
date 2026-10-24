@@ -168,7 +168,7 @@ agent_lab.py          实验中 GPT Agent 使用的工具命令行
 agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
 smoke_cloud.py        云端状态服务冒烟测试（尚未运行）
 compose.yaml          一条命令的 Docker 演示
-sql/                  版本引擎，按 001–009 顺序安装
+sql/                  版本引擎，按 001–010 顺序安装
 examples/             可运行的 SQL 示例
 scripts/              基准测试、迁移检查、预发布演练
 results/              文档中各项数字对应的原始结果

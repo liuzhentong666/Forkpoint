@@ -71,7 +71,7 @@ SOURCES = ("experiments/context_archive/archive.sql", "experiments/context_archi
            # agent_lab.py init installs the version engine with db.Connection.install
            "sql/001_core.sql", "sql/002_demo_app.sql", "sql/003_manager_role.sql", "sql/004_merge_batch.sql",
            "sql/005_bounded_history.sql", "sql/006_history_health.sql", "sql/007_search_path_pg_temp.sql",
-           "sql/008_read_set_merge.sql", "sql/009_canonical_row_docs.sql")
+           "sql/008_read_set_merge.sql", "sql/009_canonical_row_docs.sql", "sql/010_unknown_branch_code.sql")
 
 
 def audit_lines(code, revisions, stocks):

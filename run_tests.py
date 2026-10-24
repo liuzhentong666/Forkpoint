@@ -176,6 +176,10 @@ def test_suite():
       SELECT vc.merge('main',vc.head('conflict-b'),vc.head());
     """, fail="P0001"))
 
+    # P0002, not P0001: P0001 is also a merge conflict (sql/010_unknown_branch_code.sql).
+    test("begin_change_on_a_missing_branch_is_not_found", lambda: sql(
+        "BEGIN; SELECT vc.begin_change('no-such-branch',vc.head()); ROLLBACK;", fail="P0002: Unknown branch"))
+
     test("file_conflict_rolls_back_rows_applied_before_it", lambda: transaction("""
       b:=vc.head(); PERFORM vc.fork('file-a',b); PERFORM vc.fork('file-b',b);
       PERFORM vc.begin_change('file-a',b);

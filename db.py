@@ -241,7 +241,7 @@ class Connection:
         statements = []
         for filename in ("001_core.sql", "002_demo_app.sql", "003_manager_role.sql", "004_merge_batch.sql",
                          "005_bounded_history.sql", "006_history_health.sql", "007_search_path_pg_temp.sql",
-                         "008_read_set_merge.sql", "009_canonical_row_docs.sql"):
+                         "008_read_set_merge.sql", "009_canonical_row_docs.sql", "010_unknown_branch_code.sql"):
             source = (ROOT / "sql" / filename).read_text(encoding="utf-8")
             source = re.sub(r"(?m)^BEGIN;\s*$|^COMMIT;\s*$", "", source)
             statements.append(source)
@@ -287,6 +287,12 @@ class Connection:
         """Record rows the same way in every session (sql/009_canonical_row_docs.sql)."""
         target = database_name(database or self.settings["database"])
         source = (ROOT / "sql/009_canonical_row_docs.sql").read_text(encoding="utf-8")
+        self.sql(source, target)
+
+    def install_unknown_branch_code(self, database=None):
+        """Report vc.begin_change on a missing branch as P0002, not P0001 (sql/010_unknown_branch_code.sql)."""
+        target = database_name(database or self.settings["database"])
+        source = (ROOT / "sql/010_unknown_branch_code.sql").read_text(encoding="utf-8")
         self.sql(source, target)
 
 
@@ -487,7 +493,7 @@ def main():
     parser.add_argument("action", choices=("check", "install", "install-manager", "install-merge-batch",
                                            "install-bounded-history", "install-history-health",
                                            "install-search-path-hardening", "install-read-set-merge",
-                                           "install-canonical-row-docs"))
+                                           "install-canonical-row-docs", "install-unknown-branch-code"))
     add_connection_arguments(parser)
     args = parser.parse_args()
     try:
@@ -525,6 +531,9 @@ def main():
         elif args.action == "install-canonical-row-docs":
             connection.install_canonical_row_docs()
             details["canonical_row_docs_installed_in"] = connection.settings["database"]
+        elif args.action == "install-unknown-branch-code":
+            connection.install_unknown_branch_code()
+            details["unknown_branch_code_installed_in"] = connection.settings["database"]
         print(json.dumps(details, indent=2))
     except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"{error}\n")

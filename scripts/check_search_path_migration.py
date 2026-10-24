@@ -76,6 +76,7 @@ def main():
     current = signatures(owner)
     assert set(functions) <= set(current) and function_states(owner, functions) == states_after
     owner.install_canonical_row_docs()  # 009: the capture triggers' rendering settings
+    owner.install_unknown_branch_code()  # 010: vc.begin_change's code for a missing branch
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
     fresh_owner = connect(args, names["fresh"])

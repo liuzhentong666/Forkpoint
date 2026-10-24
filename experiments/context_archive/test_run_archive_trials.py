@@ -68,7 +68,7 @@ class SourcesTests(unittest.TestCase):
 
     def test_protocol_hashes_every_sql_file_init_installs(self):
         installed = sorted(p.relative_to(archive.ROOT).as_posix() for p in (archive.ROOT / "sql").glob("*.sql"))
-        self.assertEqual(len(installed), 9)
+        self.assertEqual(len(installed), 10)
         self.assertEqual([path for path in installed if path not in runner.SOURCES], [])
 
 

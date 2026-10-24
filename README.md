@@ -168,7 +168,7 @@ agent_lab.py          the tool CLI the GPT agents used in the experiments
 agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
 smoke_cloud.py        cloud state-service smoke test (not run yet)
 compose.yaml          the one-command Docker demo
-sql/                  the version engine, installed in order 001–009
+sql/                  the version engine, installed in order 001–010
 examples/             runnable SQL examples
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs
