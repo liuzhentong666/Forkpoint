@@ -26,8 +26,9 @@ import agentdb_mcp_server  # noqa: E402
 from codex_rpc import wire  # noqa: E402
 
 REVISIONS = [f"{i:08x}-0000-4000-8000-000000000000" for i in range(1, 4)]
-# tools/list reply of agentdb_mcp_server.py at 48b01d8, before --tool-file existed
-TOOLS_LIST_SHA256 = "1e7c30e04210f42b7041268ba1517b5bacaac61ae8f27d25d501666054f5ab78"
+# tools/list reply of agentdb_mcp_server.py without --tool-file: the GPT run's tool, whose error list
+# names agent_lab's fork and propose refusals since 2026-10-24 (before that 1e7c30e0...)
+TOOLS_LIST_SHA256 = "4d2c750f488898edf83af62b1dab60ac4b945acffa938369d141333736796adb"
 
 
 class AuditLinesTests(unittest.TestCase):

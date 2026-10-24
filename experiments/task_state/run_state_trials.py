@@ -83,7 +83,9 @@ TOOL_S = {"type": "function", "name": TOOL["name"], "description": (
     "checkpoint requires change and saves your task state: {goal, next_action, open_items, facts: {name: {value, "
     'based_on: {revision, rows: {"app.products": [{"id": N}]}}}}, drop}; based_on is optional. resume returns your '
     "saved task state. Branches start with gpt-. actor/database are bound by the harness. Both agents have the same "
-    "operations. All UUIDs must come from tool results. Errors include stale_head/40001 and merge_conflict/P0001. "
+    "operations. All UUIDs must come from tool results. Errors include stale_head/40001 and merge_conflict/P0001 "
+    "(merge), stale_branch_head/40001 and not_found (propose), branch_exists with the branch's head and not_found "
+    "(fork). "
     "No arbitrary SQL or shell; policy code is stored, never executed."),
     "inputSchema": {"type": "object", "properties": {
         **{k: v for k, v in TOOL["inputSchema"]["properties"].items()},

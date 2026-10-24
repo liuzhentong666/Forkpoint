@@ -4,6 +4,8 @@
 
 状态：2026-10-23 在任何模型运行之前登记。同日经用户同意完成了试运行（见下文“试运行”，不计入样本）和 20 轮样本（见下文“样本结果”）：按采纳标准，在这个任务上没有证据支持存档。真实轮次须经用户同意使用模型额度。下文的离线检查和替身试运行都不调用模型。仅限本机，不访问任何云服务。
 
+2026-10-24 之后的改动：工具说明的错误列表加上了 `agent_lab.py` 对 fork 和提案的拒绝（`stale_branch_head`、附该分支 head 的 `branch_exists`、`not_found`），工具说明因此长了 116 字节；这些失败此前是 traceback，运行器记为 `helper_failed`。两组的工具说明长度相同。上面的试运行和样本用的是旧的说明和旧的行为，重跑会在这两点上不同。
+
 ## 问题
 
 Agent 的上下文在任务中途被重置后，如果每一条上下文条目都按原样存在数据库里（以哈希为键，附编号目录和取回动作，B 组），它能否比使用模型为自己写的交接说明（A 组，代替压缩）少做重复工作、少出错地继续？
@@ -177,6 +179,8 @@ CONTINUE:     Continue your current task from where you were.
 # Context Archive: Experiment Design
 
 Status: registered on 2026-10-23, before any model run. The pilot (see "Pilot" below; not part of the sample) and the 20-round sample (see "Sample results" below) ran the same day with the user's approval: by the adoption rule, there is no evidence for the archive on this task. Real rounds need the user's approval for model quota. The offline checks and the stand-in dry run below call no model. Local only; no cloud service is accessed.
+
+Changes since 2026-10-24: the tool description's error list now names `agent_lab.py`'s fork and propose refusals (`stale_branch_head`, `branch_exists` with the branch's head, `not_found`), which makes the description 116 bytes longer; those failures used to be tracebacks, recorded by the runner as `helper_failed`. Both setups grew alike. The pilot and sample above used the old description and the old behaviour, so a rerun differs in both.
 
 ## Question
 

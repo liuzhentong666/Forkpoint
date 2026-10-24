@@ -4,6 +4,8 @@
 
 状态：2026-10-24 在任何模型运行之前登记。同日经用户同意完成了试运行（见下文“试运行”，不计入样本），两组都落地了正确的 55；样本没有运行，用户依据试运行决定不采纳新鲜度标记（见下文“结论”）。真实轮次须经用户同意使用模型额度。下文的检查和替身试运行都不调用模型。任务状态保存在运行器进程内的 MemoryStore 中（云端工作暂缓，正式持久化另行决定）；仅限本机，不访问任何云服务。
 
+2026-10-24 试运行之后的改动：工具说明的错误列表加上了 `agent_lab.py` 对 fork 和提案的拒绝（`stale_branch_head`、附该分支 head 的 `branch_exists`、`not_found`），工具说明因此长了 116 字节；这些失败此前是 traceback，运行器记为 `helper_failed`。上面的试运行用的是旧的说明和旧的行为，再运行会在这两点上不同。
+
 ## 问题
 
 Agent 在任务中途多次重置后，从检查点恢复。如果检查点中的每个事实都标明它读自哪个版本的哪些行，并在恢复时标出“新鲜 / 已过期 / 未知”（F 组），是否比没有这些标记的同样检查点（U 组）更少依据过期事实做出决定？
@@ -138,6 +140,8 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 # Checkable Task State: Experiment Design
 
 Status: registered on 2026-10-24, before any model run. The pilot (see "Pilot" below; not part of the sample) ran the same day with the user's approval, and both setups landed the correct 55; the sample was not run, and on the pilot the user decided not to adopt freshness marks (see "Conclusion" below). Real rounds need the user's approval for model quota. The checks and the stand-in dry run below call no model. Task state is kept in a MemoryStore inside the runner process (cloud work is on hold; durable storage will be decided separately). Local only; no cloud service is accessed.
+
+Changes after the 2026-10-24 pilot: the tool description's error list now names `agent_lab.py`'s fork and propose refusals (`stale_branch_head`, `branch_exists` with the branch's head, `not_found`), which makes the description 116 bytes longer; those failures used to be tracebacks, recorded by the runner as `helper_failed`. The pilot above used the old description and the old behaviour, so another run differs in both.
 
 ## Question
 

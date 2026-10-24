@@ -24,7 +24,8 @@ TOOL = {"type": "function", "name": "agentdb", "description": "Operate this tria
     "the code to experiments/pricing.py for field=price or experiments/inventory.py for field=stock, atomically. "
     "diff requires base,revision. merge requires revision,expected (the main head you read). verify checks main. "
     "Branches start with gpt-. actor/database are bound by the harness. Both agents have the same operations. "
-    "All UUIDs must come from tool results. Errors include stale_head/40001 and merge_conflict/P0001. "
+    "All UUIDs must come from tool results. Errors include stale_head/40001 and merge_conflict/P0001 (merge), "
+    "stale_branch_head/40001 and not_found (propose), branch_exists with the branch's head and not_found (fork). "
     "No arbitrary SQL or shell; policy code is stored, never executed.",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ACTIONS},
