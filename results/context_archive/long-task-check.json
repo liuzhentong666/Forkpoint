@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-23T09:38:53.334210+00:00",
+  "recorded_at_utc": "2026-10-24T13:06:10.259477+00:00",
   "token_model": {
     "fits": {
       "without_signatures": {
@@ -52,7 +52,7 @@
     "in_full_bytes": 4096
   },
   "database": {
-    "name": "agentdb_test_gpt_581cefdd28",
+    "name": "agentdb_test_gpt_4c5c8521e9",
     "dropped": true
   },
   "rows": [
@@ -948,7 +948,7 @@
   "sources_sha256": {
     "experiments/context_archive/archive.py": "a3ff913839cace42d718359e70b81afe3c23985016f3a899ae66ef0714905e11",
     "experiments/context_archive/long_task.py": "b72a3fd88557586f990b08ea4cfa3e78c167fe62353119caccbe8a29a3ec6191",
-    "agent_lab.py": "b9aae29f2646c52420f6c0cb64f05dd4d955665308751137cc77df55ad5a9e89"
+    "agent_lab.py": "e4968bf76d8dae6042dd7f267cf55bfbd471b9c95067247a35beae296f8e275e"
   },
   "model_calls": 0,
   "real_cloud_verified": false
