@@ -249,7 +249,7 @@ def switch(args, trial, rnd, actor, agent, boundary, prompt):
 
 
 def source_rereads(summary, after_sequence):
-    """gpt-b's reads of product SOURCE after the warehouse update, and how many were at a revision that shows it."""
+    """How many successful reads of product SOURCE gpt-b made after the warehouse update."""
     reads = [c for c in summary["calls"] if c["actor"] == "gpt-b" and c["sequence"] > after_sequence
              and (c.get("arguments") or {}).get("action") == "read-product"
              and (c.get("arguments") or {}).get("product") == str(SOURCE) and not c.get("error")]

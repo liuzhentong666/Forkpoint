@@ -51,7 +51,7 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 ## 检查与替身试运行（不调用模型）
 
 - `test_task_state.py`（8 项）：行在 main 上改变后事实变为过期、改回后恢复新鲜、改动其他行不影响；没有读取记录或写错键为未知；重新设置或删除事实时替换或删除其读取记录；重试不重复执行；错误的检查点被拒绝；恢复包在预算内并统计被省略的过期事实；旧记录照常恢复。
-- `test_run_state_trials.py`（7 项）：结果判定；两组工具相同且没有 verify；`read-product` 的参数检查；只有 F 组标记事实；以及在本进程内用替身各跑一轮、把重置上限降到 4,000 token 的试运行：每个 Agent 重置 1–3 次，交接包含当前阶段指令，只有 F 组的交接带标记。
+- `test_run_state_trials.py`（7 项）：结果判定；两组工具相同且没有 verify；`read-product` 的参数检查；只有 F 组标记事实；以及在本进程内用替身各跑一轮、把重置上限降到 4,000 token 的试运行：gpt-b 重置 1–3 次，交接包含当前阶段指令，只有 F 组的交接带标记。
 - 替身是脚本：只有恢复包标出过期时才重读 202，所以 U 组得到 95、F 组得到 55。这只说明流程可行，不预测模型的行为。在真实的 10,000 token 上限下替身不会重置：2026-10-24 的命令行替身试运行中，gpt-b 的请求最多为 8,943（U）和 9,500（F）token，结果为 U 落地 95、F 落地 55；2026-10-20 的真实 gpt-b 在相近任务上达到 16.6–19.7K token。
 
 ## 预测（运行前写定）
@@ -106,7 +106,7 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 - 重置都在恢复阶段：准备阶段结束时 gpt-b 的请求已超过 10,000 token（11,901 和 12,415），所以第一次重置发生在恢复阶段的第一个工具调用边界。gpt-a 没有重置：它唯一超过 10,000 的请求（F 组，10,222）是最后的回答，之后没有工具调用。F 组第 3 次重置之后，最后一个进程的请求最多达到 17,383 token。
 - 按行的规则，每个标记都正确：5 个已过期的事实读自 101（被 gpt-a 的价格合入改动）或 202（被仓库更新改动），3 个未知的事实没有记录读取的行。与库存决定有关的只有读自 202 的 2 个；另外 3 个读自 101，其中 2 个是基线上的值。
 - F 组的交接较大（标记带有变化行的前后值），重置更多，token 也更多；每组只有一轮，不能据此判断原因。
-- F 组的 gpt-b 在恢复阶段的几次重置之间没有做检查点，后来的进程不知道前一个进程已建的分支：两次 fork 因分支名已存在而失败，提案也重做了一次。
+- F 组的 gpt-b 在恢复阶段的几次重置之间没有做检查点，后来的进程不知道前一个进程已建的分支：两次 fork 因分支名已存在而失败（`agent_lab.py` 以 Python traceback 报告这一 23505 错误，而不是 JSON 拒绝），提案也重做了一次。
 - 两轮中 gpt-b 的第一次检查点都被拒绝，因为它给关于代码或版本的事实附上了不含商品行的 based_on；拒绝信息说明了原因，下一次调用去掉这些 based_on 后成功。gpt-a 未被要求也调用了 checkpoint（2 次和 3 次）和 resume（1 次，尚无状态）。
 
 对照预测：
@@ -120,8 +120,8 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 新鲜度标记不予采纳。这是用户依据试运行作出的决定；登记的样本没有运行，所以这不是采纳标准给出的结果。
 
 - 没有收益：两组的 gpt-b 都在第一个检查点中自己计划了重读 202，标记没有可以纠正的过期决定。
-- 试运行表中费用与用时的差别（114K token、49 秒、$0.14）不能归因于标记。在上下文存档样本中（同一运行器与模型，任务不同），条件完全相同的一组 10 轮之间，全部 token 相差 122K（A：180K–302K）和 304K（B：73K–377K），用时 203–256 秒和 120–264 秒，费用 $0.46–$0.52 和 $0.27–$0.64。这次的差别在三项上都小于 B 组的离散，在 token 与用时上和 A 组的离散相近。F 组多出的部分主要来自 Agent 自己的做法：多一次重置，且重置之间没有做检查点，因而重做了 fork 和提案。
-- 标记本身的成本是确定的：每次交接多 1.7–2.7 KB（4,429 字节对 2,723 和 1,770 字节），按 token 模型（2,572 + 每字节 0.519）约为每个新进程开头多 900–1,400 token。成本不大，但没有收益。
+- 标记有确定的成本：每次交接多 1.7–2.7 KB（4,429 字节对 2,723 和 1,770 字节），所以 F 组每个新进程的第一个请求多 830–1,210 token（4,922 对 4,090 和 3,716），更快到达重置上限。
+- 试运行中 F 组花费更多：多 114K token、49 秒和 $0.14。F 组多重置一次，并重做了 fork 和提案；较大的交接可能是部分原因，但每组只有一轮，测不出差别中有多少来自标记。作为参照，上下文存档样本（同一运行器与模型，任务不同）中同一组完成的各轮之间最多相差 105K token、53 秒和 $0.06（A，9 轮）以及 137K token、62 秒和 $0.09（B，9 轮）；第 19–20 轮因 Pro 会话额度中断，不计在内。这次的 token 差别在 B 组的离散之内、略高于 A 组，用时差别在两组的离散之内，费用差别超出了两组。
 - 检查点与恢复没有被检验：U 组同样有检查点，本实验没有与无检查点的做法比较。两组的 Agent 都在 2–3 次重置后落地了正确结果，且没有覆盖；这只说明机制可用，不说明它优于其他做法。
 - 与上下文存档实验相同的规律：两项功能提供的信息，claude-opus-5-5（xhigh）没有它们也会自己得到。存档输给了模型自己的说明（保留了全部 14 个值），标记输给了模型自己计划的重读。这只对这两个任务以及这一模型和推理强度成立。
 - 尚未检验的推测（不是结果）：模型自己做不到的是强制执行。Forkpoint 的合入检查拒绝写入别人改过的行，与 Agent 是否谨慎无关。本次试运行中它没有拒绝任何调用：两组的 gpt-b 都没有尝试合入旧提案，它们在检查点中已预计旧提案会与价格改动冲突。
@@ -186,7 +186,7 @@ When an agent is reset several times mid-task and continues from its checkpoints
 ## Checks and stand-in dry run (no model calls)
 
 - `test_task_state.py` (8 tests): a fact turns stale when its row changes on main, fresh again when the row changes back, and is unaffected by other rows; no recorded reads or a wrong key is unknown; setting or dropping a fact replaces or removes its reads; a retry is not applied twice; bad checkpoints are refused; the resume packet stays within its budget and counts stale facts it left out; an older record still resumes.
-- `test_run_state_trials.py` (7 tests): the outcome rule; the same tool in both setups, without verify; `read-product`'s argument checks; only setup F marks facts; and an in-process dry run of one round per setup with the stand-in and the reset limit lowered to 4,000 tokens: each agent resets 1–3 times, every handoff carries the stage's instructions, and only setup F's carry marks.
+- `test_run_state_trials.py` (7 tests): the outcome rule; the same tool in both setups, without verify; `read-product`'s argument checks; only setup F marks facts; and an in-process dry run of one round per setup with the stand-in and the reset limit lowered to 4,000 tokens: gpt-b resets 1–3 times, every handoff carries the stage's instructions, and only setup F's carry marks.
 - The stand-in is a script: it re-reads 202 only when the resume packet marks the fact stale, so setup U lands 95 and setup F 55. This shows the path works and predicts nothing about a model. With the real 10,000-token limit the stand-in never resets: in the command-line stand-in dry run on 2026-10-24, gpt-b's requests peaked at 8,943 (U) and 9,500 (F) tokens, and U landed 95 and F 55; the real gpt-b reached 16.6–19.7K tokens on a similar task on 2026-10-20.
 
 ## Predictions (written before running)
@@ -241,7 +241,7 @@ Observations:
 - All resets came in the recovery: by the end of the preparation gpt-b's requests were already over 10,000 tokens (11,901 and 12,415), so the first reset came at the first tool-call boundary of the recovery. gpt-a never reset: its only request over 10,000 (10,222, in setup F) was its final answer, with no tool call after it. After setup F's third reset, the last process's requests reached 17,383 tokens.
 - Every mark was right by the row rule: the 5 stale facts were read from product 101 (changed by gpt-a's price merge) or 202 (changed by the warehouse update), and the 3 unknown facts had no recorded rows. Only the 2 read from 202 bore on the stock decision; the other 3 were read from 101, 2 of them baseline values.
 - Setup F's handoffs were larger (the marks carry the changed rows before and after), and it reset more and used more tokens; with one round per setup this cannot say why.
-- In setup F gpt-b did not checkpoint between its resets in the recovery, so a later process did not know the branch an earlier one had made: two forks failed on a branch name that already existed, and one proposal was made again.
+- In setup F gpt-b did not checkpoint between its resets in the recovery, so a later process did not know the branch an earlier one had made: two forks failed on a branch name that already existed (`agent_lab.py` reported the 23505 error as a Python traceback, not a JSON refusal), and one proposal was made again.
 - In both rounds gpt-b's first checkpoint was refused because it attached based_on without product rows to facts about code or a revision; the refusal said why, and the next call, without those based_on, succeeded. gpt-a, not asked to, also called checkpoint (2 and 3 times) and resume (once, with no state yet).
 
 Against the predictions:
@@ -255,8 +255,8 @@ Decision: on 2026-10-24 the user put the sample on hold; it has not been registe
 Freshness marks are not adopted. The user decided this on the pilot; the registered sample was not run, so this is not an outcome of the adoption rule.
 
 - No benefit: in both setups gpt-b planned the re-read of 202 in its first checkpoint, so the marks had no stale decision to correct.
-- The cost and time gap in the pilot table (114K tokens, 49 s, $0.14) cannot be put down to the marks. In the context archive sample (same runner and model, a different task), the 10 rounds of one setup under identical conditions differed by 122K tokens (A: 180K–302K) and 304K (B: 73K–377K), took 203–256 s and 120–264 s, and cost $0.46–$0.52 and $0.27–$0.64. This gap is smaller than setup B's spread on all three, and close to setup A's in tokens and time. Most of setup F's extra came from the agent's own course: one more reset, and no checkpoint between resets, so a fork and a proposal were made again.
-- The marks' own cost is fixed: each handoff was 1.7–2.7 KB larger (4,429 bytes against 2,723 and 1,770), about 900–1,400 more tokens at the start of each new process by the token model (2,572 + 0.519 per byte). The cost is small, but there is no benefit.
+- The marks have a fixed cost: each handoff was 1.7–2.7 KB larger (4,429 bytes against 2,723 and 1,770), so each new process in setup F started with a first request 830–1,210 tokens larger (4,922 against 4,090 and 3,716) and reached the reset limit sooner.
+- Setup F cost more in the pilot: 114K tokens, 49 s and $0.14 more. It reset once more and made a fork and a proposal again; the larger handoffs may explain part of that, but with one round per setup, how much of the gap the marks caused cannot be measured. For scale, in the context archive sample (same runner and model, a different task) the completed rounds of one setup differed by at most 105K tokens, 53 s and $0.06 (A, 9 rounds) and 137K tokens, 62 s and $0.09 (B, 9 rounds); rounds 19–20, cut short by the Pro session limit, are left out. The pilot's token gap is within B's spread and a little above A's, its time gap is within both, and its cost gap is beyond both.
 - Checkpoint and resume were not tested: setup U had checkpoints too, and this experiment made no comparison with going without them. In both setups the agent landed the correct result after 2–3 resets, with no overwrite; that shows the mechanism works, not that it beats other ways.
 - The same pattern as the context archive experiment: both features supplied information claude-opus-5-5 at xhigh effort works out by itself without them. The archive lost to the model's own note (which kept all 14 values), and the marks lost to the model's own planned re-read. This holds only for these two tasks and this model and effort.
 - An untested guess, not a result: what the model cannot do by itself is enforcement. Forkpoint's merge checks refuse a write to a row someone else changed, however careful the agent is. They refused no call in this pilot: neither gpt-b tried to merge its old proposal, and both had noted in their checkpoint that it would conflict with the price change.
