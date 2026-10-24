@@ -2,7 +2,7 @@
 
 # 可核查的任务状态：实验设计
 
-状态：2026-10-24 在任何模型运行之前登记。同日经用户同意完成了试运行（见下文“试运行”，不计入样本），两组都落地了正确的 55；样本按用户要求暂缓，尚未运行。真实轮次须经用户同意使用模型额度。下文的检查和替身试运行都不调用模型。任务状态保存在运行器进程内的 MemoryStore 中（云端工作暂缓，正式持久化另行决定）；仅限本机，不访问任何云服务。
+状态：2026-10-24 在任何模型运行之前登记。同日经用户同意完成了试运行（见下文“试运行”，不计入样本），两组都落地了正确的 55；样本没有运行，用户依据试运行决定不采纳新鲜度标记（见下文“结论”）。真实轮次须经用户同意使用模型额度。下文的检查和替身试运行都不调用模型。任务状态保存在运行器进程内的 MemoryStore 中（云端工作暂缓，正式持久化另行决定）；仅限本机，不访问任何云服务。
 
 ## 问题
 
@@ -115,6 +115,18 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 
 决定：用户于 2026-10-24 要求暂缓样本；样本尚未登记或运行。每组一轮的试运行不能用来判断采纳标准；若以后运行样本，按本文登记的设计进行。从这次试运行看，在现在的提示下模型不需要标记也会计划重读，这个任务可能区分不出两组；能让标记起作用的任务需要另行设计并重新登记。
 
+## 结论（2026-10-24）
+
+新鲜度标记不予采纳。这是用户依据试运行作出的决定；登记的样本没有运行，所以这不是采纳标准给出的结果。
+
+- 没有收益：两组的 gpt-b 都在第一个检查点中自己计划了重读 202，标记没有可以纠正的过期决定。
+- 试运行表中费用与用时的差别（114K token、49 秒、$0.14）不能归因于标记。在上下文存档样本中（同一运行器与模型，任务不同），条件完全相同的一组 10 轮之间，全部 token 相差 122K（A：180K–302K）和 304K（B：73K–377K），用时 203–256 秒和 120–264 秒，费用 $0.46–$0.52 和 $0.27–$0.64。这次的差别在三项上都小于 B 组的离散，在 token 与用时上和 A 组的离散相近。F 组多出的部分主要来自 Agent 自己的做法：多一次重置，且重置之间没有做检查点，因而重做了 fork 和提案。
+- 标记本身的成本是确定的：每次交接多 1.7–2.7 KB（4,429 字节对 2,723 和 1,770 字节），按 token 模型（2,572 + 每字节 0.519）约为每个新进程开头多 900–1,400 token。成本不大，但没有收益。
+- 检查点与恢复没有被检验：U 组同样有检查点，本实验没有与无检查点的做法比较。两组的 Agent 都在 2–3 次重置后落地了正确结果，且没有覆盖；这只说明机制可用，不说明它优于其他做法。
+- 与上下文存档实验相同的规律：两项功能提供的信息，claude-opus-5-5（xhigh）没有它们也会自己得到。存档输给了模型自己的说明（保留了全部 14 个值），标记输给了模型自己计划的重读。这只对这两个任务以及这一模型和推理强度成立。
+- 尚未检验的推测（不是结果）：模型自己做不到的是强制执行。Forkpoint 的合入检查拒绝写入别人改过的行，与 Agent 是否谨慎无关。本次试运行中它没有拒绝任何调用：两组的 gpt-b 都没有尝试合入旧提案，它们在检查点中已预计旧提案会与价格改动冲突。
+- 产品上不加入新鲜度标记。原型留在 `experiments/task_state/` 作为记录；`vc.*` 与 `agent_state` 没有改动。
+
 ## 回滚
 
 全部内容在 `experiments/task_state/` 和本文件中；`vc.*`、`agent_state` 与项目数据库都没有改动。删除它们即恢复原状。
@@ -125,7 +137,7 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 
 # Checkable Task State: Experiment Design
 
-Status: registered on 2026-10-24, before any model run. The pilot (see "Pilot" below; not part of the sample) ran the same day with the user's approval, and both setups landed the correct 55; the sample is on hold at the user's request and has not run. Real rounds need the user's approval for model quota. The checks and the stand-in dry run below call no model. Task state is kept in a MemoryStore inside the runner process (cloud work is on hold; durable storage will be decided separately). Local only; no cloud service is accessed.
+Status: registered on 2026-10-24, before any model run. The pilot (see "Pilot" below; not part of the sample) ran the same day with the user's approval, and both setups landed the correct 55; the sample was not run, and on the pilot the user decided not to adopt freshness marks (see "Conclusion" below). Real rounds need the user's approval for model quota. The checks and the stand-in dry run below call no model. Task state is kept in a MemoryStore inside the runner process (cloud work is on hold; durable storage will be decided separately). Local only; no cloud service is accessed.
 
 ## Question
 
@@ -237,6 +249,18 @@ Against the predictions:
 - "F lands fewer stale decisions than U": cannot be checked; neither setup landed one.
 
 Decision: on 2026-10-24 the user put the sample on hold; it has not been registered or run. A pilot of one round per setup does not decide the adoption rule; if the sample runs later, it runs as registered here. On this pilot, with the current prompts the model plans the re-read without marks, so this task may not tell the two setups apart; a task where marks could matter needs its own design and a new registration.
+
+## Conclusion (2026-10-24)
+
+Freshness marks are not adopted. The user decided this on the pilot; the registered sample was not run, so this is not an outcome of the adoption rule.
+
+- No benefit: in both setups gpt-b planned the re-read of 202 in its first checkpoint, so the marks had no stale decision to correct.
+- The cost and time gap in the pilot table (114K tokens, 49 s, $0.14) cannot be put down to the marks. In the context archive sample (same runner and model, a different task), the 10 rounds of one setup under identical conditions differed by 122K tokens (A: 180K–302K) and 304K (B: 73K–377K), took 203–256 s and 120–264 s, and cost $0.46–$0.52 and $0.27–$0.64. This gap is smaller than setup B's spread on all three, and close to setup A's in tokens and time. Most of setup F's extra came from the agent's own course: one more reset, and no checkpoint between resets, so a fork and a proposal were made again.
+- The marks' own cost is fixed: each handoff was 1.7–2.7 KB larger (4,429 bytes against 2,723 and 1,770), about 900–1,400 more tokens at the start of each new process by the token model (2,572 + 0.519 per byte). The cost is small, but there is no benefit.
+- Checkpoint and resume were not tested: setup U had checkpoints too, and this experiment made no comparison with going without them. In both setups the agent landed the correct result after 2–3 resets, with no overwrite; that shows the mechanism works, not that it beats other ways.
+- The same pattern as the context archive experiment: both features supplied information claude-opus-5-5 at xhigh effort works out by itself without them. The archive lost to the model's own note (which kept all 14 values), and the marks lost to the model's own planned re-read. This holds only for these two tasks and this model and effort.
+- An untested guess, not a result: what the model cannot do by itself is enforcement. Forkpoint's merge checks refuse a write to a row someone else changed, however careful the agent is. They refused no call in this pilot: neither gpt-b tried to merge its old proposal, and both had noted in their checkpoint that it would conflict with the price change.
+- In the product, freshness marks are not added. The prototype stays in `experiments/task_state/` as a record; `vc.*` and `agent_state` are unchanged.
 
 ## Rollback
 
