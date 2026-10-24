@@ -3,8 +3,8 @@
 Each pass creates its own agentdb_test_gpt_* database with `agent_lab.py init` on the existing
 local PostgreSQL (kept for inspection). Outputs are compared after replacing the database
 name and UUIDs by placeholders; per-call wall time includes starting the client process.
-The calls that merge with a read set (merge --reads), and a fork of a branch that already exists,
-must also give their expected outcome.
+The calls that merge with a read set (merge --reads), a propose with a stale --expected and forks
+of an existing branch and of an unknown base must also give their expected outcome.
 Usage: python scripts/compare_agent_lab_gateway.py [--output results/agent-lab-gateway-results.json]
 """
 import argparse
@@ -29,6 +29,13 @@ def sequence(env, label):
     log = [init]
     def c(*argv):
         r = call(env, argv[0], "--database", db, *argv[1:]); log.append(r); return r
+    unexpected = []
+    def expect(outcome, *argv):
+        r = c(*argv)
+        got = json.loads(r["stdout"]) if r["exit"] in (0, 2) and r["stdout"].startswith("{") else {}
+        got = "merged" if got.get("merged") else got.get("error", f"exit {r['exit']}")
+        if got != outcome:
+            unexpected.append(dict(call=len(log) - 1, expected=outcome, got=got))
     c("info", "--revision", base)
     a = json.loads(c("fork", "--branch", "gpt-a-1", "--base", base)["stdout"])["head"]
     b = json.loads(c("fork", "--branch", "gpt-b-1", "--base", base)["stdout"])["head"]
@@ -36,7 +43,7 @@ def sequence(env, label):
     pb = json.loads(c("propose", "--branch", "gpt-b-1", "--expected", b, "--actor", "gpt-b", "--field", "stock", "--value", "95", "--code", "STOCK = 95\n")["stdout"])["revision"]
     c("diff", "--base", base, "--revision", pa)
     c("read-code", "--revision", pa, "--path", "experiments/pricing.py")
-    c("propose", "--branch", "gpt-a-1", "--expected", base, "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11\n")  # stale branch head
+    expect("stale_branch_head", "propose", "--branch", "gpt-a-1", "--expected", base, "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11\n")
     c("merge", "--revision", pa, "--expected", base, "--actor", "gpt-a")
     c("merge", "--revision", pb, "--expected", base, "--actor", "gpt-b")  # stale_head
     main = json.loads(c("info")["stdout"])["current_main"]
@@ -50,13 +57,7 @@ def sequence(env, label):
     c("propose", "--branch", "gpt-b-2", "--expected", b2, "--actor", "gpt-b", "--field", "stock", "--value", "9.5", "--code", "X=1")  # parser error
     # merge --reads from a base behind main: the stock decrement again is refused (written row
     # already holds that value), as is a price decided from row 101 as it was; from main it lands.
-    unexpected, reads = [], '{"app.products": [{"id": 101}]}'
-    def expect(outcome, *argv):
-        r = c(*argv)
-        got = json.loads(r["stdout"]) if r["exit"] in (0, 2) and r["stdout"].startswith("{") else {}
-        got = "merged" if got.get("merged") else got.get("error", f"exit {r['exit']}")
-        if got != outcome:
-            unexpected.append(dict(call=len(log) - 1, expected=outcome, got=got))
+    reads = '{"app.products": [{"id": 101}]}'
     b3 = json.loads(c("fork", "--branch", "gpt-b-3", "--base", main)["stdout"])["head"]
     pb3 = json.loads(c("propose", "--branch", "gpt-b-3", "--expected", b3, "--actor", "gpt-b", "--field", "stock", "--value", "95", "--code", "STOCK = 95\n")["stdout"])["revision"]
     expect("read_conflict", "merge", "--revision", pb3, "--reads", "{}", "--actor", "gpt-b")
@@ -70,6 +71,7 @@ def sequence(env, label):
         unexpected.append(dict(call=len(log) - 1, expected="verified", got="verify failed"))
     expect("invalid_read_set", "merge", "--revision", pa4, "--reads", '{"app.products": [{"sku": "x"}]}', "--actor", "gpt-a")
     expect("branch_exists", "fork", "--branch", "gpt-a-4", "--base", main2)  # made above
+    expect("not_found", "fork", "--branch", "gpt-a-5", "--base", "99999999-9999-9999-9999-999999999999")
     return db, log, unexpected
 
 def normalize(text, db):
@@ -120,4 +122,4 @@ print(json.dumps({k: summary[k] for k in ("identical_normalized", "unexpected_ou
 if diffs:
     raise SystemExit(f"{len(diffs)} outputs differ; see {out}")
 if spawn_unexpected or gw_unexpected:
-    raise SystemExit(f"read-set merges or the repeated fork gave unexpected outcomes; see {out}")
+    raise SystemExit(f"calls with an expected outcome gave another; see {out}")
