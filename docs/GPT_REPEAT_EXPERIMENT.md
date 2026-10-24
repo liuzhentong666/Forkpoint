@@ -206,6 +206,8 @@ python experiments/gpt_repeat/audit_claude_logs.py experiments/gpt_repeat/result
 .\.venv-cloud\Scripts\python.exe experiments/gpt_repeat/run_claude_repeats.py --project . --claude PATH\TO\claude.exe --config-dir PATH\TO\CONFIG --workdir PATH\TO\EMPTY_DIR --output experiments/gpt_repeat/results/NEW_RUN --gpt-protocol experiments/gpt_repeat/results/2026-10-17/protocol.json --runs 10 --workers 2 --model claude-opus-5-5 --effort xhigh
 ```
 
+2026-10-24 起，`run_gpt_repeats.TOOL` 的错误列表多列了 `agent_lab.py` 对 fork 和提案的拒绝，与 2026-10-17 的 `protocol.json` 记录的工具说明不再相同；按上面的命令运行时，`run_claude_repeats.py` 会在调用模型之前以 “Prompts or tool differ from the GPT run's protocol.json” 退出。2026-10-20 的 Claude 组用的是旧的说明。
+
 **云存储仍未经真实验证，云端部署暂缓。**
 
 ---
@@ -417,5 +419,7 @@ Running a new group needs the following, and it uses that login's Claude usage q
 ```console
 .\.venv-cloud\Scripts\python.exe experiments/gpt_repeat/run_claude_repeats.py --project . --claude PATH\TO\claude.exe --config-dir PATH\TO\CONFIG --workdir PATH\TO\EMPTY_DIR --output experiments/gpt_repeat/results/NEW_RUN --gpt-protocol experiments/gpt_repeat/results/2026-10-17/protocol.json --runs 10 --workers 2 --model claude-opus-5-5 --effort xhigh
 ```
+
+Since 2026-10-24 the error list in `run_gpt_repeats.TOOL` also names `agent_lab.py`'s fork and propose refusals, so it no longer matches the tool description recorded in the 2026-10-17 `protocol.json`; run as above, `run_claude_repeats.py` exits with "Prompts or tool differ from the GPT run's protocol.json" before calling any model. The 2026-10-20 Claude group used the old description.
 
 **Cloud storage is still not verified against real cloud services, and cloud deployment is on hold.**
