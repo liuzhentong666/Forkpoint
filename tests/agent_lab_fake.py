@@ -26,14 +26,22 @@ INVALID_READ_SET = (
     'HINT:  {"<vc.table_id(...)>": [{"id": 1}, ...]}\n'
     "CONTEXT:  PL/pgSQL function merge_validated(text,uuid,jsonb,text) line 17 at RAISE\n"
     "LOCATION:  exec_stmt_raise, pl_exec.c:3897\n")
+# psql's report of a fork of an existing branch, as a real lab database printed it on 2026-10-24.
+BRANCH_EXISTS = (
+    'ERROR:  23505: duplicate key value violates unique constraint "branch_pkey"\n'
+    "DETAIL:  Key (name)=(gpt-a-1) already exists.\n"
+    'CONTEXT:  SQL statement "INSERT INTO vc.branch VALUES(p_name,p_revision,p_revision)"\n'
+    "PL/pgSQL function fork(text,uuid) line 3 at SQL statement\n"
+    "SCHEMA NAME:  vc\nTABLE NAME:  branch\nCONSTRAINT NAME:  branch_pkey\n"
+    "LOCATION:  _bt_check_unique, nbtinsert.c:666\n")
 
 
 class FakeWorker:
     """Answers the statements agent_lab sends; records them in order."""
 
-    def __init__(self, product=None, pricing="PRICE = 11\n", inventory="STOCK = 95\n", merge=None):
+    def __init__(self, product=None, pricing="PRICE = 11\n", inventory="STOCK = 95\n", merge=None, fork=None):
         self.product = product or {"id": 101, "price": 10, "stock": 100}
-        self.pricing, self.inventory, self.merge = pricing, inventory, merge
+        self.pricing, self.inventory, self.merge, self.fork = pricing, inventory, merge, fork
         self.statements, self.closed = [], False
 
     def close(self):
@@ -54,6 +62,8 @@ class FakeWorker:
         if "experiments/inventory.py')" in statement:
             return self.inventory
         if "vc.fork(" in statement:
+            if self.fork == "exists":
+                raise RuntimeError(BRANCH_EXISTS)  # What db.py's sql() raises for it.
             return NEW
         if "vc.finish_change()" in statement:
             return NEW
@@ -63,6 +73,8 @@ class FakeWorker:
 
     def execute(self, statement, database=None, timeout=120):
         self.statements.append(statement)
+        if self.fork == "exists":
+            return subprocess.CompletedProcess("psql", 3, "", BRANCH_EXISTS)
         if self.merge == "stale":
             return subprocess.CompletedProcess("psql", 3, "", "ERROR:  40001: stale head\n")
         if self.merge == "lock_timeout":
@@ -88,6 +100,7 @@ SCENARIOS = {
     "read_code": (["read-code", *COMMON, "--path", "experiments/pricing.py", "--revision", BASE], {}),
     "read_code_missing_path": (["read-code", *COMMON, "--revision", BASE], {}),
     "fork": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE], {}),
+    "fork_exists": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE], {"fork": "exists"}),
     "fork_bad_branch": (["fork", *COMMON, "--branch", "main", "--base", BASE], {}),
     "fork_bad_uuid": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", "x' OR 1=1"], {}),
     "fork_missing_base": (["fork", *COMMON, "--branch", "gpt-a-1"], {}),

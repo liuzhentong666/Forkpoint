@@ -29,6 +29,10 @@ MERGE_LOCK_TIMEOUT = "10s"
 # vc.merge_validated does not know (vc.merge still reports that as P0001).
 MERGE_ERRORS = {"40001": "stale_head", "P0001": "merge_conflict", "55P03": "lock_timeout",
                 "RS001": "read_conflict", "22023": "invalid_read_set", "P0002": "not_found"}
+# Fork failures reported the same way. vc.fork inserts one vc.branch row, so 23505
+# (branch_pkey) means a branch of that name already exists, perhaps made by an
+# earlier process; nothing changed. Any other fork failure is raised as before.
+FORK_ERRORS = {"23505": "branch_exists"}
 # merge --reads names rows by table; every lab database registers these two
 # (sql/002_demo_app.sql), so vc.table_id never sees an unregistered name.
 READ_TABLES = ("app.products", "app.orders")
@@ -220,8 +224,13 @@ def perform(args, worker):
             'content',convert_from(vc.read_file('{fixed}',{literal(args.path)}),'UTF8'));
         """))
     elif args.action == "fork":
-        created = worker.sql(f"SELECT vc.fork({literal(branch(args.branch))},'{revision(args.base)}');")
-        result = dict(branch=args.branch, head=created)
+        response = worker.execute(f"SELECT vc.fork({literal(branch(args.branch))},'{revision(args.base)}');")
+        if response.returncode:
+            state = sqlstate(response.stderr)
+            if state not in FORK_ERRORS:
+                raise RuntimeError(response.stdout + response.stderr)  # What worker.sql raises.
+            return json.dumps(dict(error=FORK_ERRORS[state], sqlstate=state, detail=response.stderr.strip())) + "\n", 2
+        result = dict(branch=args.branch, head=response.stdout.strip())
     elif args.action == "propose":
         value = Decimal(args.value)
         path = "experiments/" + ("pricing.py" if args.field == "price" else "inventory.py")
