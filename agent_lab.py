@@ -31,12 +31,14 @@ MERGE_ERRORS = {"40001": "stale_head", "P0001": "merge_conflict", "55P03": "lock
                 "RS001": "read_conflict", "22023": "invalid_read_set", "P0002": "not_found"}
 # Fork and propose failures reported the same way; in each, nothing changed. vc.fork
 # inserts one vc.branch row: 23505 (branch_pkey) is a branch of that name that already
-# exists, perhaps made by an earlier process, and 23503 a base revision the engine does
-# not know. propose's 40001 is a branch head other than --expected, from vc.begin_change
-# (or vc.finish_change, if the branch moved meanwhile); it is not merge's stale_head,
-# whose head is main's. Any other failure is raised as before.
+# exists, perhaps made by an earlier process (the reply carries its head, which a propose
+# on it needs as --expected), and 23503 a base revision the engine does not know.
+# propose's 40001 is a branch head other than --expected, from vc.begin_change (or
+# vc.finish_change, if the branch moved meanwhile); it is not merge's stale_head, whose
+# head is main's. P0002 is a branch that does not exist (sql/010_unknown_branch_code.sql).
+# In all three actions any other failure is database_error, with its SQLSTATE and report.
 FORK_ERRORS = {"23505": "branch_exists", "23503": "not_found"}
-PROPOSE_ERRORS = {"40001": "stale_branch_head"}
+PROPOSE_ERRORS = {"40001": "stale_branch_head", "P0002": "not_found"}
 # merge --reads names rows by table; every lab database registers these two
 # (sql/002_demo_app.sql), so vc.table_id never sees an unregistered name.
 READ_TABLES = ("app.products", "app.orders")
@@ -228,8 +230,10 @@ def perform(args, worker):
             'content',convert_from(vc.read_file('{fixed}',{literal(args.path)}),'UTF8'));
         """))
     elif args.action == "fork":
-        created, refusal = checked(worker, f"SELECT vc.fork({literal(branch(args.branch))},'{revision(args.base)}');",
-                                   FORK_ERRORS)
+        name = literal(branch(args.branch))
+        created, refusal = checked(worker, f"SELECT vc.fork({name},'{revision(args.base)}');", FORK_ERRORS,
+                                   lambda response, state: dict(head=worker.sql(f"SELECT vc.head({name});"))
+                                   if state == "23505" else {})
         if refusal:
             return refusal, 2
         result = dict(branch=args.branch, head=created)
@@ -273,20 +277,17 @@ def perform(args, worker):
             merge = (f"vc.merge_validated('main','{revision(args.revision)}',"
                      f"(SELECT coalesce(jsonb_object_agg(vc.table_id(r.key::regclass)::text,r.value),'{{}}') "
                      f"FROM jsonb_each(convert_from(decode('{reads}','hex'),'UTF8')::jsonb) r),{literal(args.actor)})")
-        response = worker.execute(f"""
+        landed, refusal = checked(worker, f"""
           {names}BEGIN;
           SET LOCAL lock_timeout = '{MERGE_LOCK_TIMEOUT}';
           SELECT {merge} AS landed \gset
           COMMIT;
           SELECT :'landed';
-        """)
-        if response.returncode:
-            state = sqlstate(response.stderr) or "unknown"
-            failure = dict(error=MERGE_ERRORS.get(state, "database_error"), sqlstate=state)
-            if state == "RS001":
-                failure["changed"] = changed_rows(response.stdout, response.stderr)
-            return json.dumps(dict(failure, detail=response.stderr.strip())) + "\n", 2
-        result = dict(merged=True, main=response.stdout.strip().splitlines()[-1])
+        """, MERGE_ERRORS, lambda response, state: dict(changed=changed_rows(response.stdout, response.stderr))
+                                if state == "RS001" else {})
+        if refusal:
+            return refusal, 2
+        result = dict(merged=True, main=landed.splitlines()[-1])
     else:
         head = worker.sql("SELECT vc.head();")
         product = json.loads(worker.sql(f"SELECT doc FROM vc.rows_at('{head}',vc.table_id('app.products')) WHERE pk='{{\"id\":101}}';"))
@@ -305,18 +306,22 @@ def perform(args, worker):
     return json.dumps(result, ensure_ascii=False, indent=2) + "\n", 0
 
 
-def checked(worker, statement, errors):
-    """(stdout, None) as worker.sql returns it, or (None, JSON refusal) for an SQLSTATE in errors.
+def checked(worker, statement, errors, extra=None):
+    """(stdout, None) for a statement that ran, as worker.sql returns it, or (None, JSON refusal).
 
-    Any other failure raises what worker.sql raises.
+    The refusal names the error errors gives the SQLSTATE, database_error for any other, the
+    SQLSTATE and psql's report; extra(response, state) may add fields. 40001 counts only with
+    the engine's "Stale head" message, since PostgreSQL also uses it for serialization failures.
     """
     response = worker.execute(statement)
     if not response.returncode:
         return response.stdout.strip(), None
-    state = sqlstate(response.stderr)
-    if state not in errors:
-        raise RuntimeError(response.stdout + response.stderr)
-    return None, json.dumps(dict(error=errors[state], sqlstate=state, detail=response.stderr.strip())) + "\n"
+    state = sqlstate(response.stderr) or "unknown"
+    error = errors.get(state, "database_error")
+    if state == "40001" and "stale head" not in response.stderr.lower():
+        error = "database_error"
+    fields = dict(error=error, sqlstate=state, **(extra(response, state) if extra else {}))
+    return None, json.dumps(dict(fields, detail=response.stderr.strip())) + "\n"
 
 
 def changed_rows(stdout, stderr):

@@ -3,8 +3,9 @@
 Each pass creates its own agentdb_test_gpt_* database with `agent_lab.py init` on the existing
 local PostgreSQL (kept for inspection). Outputs are compared after replacing the database
 name and UUIDs by placeholders; per-call wall time includes starting the client process.
-The calls that merge with a read set (merge --reads), a propose with a stale --expected and forks
-of an existing branch and of an unknown base must also give their expected outcome.
+The calls that merge with a read set (merge --reads), a propose with a stale --expected or on a
+missing branch, and forks of an existing branch and of an unknown base must also give their
+expected outcome.
 Usage: python scripts/compare_agent_lab_gateway.py [--output results/agent-lab-gateway-results.json]
 """
 import argparse
@@ -72,6 +73,8 @@ def sequence(env, label):
     expect("invalid_read_set", "merge", "--revision", pa4, "--reads", '{"app.products": [{"sku": "x"}]}', "--actor", "gpt-a")
     expect("branch_exists", "fork", "--branch", "gpt-a-4", "--base", main2)  # made above
     expect("not_found", "fork", "--branch", "gpt-a-5", "--base", "99999999-9999-9999-9999-999999999999")
+    expect("not_found", "propose", "--branch", "gpt-a-5", "--expected", main2, "--actor", "gpt-a", "--field", "price",
+           "--value", "11", "--code", "PRICE = 11\n")  # gpt-a-5 was never made
     return db, log, unexpected
 
 def normalize(text, db):

@@ -1,8 +1,8 @@
 {
-  "database": "agentdb_test_gpt_b3883636dc",
+  "database": "agentdb_test_gpt_d38ae0925c",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-  "checks": 42,
-  "holds": 42,
+  "checks": 43,
+  "holds": 43,
   "gaps": [],
   "real_cloud_verified": false,
   "note": "Local dedicated test database on the existing PostgreSQL server; the project database was not touched.",
@@ -148,6 +148,12 @@
     {
       "group": "D",
       "name": "propose_with_a_stale_expected_refused",
+      "status": "HOLDS",
+      "detail": "exit 2: "
+    },
+    {
+      "group": "D",
+      "name": "propose_on_a_missing_branch_refused",
       "status": "HOLDS",
       "detail": "exit 2: "
     },

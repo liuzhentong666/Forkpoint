@@ -41,11 +41,12 @@
  "fork_exists": {
   "exit_code": 2,
   "statements": [
-   "SELECT vc.fork('gpt-a-1','22222222-2222-2222-2222-222222222222');"
+   "SELECT vc.fork('gpt-a-1','22222222-2222-2222-2222-222222222222');",
+   "SELECT vc.head('gpt-a-1');"
   ],
   "stderr": "",
   "stderr_last_line": "",
-  "stdout": "{\"error\": \"branch_exists\", \"sqlstate\": \"23505\", \"detail\": \"ERROR:  23505: duplicate key value violates unique constraint \\\"branch_pkey\\\"\\nDETAIL:  Key (name)=(gpt-a-1) already exists.\\nCONTEXT:  SQL statement \\\"INSERT INTO vc.branch VALUES(p_name,p_revision,p_revision)\\\"\\nPL/pgSQL function fork(text,uuid) line 3 at SQL statement\\nSCHEMA NAME:  vc\\nTABLE NAME:  branch\\nCONSTRAINT NAME:  branch_pkey\\nLOCATION:  _bt_check_unique, nbtinsert.c:666\"}\n"
+  "stdout": "{\"error\": \"branch_exists\", \"sqlstate\": \"23505\", \"head\": \"33333333-3333-3333-3333-333333333333\", \"detail\": \"ERROR:  23505: duplicate key value violates unique constraint \\\"branch_pkey\\\"\\nDETAIL:  Key (name)=(gpt-a-1) already exists.\\nCONTEXT:  SQL statement \\\"INSERT INTO vc.branch VALUES(p_name,p_revision,p_revision)\\\"\\nPL/pgSQL function fork(text,uuid) line 3 at SQL statement\\nSCHEMA NAME:  vc\\nTABLE NAME:  branch\\nCONSTRAINT NAME:  branch_pkey\\nLOCATION:  _bt_check_unique, nbtinsert.c:666\"}\n"
  },
  "fork_missing_base": {
   "exit_code": 2,
@@ -176,6 +177,15 @@
   "stderr_last_line": "",
   "stdout": "{\n  \"branch\": \"gpt-a-1\",\n  \"revision\": \"33333333-3333-3333-3333-333333333333\",\n  \"code_path\": \"experiments/pricing.py\"\n}\n"
  },
+ "propose_database_error": {
+  "exit_code": 2,
+  "statements": [
+   "\n          BEGIN;\n          SELECT vc.begin_change('gpt-a-1','22222222-2222-2222-2222-222222222222','gpt-a','real GPT proposal') AS draft \\gset\n          UPDATE agent.products SET price=11 WHERE id=101;\n          SELECT vc.write_file('experiments/pricing.py',decode('5052494345203d2031310a','hex')) AS blob \\gset\n          SELECT vc.finish_change() AS revision \\gset\n          COMMIT;\n          SELECT :'revision';\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\"error\": \"database_error\", \"sqlstate\": \"57014\", \"detail\": \"ERROR:  57014: canceling statement due to statement timeout\\nLOCATION:  ProcessInterrupts, postgres.c:3404\"}\n"
+ },
  "propose_missing": {
   "exit_code": 2,
   "statements": [],
@@ -196,6 +206,15 @@
   "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    [--reads READS]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Finite nonnegative value up to 100000 required\n",
   "stderr_last_line": "agent_lab.py: error: Finite nonnegative value up to 100000 required",
   "stdout": ""
+ },
+ "propose_serialization_failure": {
+  "exit_code": 2,
+  "statements": [
+   "\n          BEGIN;\n          SELECT vc.begin_change('gpt-a-1','22222222-2222-2222-2222-222222222222','gpt-a','real GPT proposal') AS draft \\gset\n          UPDATE agent.products SET price=11 WHERE id=101;\n          SELECT vc.write_file('experiments/pricing.py',decode('5052494345203d2031310a','hex')) AS blob \\gset\n          SELECT vc.finish_change() AS revision \\gset\n          COMMIT;\n          SELECT :'revision';\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\"error\": \"database_error\", \"sqlstate\": \"40001\", \"detail\": \"ERROR:  40001: could not serialize access due to concurrent update\\nLOCATION:  ExecUpdate, nodeModifyTable.c:2930\"}\n"
  },
  "propose_stale": {
   "exit_code": 2,
@@ -226,6 +245,15 @@
   "stderr": "usage: agent_lab.py [-h] [--config CONFIG] [--host HOST] [--port PORT]\n                    [--user USER] [--database DATABASE]\n                    [--maintenance-database MAINTENANCE_DATABASE]\n                    [--psql PSQL] [--wsl-distribution WSL_DISTRIBUTION]\n                    [--wsl-user WSL_USER]\n                    [--sslmode {disable,allow,prefer,require,verify-ca,verify-full}]\n                    [--sslrootcert SSLROOTCERT] [--role ROLE] [--password]\n                    [--branch BRANCH] [--base BASE] [--revision REVISION]\n                    [--expected EXPECTED] [--actor {gpt-a,gpt-b}]\n                    [--field {price,stock}] [--value VALUE] [--code CODE]\n                    [--path {experiments/pricing.py,experiments/inventory.py}]\n                    [--reads READS]\n                    {init,info,read-code,fork,propose,diff,merge,verify}\nagent_lab.py: error: Policy code exceeds 4096 bytes\n",
   "stderr_last_line": "agent_lab.py: error: Policy code exceeds 4096 bytes",
   "stdout": ""
+ },
+ "propose_unknown_branch": {
+  "exit_code": 2,
+  "statements": [
+   "\n          BEGIN;\n          SELECT vc.begin_change('gpt-a-9','22222222-2222-2222-2222-222222222222','gpt-a','real GPT proposal') AS draft \\gset\n          UPDATE agent.products SET price=11 WHERE id=101;\n          SELECT vc.write_file('experiments/pricing.py',decode('5052494345203d2031310a','hex')) AS blob \\gset\n          SELECT vc.finish_change() AS revision \\gset\n          COMMIT;\n          SELECT :'revision';\n        "
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\"error\": \"not_found\", \"sqlstate\": \"P0002\", \"detail\": \"ERROR:  P0002: Unknown branch\\nCONTEXT:  PL/pgSQL function begin_change(text,uuid,text,text) line 8 at RAISE\\nLOCATION:  exec_stmt_raise, pl_exec.c:3897\"}\n"
  },
  "read_code": {
   "exit_code": 0,

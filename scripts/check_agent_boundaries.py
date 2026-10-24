@@ -160,6 +160,8 @@ def main():
                "--base", str(uuid.uuid4()))
     lab_reject("propose_with_a_stale_expected_refused", "stale_branch_head", "propose", *target, "--branch", "gpt-a-v",
                "--expected", GENESIS, "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11")
+    lab_reject("propose_on_a_missing_branch_refused", "not_found", "propose", *target, "--branch", "gpt-x-3",
+               "--expected", base, "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11")
     for value in ("NaN", "Infinity", "-1", "100001", "1e6", "abc"):
         lab_reject(f"price_{value}_rejected", "Finite nonnegative value up to 100000 required",
                    *proposal, "--field", "price", "--value", value, "--code", "PRICE = 1")

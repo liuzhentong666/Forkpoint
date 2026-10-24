@@ -47,6 +47,15 @@ STALE_BRANCH_HEAD = (
     f"ERROR:  40001: Stale head: expected {BASE}, actual {HEAD}\n"
     "CONTEXT:  PL/pgSQL function begin_change(text,uuid,text,text) line 10 at RAISE\n"
     "LOCATION:  exec_stmt_raise, pl_exec.c:3897\n")
+# A proposal on a branch that does not exist (sql/010_unknown_branch_code.sql), and one that
+# fails in a way agent_lab maps to no error of its own.
+UNKNOWN_BRANCH = (
+    "ERROR:  P0002: Unknown branch\n"
+    "CONTEXT:  PL/pgSQL function begin_change(text,uuid,text,text) line 8 at RAISE\n"
+    "LOCATION:  exec_stmt_raise, pl_exec.c:3897\n")
+STATEMENT_TIMEOUT = "ERROR:  57014: canceling statement due to statement timeout\nLOCATION:  ProcessInterrupts, postgres.c:3404\n"
+# 40001 that is not the engine's "Stale head": PostgreSQL's serialization failure.
+SERIALIZATION_FAILURE = "ERROR:  40001: could not serialize access due to concurrent update\nLOCATION:  ExecUpdate, nodeModifyTable.c:2930\n"
 
 
 class FakeWorker:
@@ -67,15 +76,18 @@ class FakeWorker:
         if "vc.fork(" in statement:
             return {"exists": BRANCH_EXISTS, "unknown": UNKNOWN_BASE}.get(self.fork)
         if "vc.begin_change(" in statement:
-            return {"stale": STALE_BRANCH_HEAD}.get(self.propose)
+            return {"stale": STALE_BRANCH_HEAD, "unknown_branch": UNKNOWN_BRANCH,
+                    "timeout": STATEMENT_TIMEOUT, "serialization": SERIALIZATION_FAILURE}.get(self.propose)
         return None
 
     def sql(self, statement, database=None):
+        # fork and propose go through execute(); sql() answers the reads, including the
+        # head of the branch a refused fork found.
         self.statements.append(statement)
-        if self.failure(statement):
-            raise RuntimeError(self.failure(statement))  # What db.py's sql() raises for it.
         if "SELECT vc.head();" == statement:
             return HEAD
+        if statement.startswith("SELECT vc.head('gpt-"):
+            return NEW
         if "SELECT current_user;" == statement:
             return "agentdb_client"
         if "vc.rows_at(" in statement and "SELECT doc" in statement:
@@ -86,18 +98,17 @@ class FakeWorker:
             return self.pricing
         if "experiments/inventory.py')" in statement:
             return self.inventory
-        if "vc.fork(" in statement:
-            return NEW
-        if "vc.finish_change()" in statement:
-            return NEW
         if "vc.diff_rows(" in statement:
             return json.dumps({"rows": [], "files": [{"path": "experiments/pricing.py"}]})
         raise RuntimeError("unexpected statement\n" + statement)
 
     def execute(self, statement, database=None, timeout=120):
         self.statements.append(statement)
-        if self.failure(statement):
-            return subprocess.CompletedProcess("psql", 3, "", self.failure(statement))
+        failure = self.failure(statement)
+        if failure:
+            return subprocess.CompletedProcess("psql", 3, "", failure)
+        if "vc.merge" not in statement:  # fork and propose: the merge modes below are a merge's alone
+            return subprocess.CompletedProcess("psql", 0, NEW + "\n", "")
         if self.merge == "stale":
             return subprocess.CompletedProcess("psql", 3, "", "ERROR:  40001: stale head\n")
         if self.merge == "lock_timeout":
@@ -132,6 +143,13 @@ SCENARIOS = {
                  "--field", "price", "--value", "11", "--code", "PRICE = 11\n"], {}),
     "propose_stale": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a",
                        "--field", "price", "--value", "11", "--code", "PRICE = 11\n"], {"propose": "stale"}),
+    "propose_unknown_branch": (["propose", *COMMON, "--branch", "gpt-a-9", "--expected", BASE, "--actor", "gpt-a",
+                                "--field", "price", "--value", "11", "--code", "PRICE = 11\n"], {"propose": "unknown_branch"}),
+    "propose_database_error": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a",
+                                "--field", "price", "--value", "11", "--code", "PRICE = 11\n"], {"propose": "timeout"}),
+    "propose_serialization_failure": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a",
+                                       "--field", "price", "--value", "11", "--code", "PRICE = 11\n"],
+                                      {"propose": "serialization"}),
     "propose_missing": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a"], {}),
     "propose_stock_fraction": (["propose", *COMMON, "--branch", "gpt-b-1", "--expected", BASE, "--actor", "gpt-b",
                                 "--field", "stock", "--value", "94.5", "--code", "STOCK = 94.5\n"], {}),
