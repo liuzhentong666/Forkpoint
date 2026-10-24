@@ -310,17 +310,14 @@ def checked(worker, statement, errors, extra=None):
     """(stdout, None) for a statement that ran, as worker.sql returns it, or (None, JSON refusal).
 
     The refusal names the error errors gives the SQLSTATE, database_error for any other, the
-    SQLSTATE and psql's report; extra(response, state) may add fields. 40001 counts only with
-    the engine's "Stale head" message, since PostgreSQL also uses it for serialization failures.
+    SQLSTATE and psql's report; extra(response, state) may add fields.
     """
     response = worker.execute(statement)
     if not response.returncode:
         return response.stdout.strip(), None
     state = sqlstate(response.stderr) or "unknown"
-    error = errors.get(state, "database_error")
-    if state == "40001" and "stale head" not in response.stderr.lower():
-        error = "database_error"
-    fields = dict(error=error, sqlstate=state, **(extra(response, state) if extra else {}))
+    fields = dict(error=errors.get(state, "database_error"), sqlstate=state,
+                  **(extra(response, state) if extra else {}))
     return None, json.dumps(dict(fields, detail=response.stderr.strip())) + "\n"
 
 

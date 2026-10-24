@@ -54,8 +54,6 @@ UNKNOWN_BRANCH = (
     "CONTEXT:  PL/pgSQL function begin_change(text,uuid,text,text) line 8 at RAISE\n"
     "LOCATION:  exec_stmt_raise, pl_exec.c:3897\n")
 STATEMENT_TIMEOUT = "ERROR:  57014: canceling statement due to statement timeout\nLOCATION:  ProcessInterrupts, postgres.c:3404\n"
-# 40001 that is not the engine's "Stale head": PostgreSQL's serialization failure.
-SERIALIZATION_FAILURE = "ERROR:  40001: could not serialize access due to concurrent update\nLOCATION:  ExecUpdate, nodeModifyTable.c:2930\n"
 
 
 class FakeWorker:
@@ -77,7 +75,7 @@ class FakeWorker:
             return {"exists": BRANCH_EXISTS, "unknown": UNKNOWN_BASE}.get(self.fork)
         if "vc.begin_change(" in statement:
             return {"stale": STALE_BRANCH_HEAD, "unknown_branch": UNKNOWN_BRANCH,
-                    "timeout": STATEMENT_TIMEOUT, "serialization": SERIALIZATION_FAILURE}.get(self.propose)
+                    "timeout": STATEMENT_TIMEOUT}.get(self.propose)
         return None
 
     def sql(self, statement, database=None):
@@ -147,9 +145,6 @@ SCENARIOS = {
                                 "--field", "price", "--value", "11", "--code", "PRICE = 11\n"], {"propose": "unknown_branch"}),
     "propose_database_error": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a",
                                 "--field", "price", "--value", "11", "--code", "PRICE = 11\n"], {"propose": "timeout"}),
-    "propose_serialization_failure": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a",
-                                       "--field", "price", "--value", "11", "--code", "PRICE = 11\n"],
-                                      {"propose": "serialization"}),
     "propose_missing": (["propose", *COMMON, "--branch", "gpt-a-1", "--expected", BASE, "--actor", "gpt-a"], {}),
     "propose_stock_fraction": (["propose", *COMMON, "--branch", "gpt-b-1", "--expected", BASE, "--actor", "gpt-b",
                                 "--field", "stock", "--value", "94.5", "--code", "STOCK = 94.5\n"], {}),

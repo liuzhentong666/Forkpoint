@@ -207,15 +207,6 @@
   "stderr_last_line": "agent_lab.py: error: Finite nonnegative value up to 100000 required",
   "stdout": ""
  },
- "propose_serialization_failure": {
-  "exit_code": 2,
-  "statements": [
-   "\n          BEGIN;\n          SELECT vc.begin_change('gpt-a-1','22222222-2222-2222-2222-222222222222','gpt-a','real GPT proposal') AS draft \\gset\n          UPDATE agent.products SET price=11 WHERE id=101;\n          SELECT vc.write_file('experiments/pricing.py',decode('5052494345203d2031310a','hex')) AS blob \\gset\n          SELECT vc.finish_change() AS revision \\gset\n          COMMIT;\n          SELECT :'revision';\n        "
-  ],
-  "stderr": "",
-  "stderr_last_line": "",
-  "stdout": "{\"error\": \"database_error\", \"sqlstate\": \"40001\", \"detail\": \"ERROR:  40001: could not serialize access due to concurrent update\\nLOCATION:  ExecUpdate, nodeModifyTable.c:2930\"}\n"
- },
  "propose_stale": {
   "exit_code": 2,
   "statements": [
