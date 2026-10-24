@@ -154,6 +154,18 @@ CONTINUE:     Continue your current task from where you were.
 
 采纳标准：B 组主要指标的中位数（0）没有比 A 组（0）低至少 2，成功率（8/10）也低于 A 组（9/10）。结论：在这个任务上没有证据支持存档。A 组完成的 9 轮中，模型自己写的 2.2–2.9 KB 说明都保留了需要的 14 个值；存档没有减少重复或失败，重置后的输入 token 约为两倍。本结论的适用范围见上文“本实验回答不了的问题”。
 
+## 后续检查：真实会话中的压缩（2026-10-24，不调用模型）
+
+为了解真实工作中压缩是否造成损失，检查了本机 18 个 Claude Code 会话记录中的全部 3 次压缩（都来自本项目的开发会话，只读取，不调用模型）。判定规则在查看之前写定：若压缩后 20 次工具调用中重复先前调用的比例比压缩前 20 次至少高 15 个百分点（三次平均），或有一次压缩导致因信息丢失而需要纠正的错误，则视为压缩造成了真实的返工或错误；否则暂时搁置“存档作为记忆”的主张。这里只记录汇总数字，不收录会话内容。
+
+| 压缩 | 压缩前 → 压缩后 | 前 20 次 / 后 20 次调用中的重复 | 压缩后的工具错误 | 压缩后纠正丢失信息的用户消息 |
+|---|---|---|---|---|
+| 2026-10-21，自动 | 973,231 → 20,640 token | 3 / 2 | 0 | 30 条中 0 条 |
+| 2026-10-22，手动 | 830,858 → 12,333 token | 6 / 3 | 0 | 4 条中 0 条 |
+| 2026-10-22，手动 | 777,704 → 18,735 token | 2 / 0 | 0 | 8 条中 0 条 |
+
+重复几乎都是任务清单的记账调用；真正重读文件的只有一次。两个条件都不满足，因此暂时搁置“存档作为记忆”的主张。这些会话达到了 1M 窗口的 78%–97%，每次压缩丢掉约 98% 的 token，但状态还写在提交、文档、AGENTS.md 和记忆文件中，压缩后可以重读，这很可能是代价小的原因。三次压缩只能说明问题有没有出现，不能说明它有多大；没人察觉的细微丢失查不出来；三次都来自同一类工作。
+
 ## 回滚
 
 全部内容在 `experiments/context_archive/`、`results/context_archive/` 和本文件中，另有 `agentdb_mcp_server.py` 的可选 `--tool-file`，以及 `run_claude_repeats.py` 中拆出的调用处理步骤（`Trial.answer_without_helper` 等）和 `claude_command` 的 `instructions` 参数；后两项不改变 2026-10-20 运行器的行为（同一组调用逐条对比，回复、调用记录和命令行都相同）。删除或还原它们即恢复原状；`vc.*` 与项目数据库都没有改动。
@@ -315,6 +327,18 @@ Against the predictions:
 - "B's context is larger after the reset": met; B's median input tokens after the reset were about twice A's, mostly cache reads.
 
 Adoption rule: B's median primary count (0) is not at least 2 below A's (0), and its success rate (8/10) is lower than A's (9/10). Conclusion: no evidence for the archive on this task. In all 9 completed A rounds, the model's own 2.2–2.9 KB note kept the 14 values it needed; the archive did not reduce repeats or failures, and roughly doubled the input tokens after the reset. How far this conclusion reaches is set out in "What this experiment cannot tell us" above.
+
+## Follow-up: compaction in real sessions (2026-10-24, no model calls)
+
+To see whether compaction causes losses in real work, all 3 compactions in the 18 local Claude Code session records were checked (all from this project's development sessions; read only, no model called). The rule was written before looking: compaction caused real re-work or mistakes if, averaged over the three, the share of the 20 tool calls after it that repeat an earlier call is at least 15 points higher than in the 20 before it, or if one compaction led to a mistake from lost information that had to be corrected; otherwise the archive-as-memory claim is shelved for now. Only aggregate numbers are recorded here, no session content.
+
+| Compaction | Before → after | Repeats in the 20 calls before / after | Tool errors after | User messages after it correcting lost information |
+|---|---|---|---|---|
+| 2026-10-21, automatic | 973,231 → 20,640 tokens | 3 / 2 | 0 | 0 of 30 |
+| 2026-10-22, manual | 830,858 → 12,333 tokens | 6 / 3 | 0 | 0 of 4 |
+| 2026-10-22, manual | 777,704 → 18,735 tokens | 2 / 0 | 0 | 0 of 8 |
+
+Almost all repeats were task-list bookkeeping calls; only one was a real re-read of a file. Neither condition holds, so the archive-as-memory claim is shelved for now. These sessions reached 78–97% of the 1M window and each compaction dropped about 98% of the tokens, but their state was also written in commits, docs, AGENTS.md and memory files that can be re-read after a compaction, which is the likely reason it cost little. Three compactions show whether the problem appeared, not how big it is; a subtle loss nobody noticed would not show; and all three come from one kind of work.
 
 ## Rollback
 
