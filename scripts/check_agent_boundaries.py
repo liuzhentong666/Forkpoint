@@ -154,6 +154,8 @@ def main():
     lab_reject("revision_not_uuid_rejected", "--revision must be a revision UUID",
                "info", *target, "--revision", "x' OR '1'='1")
     lab_reject("fork_without_base_rejected", "fork requires --base", "fork", *target, "--branch", "gpt-x-1")
+    lab_reject("fork_of_an_existing_branch_refused", "branch_exists", "fork", *target, "--branch", "gpt-a-v",
+               "--base", base)
     for value in ("NaN", "Infinity", "-1", "100001", "1e6", "abc"):
         lab_reject(f"price_{value}_rejected", "Finite nonnegative value up to 100000 required",
                    *proposal, "--field", "price", "--value", value, "--code", "PRICE = 1")
