@@ -153,14 +153,20 @@ def freshness(engine, state, sql, head=None):
     return marks
 
 
-def resume(engine, task_id, sql, max_bytes=8192):
+def resume(engine, task_id, sql, max_bytes=8192, check=True):
     """The task's context packet (Runtime.context) with a freshness mark for every fact it shows.
 
     Stale facts left out by the budget are counted in omitted_stale. The whole packet,
-    marks included, stays within max_bytes.
+    marks included, stays within max_bytes. check=False gives the same packet without any
+    marks (the experiment's baseline): only main is added.
     """
     record = engine.read(task_id)
     head = sql("SELECT vc.head();")
+    if not check:
+        packet = Runtime(engine, ttl=0).context(task_id, max_bytes=max_bytes - 64, fresh=True)
+        packet.pop("usage", None)
+        packet["main"] = head
+        return packet
     marks = freshness(engine, record["state"], sql, head)
     room = len(encode({"freshness": marks, "omitted_stale": 0, "main": head})) + 64
     if max_bytes - room < 256:
@@ -174,7 +180,7 @@ def resume(engine, task_id, sql, max_bytes=8192):
     return packet
 
 
-def tool_reply(engine, sql, task_id, actor, call_id, values):
+def tool_reply(engine, sql, task_id, actor, call_id, values, check=True, max_bytes=8192):
     """The agent-facing actions: checkpoint (values["change"]) and resume. Errors come back as data."""
     action = values.get("action")
     try:
@@ -182,7 +188,7 @@ def tool_reply(engine, sql, task_id, actor, call_id, values):
             result = checkpoint(engine, task_id, call_id, actor, values.get("change"))
             return {"exit_code": 0, "result": {"version": result["version"], "deduplicated": result["deduplicated"]}}
         if action == "resume":
-            return {"exit_code": 0, "result": resume(engine, task_id, sql)}
+            return {"exit_code": 0, "result": resume(engine, task_id, sql, max_bytes, check)}
     except Missing:
         return {"error": "no_task_state", "detail": "Nothing has been checkpointed for this task yet."}
     except StateError as error:  # Invalid, TooLarge, Conflict, BudgetError
