@@ -156,6 +156,10 @@ def main():
     lab_reject("fork_without_base_rejected", "fork requires --base", "fork", *target, "--branch", "gpt-x-1")
     lab_reject("fork_of_an_existing_branch_refused", "branch_exists", "fork", *target, "--branch", "gpt-a-v",
                "--base", base)
+    lab_reject("fork_of_an_unknown_base_refused", "not_found", "fork", *target, "--branch", "gpt-x-2",
+               "--base", str(uuid.uuid4()))
+    lab_reject("propose_with_a_stale_expected_refused", "stale_branch_head", "propose", *target, "--branch", "gpt-a-v",
+               "--expected", GENESIS, "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11")
     for value in ("NaN", "Infinity", "-1", "100001", "1e6", "abc"):
         lab_reject(f"price_{value}_rejected", "Finite nonnegative value up to 100000 required",
                    *proposal, "--field", "price", "--value", value, "--code", "PRICE = 1")
