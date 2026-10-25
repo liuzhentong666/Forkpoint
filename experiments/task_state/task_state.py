@@ -157,8 +157,9 @@ def resume(engine, task_id, sql, max_bytes=8192, check=True):
     """The task's context packet (Runtime.context) with a freshness mark for every fact it shows.
 
     Stale facts left out by the budget are counted in omitted_stale. The whole packet,
-    marks included, stays within max_bytes. check=False gives the same packet without any
-    marks (the experiment's baseline): only main is added.
+    marks included, stays within max_bytes: facts are left out together with their marks,
+    so only the marks of the facts shown take room. check=False gives the same packet
+    without any marks (the experiment's baseline): only main is added.
     """
     record = engine.read(task_id)
     head = sql("SELECT vc.head();")
@@ -168,16 +169,30 @@ def resume(engine, task_id, sql, max_bytes=8192, check=True):
         packet["main"] = head
         return packet
     marks = freshness(engine, record["state"], sql, head)
-    room = len(encode({"freshness": marks, "omitted_stale": 0, "main": head})) + 64
-    if max_bytes - room < 256:
+    runtime = Runtime(engine, ttl=0)
+    keys = sorted(record["state"]["facts"])[:128]  # Runtime.context's limit for fact_keys
+
+    def packet_for(count):
+        # The context with the first count facts (those that fit) and their marks, or None if over budget.
+        # Runtime.context raises BudgetError if even the required fields do not fit.
+        packet = runtime.context(task_id, max_bytes=max_bytes - 64, fact_keys=keys[:count], fresh=True)
+        packet.pop("usage", None)
+        packet.update(main=head, freshness={k: marks[k] for k in packet["facts"]},
+                      omitted_stale=sum(1 for k, m in marks.items() if k not in packet["facts"] and m["status"] == "stale"))
+        return packet if len(encode(packet)) <= max_bytes else None
+
+    # The size grows with the count, so search for the most facts that fit with their marks.
+    low, high, best = 0, len(keys), None
+    while low <= high:
+        middle = (low + high) // 2
+        packet = packet_for(middle)
+        if packet is None:
+            high = middle - 1
+        else:
+            best, low = packet, middle + 1
+    if best is None:
         raise BudgetError("Freshness marks leave no room for the context; increase the budget")
-    packet = Runtime(engine, ttl=0).context(task_id, max_bytes=max_bytes - room, fresh=True)
-    packet.pop("usage", None)
-    packet.update(main=head, freshness={k: marks[k] for k in packet["facts"]},
-                  omitted_stale=sum(1 for k, m in marks.items() if k not in packet["facts"] and m["status"] == "stale"))
-    if len(encode(packet)) > max_bytes:
-        raise BudgetError("Context exceeds budget")
-    return packet
+    return best
 
 
 def tool_reply(engine, sql, task_id, actor, call_id, values, check=True, max_bytes=8192):

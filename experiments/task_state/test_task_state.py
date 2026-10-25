@@ -127,6 +127,21 @@ SELECT :'r';""").splitlines()[-1]
         with self.assertRaises(BudgetError):
             resume(self.engine, self.task, self.db.sql, max_bytes=600)
 
+    def test_marks_take_room_only_for_the_facts_shown(self):
+        # 32 small facts whose rows all changed: the marks of all of them would not fit, but the
+        # packet still comes back within budget, with the facts it can show and their marks.
+        head = self.db.sql("SELECT vc.head();")
+        self.start(**{f"f{i:02d}": {"value": i, "based_on": {"revision": head, "rows": {"app.products": [{"id": 201 + i}]}}}
+                      for i in range(32)})
+        self.commit("stock=stock+1 WHERE id BETWEEN 201 AND 232")
+        marks = self.marks()
+        self.assertGreater(len(encode({"freshness": marks})), 8192 - 256)  # what the old reservation refused
+        packet = resume(self.engine, self.task, self.db.sql, max_bytes=8192)
+        self.assertLessEqual(len(encode(packet)), 8192)
+        self.assertTrue(packet["facts"])
+        self.assertEqual(set(packet["freshness"]), set(packet["facts"]))
+        self.assertEqual(len(packet["facts"]) + packet["omitted_stale"], 32)
+
     def test_a_state_written_without_this_module_still_resumes(self):
         ref = self.engine.objects.put_bytes(b"report written by an older client, not JSON")
         self.engine.publish(self.task, "old", "manager", {"goal": "old task", "status": "running",
