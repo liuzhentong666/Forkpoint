@@ -2,7 +2,7 @@
 
 # Forkpoint：Agent 开发与维护约定
 
-适用范围：本目录及子目录。更新日期：2026-10-24。
+适用范围：本目录及子目录。更新日期：2026-10-25。
 
 **当前云服务状态：未经真实验证，云端部署暂缓。** OSS、GCS、S3 均无真实联调结果，ECS 尚未部署。用户当前不安排云资源采购或部署；只继续本地开发与模拟测试，不自动采购、部署或运行会访问真实云服务的测试。不得将 SDK 测试替身、内存服务模型、本机 HTTP 或本机 PostgreSQL 的结果表述为云存储已验证。
 
@@ -132,6 +132,18 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 - 持久格式迁移必须考虑旧读者、旧规则和旧数据；回退代码不等于回退数据。回退方法必须在改变格式前确定。
 - 提交应小到可用一句话说明目的。意外失败时优先缩小变更；只撤销自己本次改动，保留用户已有工作。设置阶段检查点，重新评估收益，不做无边界重写。
 
+## 文档同步
+
+每次新增、修改或删除项目文件，都要在同一提交中同步更新相关文档，中文与英文两部分（以及 `README.md` 与 `README.zh-CN.md`）一起改。
+
+- 查找：在全部 Markdown 中搜索该文件的路径和文件名，以及改动涉及的函数、命令、参数、错误码和数字（测试数、文件数、结果）。
+- 新增文件：写进同类文件列出的位置，例如本文的模块边界表、README 的目录说明、`docs/SETUP.md` 的迁移清单、实验文档的“文件与运行”一节。
+- 修改文件：改掉所有已不再正确的描述（行为、接口、命令、错误码、数字）。
+- 删除文件：删除或替换每一处引用。
+- 带日期的历史记录和已登记的结果保持原样；已不再成立时另加注说明，不改写原文。
+- 提交前核对：相对链接和反引号中的路径都存在，文档中的命令所指的脚本和参数仍然有效。
+- 交付说明写明更新了哪些文档；搜索后确无相关文档时也要写明。
+
 ## 验证入口与交付要求
 
 协议与限制以 [多后端设计](docs/STORAGE_BACKENDS.md) 为准。全套适配器本地测试需安装 `requirements-storage-tests.txt`；单个后端运行只需其依赖。本地记录见 [多后端本地测试](docs/STORAGE_BACKENDS_VALIDATION.md)，其中不含真实云端结果。
@@ -172,7 +184,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 # Forkpoint: Conventions for Agent Development and Maintenance
 
-Scope: this directory and its subdirectories. Last updated: 2026-10-24.
+Scope: this directory and its subdirectories. Last updated: 2026-10-25.
 
 **Current cloud service status: not verified against real cloud services; cloud deployment is on hold.** OSS, GCS and S3 have no real integration results, and ECS has not been deployed. The user is not currently scheduling cloud resource purchases or deployment; only continue local development and simulated testing, and do not automatically purchase, deploy, or run tests that access real cloud services. Results from SDK test doubles, the in-memory service model, local HTTP or the local PostgreSQL must not be described as cloud storage having been verified.
 
@@ -301,6 +313,18 @@ Additional execution rules:
 - When shadow-running a write path with side effects, isolate the target or do only a verifiable dry run; do not execute the same real maintenance action twice to "compare".
 - Persistent format migrations must consider old readers, old rules and old data; rolling back code is not rolling back data. The rollback method must be settled before the format is changed.
 - Commits should be small enough that their purpose can be stated in one sentence. On unexpected failures, prefer shrinking the change; only revert your own changes from this session and keep the user's existing work. Set phase checkpoints, re-evaluate the benefit, and do not do unbounded rewrites.
+
+## Keeping documentation in sync
+
+Every time a project file is added, changed or deleted, update the associated documentation in the same commit, in both the Chinese and the English part (and in both `README.md` and `README.zh-CN.md`).
+
+- Finding it: search all Markdown files for the file's path and name, and for the functions, commands, flags, error codes and numbers (test counts, file counts, results) the change touches.
+- Added file: list it where its peers are listed, such as this file's module boundaries table, the README layout, the migration list in `docs/SETUP.md`, or an experiment doc's "Files and running" section.
+- Changed file: fix every statement that is no longer true (behavior, interfaces, commands, error codes, numbers).
+- Deleted file: remove or replace every reference to it.
+- Dated records and registered results stay as written; when one no longer holds, add a note instead of rewriting it.
+- Before committing, check that relative links and backticked paths resolve, and that the documented commands still name existing scripts and accepted flags.
+- The delivery note names the docs that were updated; if the search finds none, it says so.
 
 ## Verification entry points and delivery requirements
 
