@@ -54,8 +54,8 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 
 ## 检查与替身试运行（不调用模型）
 
-- `test_task_state.py`（8 项）：行在 main 上改变后事实变为过期、改回后恢复新鲜、改动其他行不影响；没有读取记录或写错键为未知；重新设置或删除事实时替换或删除其读取记录；重试不重复执行；错误的检查点被拒绝；恢复包在预算内并统计被省略的过期事实；旧记录照常恢复。
-- `test_run_state_trials.py`（7 项）：结果判定；两组工具相同且没有 verify；`read-product` 的参数检查；只有 F 组标记事实；以及在本进程内用替身各跑一轮、把重置上限降到 4,000 token 的试运行：gpt-b 重置 1–3 次，交接包含当前阶段指令，只有 F 组的交接带标记。
+- `test_task_state.py`（9 项）：行在 main 上改变后事实变为过期、改回后恢复新鲜、改动其他行不影响；没有读取记录或写错键为未知；重新设置或删除事实时替换或删除其读取记录；重试不重复执行；错误的检查点被拒绝；恢复包在预算内并统计被省略的过期事实；全部标记放不下时，事实与其标记一并省略，仍能恢复；旧记录照常恢复。
+- `test_run_state_trials.py`（10 项）：结果判定；成功判定要求最终价格 11 与 `PRICE = 11`；重置时没有保存的状态照实交接，已保存的状态恢复失败则本轮停止；两组工具相同且没有 verify；`read-product` 的参数检查；只有 F 组标记事实；以及在本进程内用替身各跑一轮、把重置上限降到 4,000 token 的试运行：gpt-b 重置 1–3 次，交接包含当前阶段指令，只有 F 组的交接带标记。
 - 替身是脚本：只有恢复包标出过期时才重读 202，所以 U 组得到 95、F 组得到 55。这只说明流程可行，不预测模型的行为。在真实的 10,000 token 上限下替身不会重置：2026-10-24 的命令行替身试运行中，gpt-b 的请求最多为 8,943（U）和 9,500（F）token，结果为 U 落地 95、F 落地 55；2026-10-20 的真实 gpt-b 在相近任务上达到 16.6–19.7K token。
 
 ## 预测（运行前写定）
@@ -193,8 +193,8 @@ When an agent is reset several times mid-task and continues from its checkpoints
 
 ## Checks and stand-in dry run (no model calls)
 
-- `test_task_state.py` (8 tests): a fact turns stale when its row changes on main, fresh again when the row changes back, and is unaffected by other rows; no recorded reads or a wrong key is unknown; setting or dropping a fact replaces or removes its reads; a retry is not applied twice; bad checkpoints are refused; the resume packet stays within its budget and counts stale facts it left out; an older record still resumes.
-- `test_run_state_trials.py` (7 tests): the outcome rule; the same tool in both setups, without verify; `read-product`'s argument checks; only setup F marks facts; and an in-process dry run of one round per setup with the stand-in and the reset limit lowered to 4,000 tokens: gpt-b resets 1–3 times, every handoff carries the stage's instructions, and only setup F's carry marks.
+- `test_task_state.py` (9 tests): a fact turns stale when its row changes on main, fresh again when the row changes back, and is unaffected by other rows; no recorded reads or a wrong key is unknown; setting or dropping a fact replaces or removes its reads; a retry is not applied twice; bad checkpoints are refused; the resume packet stays within its budget and counts stale facts it left out; when the marks of all facts would not fit, facts are left out together with their marks and the state still resumes; an older record still resumes.
+- `test_run_state_trials.py` (10 tests): the outcome rule; the success rule's final price 11 with `PRICE = 11`; at a reset, nothing saved is handed over as such, and a saved state that fails to resume stops the round; the same tool in both setups, without verify; `read-product`'s argument checks; only setup F marks facts; and an in-process dry run of one round per setup with the stand-in and the reset limit lowered to 4,000 tokens: gpt-b resets 1–3 times, every handoff carries the stage's instructions, and only setup F's carry marks.
 - The stand-in is a script: it re-reads 202 only when the resume packet marks the fact stale, so setup U lands 95 and setup F 55. This shows the path works and predicts nothing about a model. With the real 10,000-token limit the stand-in never resets: in the command-line stand-in dry run on 2026-10-24, gpt-b's requests peaked at 8,943 (U) and 9,500 (F) tokens, and U landed 95 and F 55; the real gpt-b reached 16.6–19.7K tokens on a similar task on 2026-10-20.
 
 ## Predictions (written before running)

@@ -82,7 +82,7 @@ To use your own PostgreSQL instead, you need a PostgreSQL server (tested on 16),
 python db.py check                              # find psql, connect, print the server version
 python db.py install --database agentdb_demo    # create the database and install the schemas
 psql -h 127.0.0.1 -U postgres -d agentdb_demo -f examples/two_agents.sql
-python run_tests.py                             # integration tests in a throwaway agentdb_test_* database
+python run_tests.py                             # integration tests in a new agentdb_test_* database, kept for inspection
 ```
 
 By default `db.py` connects to `127.0.0.1:5432` as `postgres` and finds `psql` on your `PATH`. To change that, copy `connection.example.json` to `connection.local.json`. [docs/SETUP.md](docs/SETUP.md) covers passwords, remote servers (TLS `verify-full` only), PostgreSQL inside WSL, and upgrading an existing install.
@@ -99,7 +99,7 @@ SELECT vc.register_table('app.products');   -- agents write through agent.produc
 |---|---|---|
 | **Code and data commit together** | Files, row changes and the changeset are published in one PostgreSQL transaction; any failure rolls back all of it | `code_and_native_data_publish_atomically` in [run_tests.py](run_tests.py) |
 | **Branches are cheap** | Forking copies no rows and no files (0 new row-history entries measured) | [Validation record](docs/VALIDATION.md) |
-| **Errors an agent can act on** | `40001` stale head → re-read and retry · `P0001` merge conflict → re-propose · `55P03` lock timeout → wait and retry · `RS001` read conflict → re-read those rows and decide again | 10 connections racing on one stale head: 1 succeeded, 9 rejected; write skew refused in [run_tests.py](run_tests.py) |
+| **Errors an agent can act on** | `40001` stale head → re-read and retry · `P0001` merge conflict → re-propose · `55P03` lock timeout → wait and retry · `RS001` read conflict → re-read those rows and decide again · `P0002` no such branch (or, in `merge_validated`, no such revision) → check the name or ID | 10 connections racing on one stale head: 1 succeeded, 9 rejected; write skew and a missing branch refused in [run_tests.py](run_tests.py) |
 | **Real constraints guard `main`** | Merges run as ordinary SQL against the real tables, so UNIQUE, foreign keys and CHECK constraints apply | three constraint-violation cases in [run_tests.py](run_tests.py) |
 | **Stays fast as history grows** | With 2,000 commits on `main`: a 10-row merge takes 181 ms and a commit about 20 ms (50.7 s and 499 ms before the history fix) | [S4/S5 report, section 7](docs/STAGING_S4_S5.md) |
 | **Failure-drilled** | A power cut kept all 201 acknowledged commits and no partial one; backup and restore matched on 13 fingerprints; a vanished client's lock is freed in about 60 s | [S4/S5 report](docs/STAGING_S4_S5.md) |
@@ -164,7 +164,7 @@ If you need a mature, general-purpose versioned database, use Dolt. Forkpoint is
 db.py                 CLI: check the connection, install, upgrade an existing install
 run_tests.py          integration tests (creates its own agentdb_test_* database)
 review_local.py       local review: maintenance recovery, restricted role, ten branches merged
-agent_lab.py          the tool CLI the GPT agents used in the experiments
+agent_lab.py          the tool CLI the GPT and Claude agents use in the experiments
 agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
 smoke_cloud.py        cloud state-service smoke test (not run yet)
 compose.yaml          the one-command Docker demo
@@ -173,7 +173,7 @@ examples/             runnable SQL examples
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs
 agent_state/          manager-agent state service and storage adapters
-experiments/          pre-registered experiments: GPT repeat rounds and read-set validation
+experiments/          pre-registered experiments: GPT and Claude repeat rounds, read-set validation, context archive, checkable task state
 deploy/               staging VM setup and the on-hold ECS bundle
 docs/                 setup, design, validation records, technical blog
 tests/                unit tests
@@ -184,8 +184,11 @@ tests/                unit tests
 - [Setup and upgrades](docs/SETUP.md): connection options, passwords, TLS, WSL, migrations, tests
 - [Technical blog](docs/TECHNICAL_BLOG.md): architecture and what two real GPT agents taught us
 - [Design notes](docs/DESIGN_REVIEW.md): the version model and revisions to the original plan
-- [GPT repeat experiment](docs/GPT_REPEAT_EXPERIMENT.md): ten pre-registered rounds, failures kept
+- [GPT and Claude repeat experiments](docs/GPT_REPEAT_EXPERIMENT.md): ten pre-registered rounds with each model, failures kept
 - [Read-set experiment](docs/READSET_EXPERIMENT.md): read-set validation vs. the stale-head check in 75 pre-registered synthetic runs, replicated
+- [Context archive experiment](docs/CONTEXT_ARCHIVE_EXPERIMENT.md): a word-for-word archive of the context vs. the model's own handoff note after a reset; by its adoption rule, no evidence for the archive
+- [Checkable task state](docs/TASK_STATE_EXPERIMENT.md): checkpointed facts marked fresh or stale on resume; pilot only, not adopted
+- [agent_lab gateway](docs/AGENT_LAB_GATEWAY.md): an optional loopback process that keeps psql sessions warm for the agents' tool
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut
 - [Manager agent protocol](docs/MANAGER_AGENT_PROTOCOL.md) and [AGENTS.md](AGENTS.md): conventions for agents that work on this repo

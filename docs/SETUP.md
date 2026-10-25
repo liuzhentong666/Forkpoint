@@ -61,7 +61,7 @@
 python db.py install
 ```
 
-安装命令先创建配置中的项目库（若尚不存在；可用 `--database` 指定其他库名），再在一个事务中按顺序安装六个 SQL 文件：版本引擎、示例业务表、受限维护角色、批量合入、有界历史遍历与快照策略、只读历史健康检查。它会拒绝已有项目 schema 或用户表的目标库。项目库初始没有业务数据。
+安装命令先创建配置中的项目库（若尚不存在；可用 `--database` 指定其他库名），再在一个事务中按顺序安装 `sql/` 中的十个文件（001–010）：版本引擎、示例业务表、受限维护角色、批量合入、有界历史遍历与快照策略、只读历史健康检查、search_path 加固、读集合入、与会话设置无关的行文档，以及不存在的分支报 P0002。它会拒绝已有项目 schema 或用户表的目标库。项目库初始没有业务数据。
 
 安装包含示例表 `app.products`、`app.orders`，以及 NOLOGIN 角色 `agentdb_client` 和 `agentdb_manager`。角色是整个 PostgreSQL 实例共享的；已存在时只授予本项目的库内权限，不修改其角色属性。
 
@@ -178,7 +178,7 @@ Each call behaves the same as a separate process: it stops at the first error (n
 python db.py install
 ```
 
-The install command first creates the configured project database if it doesn't exist yet (use `--database` for another name), then installs the six SQL files in order in one transaction: the version engine, the demo business tables, the restricted maintenance role, batched merge, bounded history traversal with the snapshot policy, and the read-only history health check. It refuses a target database that already has project schemas or user tables. The project database starts with no business data.
+The install command first creates the configured project database if it doesn't exist yet (use `--database` for another name), then installs the ten files in `sql/` (001–010) in order in one transaction: the version engine, the demo business tables, the restricted maintenance role, batched merge, bounded history traversal with the snapshot policy, the read-only history health check, the search_path hardening, read-set merges, row documents independent of session settings, and P0002 for a missing branch. It refuses a target database that already has project schemas or user tables. The project database starts with no business data.
 
 The install includes the demo tables `app.products` and `app.orders` and the NOLOGIN roles `agentdb_client` and `agentdb_manager`. Roles are shared by the whole PostgreSQL instance; if one already exists, only this project's in-database privileges are granted and its role attributes are left alone.
 

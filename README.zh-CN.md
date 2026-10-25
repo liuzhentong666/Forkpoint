@@ -82,7 +82,7 @@ docker compose up
 python db.py check                              # 找到 psql、连接并输出服务器版本
 python db.py install --database agentdb_demo    # 创建数据库并安装 schema
 psql -h 127.0.0.1 -U postgres -d agentdb_demo -f examples/two_agents.sql
-python run_tests.py                             # 在临时的 agentdb_test_* 库中运行集成测试
+python run_tests.py                             # 在新建的 agentdb_test_* 库中运行集成测试（该库保留以便检查）
 ```
 
 `db.py` 默认以 `postgres` 用户连接 `127.0.0.1:5432`，并在 `PATH` 中查找 `psql`。需要修改时，把 `connection.example.json` 复制为 `connection.local.json`。密码、远程服务器（只接受 TLS `verify-full`）、WSL 中的 PostgreSQL 以及升级已有安装，见 [docs/SETUP.md](docs/SETUP.md)。
@@ -99,7 +99,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 |---|---|---|
 | **代码与数据一起提交** | 文件、行变更和 changeset 在一个 PostgreSQL 事务中发布，任何一步失败都整体回滚 | [run_tests.py](run_tests.py) 中的 `code_and_native_data_publish_atomically` |
 | **分支几乎零成本** | 建分支不复制行，也不复制文件（实测新增行历史 0 条） | [验证记录](docs/VALIDATION.md) |
-| **Agent 能据此行动的错误** | `40001` 旧 head → 重读后重试 · `P0001` 合入冲突 → 重新提案 · `55P03` 等锁超时 → 稍后重试 · `RS001` 读冲突 → 重读这些行后重新判断 | 10 个连接竞争同一个旧 head：1 个成功，9 个被拒绝；写偏斜被拒见 [run_tests.py](run_tests.py) |
+| **Agent 能据此行动的错误** | `40001` 旧 head → 重读后重试 · `P0001` 合入冲突 → 重新提案 · `55P03` 等锁超时 → 稍后重试 · `RS001` 读冲突 → 重读这些行后重新判断 · `P0002` 分支不存在（在 `merge_validated` 中也指版本不存在）→ 核对名称或 ID | 10 个连接竞争同一个旧 head：1 个成功，9 个被拒绝；写偏斜与不存在的分支被拒见 [run_tests.py](run_tests.py) |
 | **由真实约束把关 `main`** | 合入以普通 SQL 作用在真实表上，UNIQUE、外键和 CHECK 约束照常生效 | [run_tests.py](run_tests.py) 中的三项约束违规用例 |
 | **历史变长后依然快** | `main` 上有 2,000 个提交时：一次 10 行合入 181 ms，一次提交约 20 ms（修复前为 50.7 s 和 499 ms） | [S4/S5 报告第 7 节](docs/STAGING_S4_S5.md) |
 | **经过故障演练** | 断电后 201 个已确认的提交全部保留，没有半个提交；备份恢复 13 项指纹一致；失联客户端持有的锁约 60 s 内释放 | [S4/S5 报告](docs/STAGING_S4_S5.md) |
@@ -164,7 +164,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 db.py                 命令行：检查连接、安装、升级已有安装
 run_tests.py          集成测试（自行创建 agentdb_test_* 库）
 review_local.py       本机审查：维护恢复、受限角色、十个分支全部合入
-agent_lab.py          实验中 GPT Agent 使用的工具命令行
+agent_lab.py          实验中 GPT 与 Claude Agent 使用的工具命令行
 agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
 smoke_cloud.py        云端状态服务冒烟测试（尚未运行）
 compose.yaml          一条命令的 Docker 演示
@@ -173,7 +173,7 @@ examples/             可运行的 SQL 示例
 scripts/              基准测试、迁移检查、预发布演练
 results/              文档中各项数字对应的原始结果
 agent_state/          管理 Agent 状态服务与存储适配器
-experiments/          预登记的实验：GPT 重复实验与读集校验实验
+experiments/          预登记的实验：GPT 与 Claude 重复实验、读集校验、上下文存档、可核查的任务状态
 deploy/               预发布虚拟机配置和暂缓的 ECS 部署包
 docs/                 安装、设计、验证记录、技术博客
 tests/                单元测试
@@ -184,8 +184,11 @@ tests/                单元测试
 - [安装与升级](docs/SETUP.md)：连接选项、密码、TLS、WSL、迁移、测试
 - [技术博客](docs/TECHNICAL_BLOG.md)：架构，以及两个真实 GPT Agent 带来的发现
 - [设计说明](docs/DESIGN_REVIEW.md)：版本模型以及对原计划的修订
-- [GPT 重复实验](docs/GPT_REPEAT_EXPERIMENT.md)：预登记十轮，保留失败样本
+- [GPT 与 Claude 重复实验](docs/GPT_REPEAT_EXPERIMENT.md)：两种模型各预登记十轮，保留失败样本
 - [读集校验实验](docs/READSET_EXPERIMENT.md)：在 75 次预登记的合成运行中比较读集校验与陈旧 head 检查，并完整重复一次
+- [上下文存档实验](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)：重置后逐字存档的上下文与模型自写的交接说明对比；按采纳标准没有证据支持存档
+- [可核查的任务状态](docs/TASK_STATE_EXPERIMENT.md)：恢复时把检查点中的事实标为新鲜或过期；只做了试运行，未采纳
+- [agent_lab 网关](docs/AGENT_LAB_GATEWAY.md)：可选的回环常驻进程，为 Agent 的工具复用 psql 会话
 - [历史增长](docs/HISTORY_GROWTH.md) 与 [合入耗时分解](docs/MERGE_BENCHMARK.md)
 - [预发布 S1](docs/STAGING_S1_RESULTS.md) 与 [S4/S5 演练](docs/STAGING_S4_S5.md)：TLS 接入、增长、备份、断电、断网
 - [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md) 与 [AGENTS.md](AGENTS.md)：在本仓库中工作的 Agent 须遵守的约定
