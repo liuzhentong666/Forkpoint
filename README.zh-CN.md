@@ -191,8 +191,7 @@ tests/                单元测试
 - [agent_lab 网关](docs/AGENT_LAB_GATEWAY.md)：可选的回环常驻进程，为 Agent 的工具复用 psql 会话
 - [历史增长](docs/HISTORY_GROWTH.md) 与 [合入耗时分解](docs/MERGE_BENCHMARK.md)
 - [预发布 S1](docs/STAGING_S1_RESULTS.md) 与 [S4/S5 演练](docs/STAGING_S4_S5.md)：TLS 接入、增长、备份、断电、断网
-- [低成本接入计划](docs/LOW_COST_ADOPTION_PLAN.md)，以及[结构与迁移](docs/SCHEMA_EVOLUTION_PLAN.md)和[版本监管](docs/RELEASE_VERSION_SUPERVISION.md)计划：让 Forkpoint 在成熟项目现有的 PostgreSQL 中原位接入；尚未实现，决策 D1–D17 待定
-- [参考数据计划](docs/REFERENCE_DATA_PLAN.md)：范围更窄的替代方案，只针对应用读取而不写入的小表；尚未选定，也未实现
+- [参考数据计划](docs/REFERENCE_DATA_PLAN.md)：在现有 PostgreSQL 中，对应用读取而不写入的小表做受审变更；尚未实现
 - [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md) 与 [AGENTS.md](AGENTS.md)：在本仓库中工作的 Agent 须遵守的约定
 
 `docs/` 中的大部分文档先写中文，英文版在同一文件的后半部分。
