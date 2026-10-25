@@ -12,7 +12,9 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest import mock
 import uuid
 
 import run_state_trials as runner
@@ -35,6 +37,63 @@ class OutcomeTests(unittest.TestCase):
         self.assertEqual(actions, ["info", "read-product", "read-code", "fork", "propose", "diff", "merge",
                                    "checkpoint", "resume"])
         self.assertNotIn("verify", runner.TOOL_S["description"].split("Errors")[0])
+
+
+class SuccessTests(unittest.TestCase):
+    """The success rule needs gpt-a's price on main at the end, not only once (actor_landed_own_work stays set)."""
+
+    def final(self, price, pricing):
+        return {"rows": 4000, "other_rows_unchanged": True, "base_unchanged": True, "open_transactions": 0,
+                "source": {"stock": runner.UPDATED}, "product": {"id": 101, "price": price, "stock": TARGET},
+                "pricing": pricing, "inventory": f"STOCK = {TARGET}\n"}
+
+    def succeeded(self, final):
+        summary = {"outcome": outcome(final), "actor_landed_own_work": {"gpt-a": True, "gpt-b": True},
+                   "published_overwrites": [], "peer_branch_modifications": [], "audit_errors": []}
+        return runner.succeeded(summary, final)
+
+    def test_the_price_must_still_be_11_with_a_matching_constant(self):
+        self.assertTrue(self.succeeded(self.final(11.0, "PRICE = 11.0\n")))
+        self.assertFalse(self.succeeded(self.final(12.0, "PRICE = 12\n")))  # changed after gpt-a landed 11
+        self.assertFalse(self.succeeded(self.final(11.0, "PRICE = 12\n")))
+        self.assertFalse(self.succeeded(self.final(None, None)))
+
+
+class ResetTests(unittest.TestCase):
+    """switch() with stand-ins for the processes: what the fresh process is handed when resume fails."""
+
+    class Agent:
+        trigger = SimpleNamespace(crossed=10500)
+        process = SimpleNamespace(pid=1)
+
+        def interrupt(self, timeout):
+            pass
+
+        def close(self):
+            pass
+
+    def switch(self, reply):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.folder = Path(temp.name)
+        self.summary = {"calls": [], "switches": [], "agents": {"gpt-b": {"processes": []}}}
+        trial = StateTrial(None, self.folder, self.summary, "F")
+        rnd = SimpleNamespace(contexts={"gpt-b": ["ctx-1"]}, switched=set(), writer=SimpleNamespace(flush=lambda: None),
+                              start=lambda actor, limit=None: self.Agent())
+        with mock.patch.object(runner, "tool_reply", return_value=reply):
+            return runner.switch(SimpleNamespace(turn_timeout=60), trial, rnd, "gpt-b", self.Agent(), 27, "the prompt")
+
+    def test_no_saved_state_is_handed_over_as_such(self):
+        fresh, handoff = self.switch({"error": "no_task_state", "detail": "Nothing has been checkpointed for this task yet."})
+        self.assertIn("(nothing saved yet)", handoff)
+        self.assertFalse(self.summary["switches"][0]["state_saved"])
+
+    def test_a_saved_state_that_cannot_be_resumed_stops_the_round(self):
+        failed = {"error": "resume_failed", "detail": "Context exceeds budget"}
+        with self.assertRaisesRegex(RuntimeError, "resume_failed at reset 1: resume_failed: Context exceeds budget"):
+            self.switch(failed)
+        self.assertEqual(self.summary["switches"][0]["resume_error"], failed)
+        self.assertEqual(list(self.folder.glob("handoff.*")), [])  # nothing was handed over
 
 
 class TrialTests(unittest.TestCase):

@@ -6,6 +6,8 @@
 
 2026-10-24 试运行之后的改动：工具说明的错误列表加上了 `agent_lab.py` 对 fork 和提案的拒绝（`stale_branch_head`、附该分支 head 的 `branch_exists`、`not_found`），工具说明因此长了 116 字节；这些失败此前是 traceback，运行器记为 `helper_failed`。上面的试运行用的是旧的说明和旧的行为，再运行会在这两点上不同。
 
+2026-10-25 审查后修正了运行器的三处：成功判定改为核对 main 上最终的价格 11 与 `PRICE = 11`，与登记的定义一致（此前 gpt-a 曾经落地过就算，之后改价也不影响）；恢复包只为显示出来的事实留出新鲜度标记的位置，事实与其标记一并省略（此前为全部事实预留，事实多时 F 组报预算不足，U 组仍能恢复）；重置时已保存的状态恢复失败，不再当作“尚未保存”交给新进程，本轮停止并作为失败保留。试运行的两轮都不受影响：最终价格 11、`PRICE = 11.0`，每次重置都有已保存的状态，没有恢复失败。
+
 ## 问题
 
 Agent 在任务中途多次重置后，从检查点恢复。如果检查点中的每个事实都标明它读自哪个版本的哪些行，并在恢复时标出“新鲜 / 已过期 / 未知”（F 组），是否比没有这些标记的同样检查点（U 组）更少依据过期事实做出决定？
@@ -76,7 +78,7 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 
 | 内容 | 命令 |
 |---|---|
-| 测试 | `python -m unittest discover -s experiments/task_state -v`：15 项，自建并删除测试库；其中替身试运行约需 2–3 分钟 |
+| 测试 | `python -m unittest discover -s experiments/task_state -v`：19 项，自建并删除测试库；其中替身试运行约需 2–3 分钟 |
 | 替身试运行（命令行） | `python experiments/task_state/run_state_trials.py --claude experiments/task_state/fake_state_claude.py --config-dir <目录> --workdir <新目录> --output <新目录> --runs-per-setup 1 --pilot`（真实上限下不会重置） |
 | 试运行（须经用户同意使用额度） | `python experiments/task_state/run_state_trials.py --claude <claude.exe> --config-dir <只含登录的 CLAUDE_CONFIG_DIR> --workdir <新目录> --output experiments/task_state/results/<日期>-pilot --runs-per-setup 1 --pilot` |
 | 样本（须经用户同意） | 同上，去掉 `--pilot`，改为 `--runs-per-setup 10`，输出到 `experiments/task_state/results/<日期>` |
@@ -142,6 +144,8 @@ Agent 在任务中途多次重置后，从检查点恢复。如果检查点中�
 Status: registered on 2026-10-24, before any model run. The pilot (see "Pilot" below; not part of the sample) ran the same day with the user's approval, and both setups landed the correct 55; the sample was not run, and on the pilot the user decided not to adopt freshness marks (see "Conclusion" below). Real rounds need the user's approval for model quota. The checks and the stand-in dry run below call no model. Task state is kept in a MemoryStore inside the runner process (cloud work is on hold; durable storage will be decided separately). Local only; no cloud service is accessed.
 
 Changes after the 2026-10-24 pilot: the tool description's error list now names `agent_lab.py`'s fork and propose refusals (`stale_branch_head`, `branch_exists` with the branch's head, `not_found`), which makes the description 116 bytes longer; those failures used to be tracebacks, recorded by the runner as `helper_failed`. The pilot above used the old description and the old behaviour, so another run differs in both.
+
+After a review on 2026-10-25, three runner defects were fixed. The success rule now checks main's final price 11 and `PRICE = 11`, as the registered definition says (before, gpt-a having landed once was enough, even if the price changed later). The resume packet makes room for the freshness marks of the facts it shows only, leaving facts out together with their marks (before, it reserved room for every fact's mark, so with many facts setup F reported an exhausted budget where setup U still resumed). A saved state that fails to resume at a reset is no longer handed to the new process as "nothing saved yet": the round stops and is kept as a failure. Neither pilot round was affected: both ended at price 11 with `PRICE = 11.0`, every reset had a saved state, and no resume failed.
 
 ## Question
 
@@ -213,7 +217,7 @@ Freshness marks are kept for further work only if F lands a stale decision in at
 
 | Purpose | Command |
 |---|---|
-| Tests | `python -m unittest discover -s experiments/task_state -v`: 15 tests, building and dropping their own test databases; the stand-in dry run takes about 2–3 minutes of it |
+| Tests | `python -m unittest discover -s experiments/task_state -v`: 19 tests, building and dropping their own test databases; the stand-in dry run takes about 2–3 minutes of it |
 | Stand-in dry run (command line) | `python experiments/task_state/run_state_trials.py --claude experiments/task_state/fake_state_claude.py --config-dir <dir> --workdir <new dir> --output <new dir> --runs-per-setup 1 --pilot` (no resets at the real limit) |
 | Pilot (needs the user's approval for quota) | `python experiments/task_state/run_state_trials.py --claude <claude.exe> --config-dir <CLAUDE_CONFIG_DIR holding only the login> --workdir <new dir> --output experiments/task_state/results/<date>-pilot --runs-per-setup 1 --pilot` |
 | Sample (needs the user's approval) | The same without `--pilot`, with `--runs-per-setup 10` and output to `experiments/task_state/results/<date>` |

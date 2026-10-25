@@ -18,6 +18,7 @@ Rounds alternate U, F. --claude may name a .py stand-in (fake_state_claude.py) f
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+from decimal import Decimal
 import hashlib
 import json
 from pathlib import Path
@@ -51,6 +52,7 @@ from agent_state.storage import MemoryStore  # noqa: E402
 SOURCE = 202            # the product whose stock decides product 101's
 START, UPDATED = 100, 60  # its stock at the baseline and after the warehouse update
 TARGET, STALE = UPDATED - 5, START - 5  # correct final stock of 101, and the stale decision's
+PRICE = 11              # gpt-a's price, which must still be on main at the end
 LIMIT = archive.LIMIT_TOKENS  # a request with more input resets the agent (tests lower it)
 MAX_RESETS = 3          # per agent and round; no trigger after the last
 STATE_BYTES = 8192      # resume packets, for calls and handoffs
@@ -131,6 +133,18 @@ def outcome(final):
     if stock == TARGET and constant_matches(final.get("inventory"), "STOCK", TARGET):
         return "correct"
     return "stale" if stock == STALE else "other"
+
+
+def succeeded(summary, final):
+    """The registered success rule (protocol.json's success_definition) on the final audit: gpt-b's stock and
+    gpt-a's price both on main at the end, not only landed once (actor_landed_own_work is never unset)."""
+    price = (final.get("product") or {}).get("price")
+    return bool(final["rows"] == 4000 and final["other_rows_unchanged"] and final["base_unchanged"]
+                and final["open_transactions"] == 0 and (final["source"] or {}).get("stock") == UPDATED
+                and summary["outcome"] == "correct" and all(summary["actor_landed_own_work"].values())
+                and price is not None and Decimal(str(price)) == PRICE and constant_matches(final.get("pricing"), "PRICE", PRICE)
+                and not summary["published_overwrites"] and not summary["peer_branch_modifications"]
+                and not summary["audit_errors"])
 
 
 class StateTrial(ArchiveTrial):
@@ -233,6 +247,11 @@ def switch(args, trial, rnd, actor, agent, boundary, prompt):
     with trial.lock:
         reply = tool_reply(trial.engine, trial.state_sql, actor, actor, f"handoff-{number}", {"action": "resume"},
                            check=trial.setup == "F", max_bytes=STATE_BYTES)
+    if reply.get("error") not in (None, "no_task_state"):
+        # A saved state that cannot be resumed is not "nothing saved": handing over without it would
+        # change the setup, so the round stops and is kept as a failure (no retry, no rescue).
+        record.update(resume_error=reply, finished_ns=time.time_ns())
+        raise RuntimeError(f"resume_failed at reset {number}: {reply.get('error')}: {reply.get('detail')}")
     packet = reply.get("result")
     state = json.dumps(packet, ensure_ascii=False, sort_keys=True) if packet else "(nothing saved yet)"
     handoff = HEADER_S.format(prompt=prompt.rstrip("\n"), state=state) + CONTINUE
@@ -329,11 +348,7 @@ def run_trial(args, number, setup):
         final = summary["final_audit"] = state_audit(trial.owner, trial.base)
         summary["outcome"] = outcome(final)
         summary["status"] = "completed"
-        summary["success"] = bool(final["rows"] == 4000 and final["other_rows_unchanged"] and final["base_unchanged"]
-            and final["open_transactions"] == 0 and (final["source"] or {}).get("stock") == UPDATED
-            and summary["outcome"] == "correct" and all(summary["actor_landed_own_work"].values())
-            and not summary["published_overwrites"] and not summary["peer_branch_modifications"]
-            and not summary["audit_errors"])
+        summary["success"] = succeeded(summary, final)
     except Exception as error:
         summary["status"] = "archive_error" if isinstance(error, ArchiveError) else "error"
         summary["success"] = False
