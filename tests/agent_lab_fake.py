@@ -60,10 +60,10 @@ class FakeWorker:
     """Answers the statements agent_lab sends; records them in order."""
 
     def __init__(self, product=None, pricing="PRICE = 11\n", inventory="STOCK = 95\n", merge=None, fork=None,
-                 propose=None):
+                 propose=None, head=None):
         self.product = product or {"id": 101, "price": 10, "stock": 100}
         self.pricing, self.inventory, self.merge = pricing, inventory, merge
-        self.fork, self.propose = fork, propose
+        self.fork, self.propose, self.head = fork, propose, head
         self.statements, self.closed = [], False
 
     def close(self):
@@ -85,6 +85,8 @@ class FakeWorker:
         if "SELECT vc.head();" == statement:
             return HEAD
         if statement.startswith("SELECT vc.head('gpt-"):
+            if self.head == "timeout":
+                raise subprocess.TimeoutExpired("psql", 120)  # what db.py raises when psql does not answer
             return NEW
         if "SELECT current_user;" == statement:
             return "agentdb_client"
@@ -133,6 +135,8 @@ SCENARIOS = {
     "read_code_missing_path": (["read-code", *COMMON, "--revision", BASE], {}),
     "fork": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE], {}),
     "fork_exists": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE], {"fork": "exists"}),
+    "fork_exists_head_unreadable": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE],
+                                    {"fork": "exists", "head": "timeout"}),
     "fork_unknown_base": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", BASE], {"fork": "unknown"}),
     "fork_bad_branch": (["fork", *COMMON, "--branch", "main", "--base", BASE], {}),
     "fork_bad_uuid": (["fork", *COMMON, "--branch", "gpt-a-1", "--base", "x' OR 1=1"], {}),

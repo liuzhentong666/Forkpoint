@@ -48,6 +48,16 @@
   "stderr_last_line": "",
   "stdout": "{\"error\": \"branch_exists\", \"sqlstate\": \"23505\", \"head\": \"33333333-3333-3333-3333-333333333333\", \"detail\": \"ERROR:  23505: duplicate key value violates unique constraint \\\"branch_pkey\\\"\\nDETAIL:  Key (name)=(gpt-a-1) already exists.\\nCONTEXT:  SQL statement \\\"INSERT INTO vc.branch VALUES(p_name,p_revision,p_revision)\\\"\\nPL/pgSQL function fork(text,uuid) line 3 at SQL statement\\nSCHEMA NAME:  vc\\nTABLE NAME:  branch\\nCONSTRAINT NAME:  branch_pkey\\nLOCATION:  _bt_check_unique, nbtinsert.c:666\"}\n"
  },
+ "fork_exists_head_unreadable": {
+  "exit_code": 2,
+  "statements": [
+   "SELECT vc.fork('gpt-a-1','22222222-2222-2222-2222-222222222222');",
+   "SELECT vc.head('gpt-a-1');"
+  ],
+  "stderr": "",
+  "stderr_last_line": "",
+  "stdout": "{\"error\": \"branch_exists\", \"sqlstate\": \"23505\", \"detail\": \"ERROR:  23505: duplicate key value violates unique constraint \\\"branch_pkey\\\"\\nDETAIL:  Key (name)=(gpt-a-1) already exists.\\nCONTEXT:  SQL statement \\\"INSERT INTO vc.branch VALUES(p_name,p_revision,p_revision)\\\"\\nPL/pgSQL function fork(text,uuid) line 3 at SQL statement\\nSCHEMA NAME:  vc\\nTABLE NAME:  branch\\nCONSTRAINT NAME:  branch_pkey\\nLOCATION:  _bt_check_unique, nbtinsert.c:666\"}\n"
+ },
  "fork_missing_base": {
   "exit_code": 2,
   "statements": [],

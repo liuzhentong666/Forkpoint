@@ -231,9 +231,19 @@ def perform(args, worker):
         """))
     elif args.action == "fork":
         name = literal(branch(args.branch))
+
+        def existing_head(response, state):
+            # branch_exists also gives the head a propose on that branch needs as --expected. The
+            # refusal is already certain; if this second read fails (a timeout, a lost session),
+            # it goes out without head rather than as a traceback.
+            if state != "23505":
+                return {}
+            try:
+                return dict(head=worker.sql(f"SELECT vc.head({name});"))
+            except Exception:
+                return {}
         created, refusal = checked(worker, f"SELECT vc.fork({name},'{revision(args.base)}');", FORK_ERRORS,
-                                   lambda response, state: dict(head=worker.sql(f"SELECT vc.head({name});"))
-                                   if state == "23505" else {})
+                                   existing_head)
         if refusal:
             return refusal, 2
         result = dict(branch=args.branch, head=created)
