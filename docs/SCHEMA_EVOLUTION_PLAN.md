@@ -8,6 +8,8 @@
 
 用户确定的方向：面向成熟项目，以 Forkpoint 承担数据库版本管理和原先需要人工执行的维护工作，追求低成本接入。通用多 Agent 编程协调、接口协商、测试编排、代码审查及合并队列保持现状，后续需要时接已有工具。本文件只规划数据库结构能力。入口文档是[接入成本](LOW_COST_ADOPTION_PLAN.md#chinese-version)，其中有现有引擎的约束（第 2 节）、决策 D1–D9 和门槛 G0–G4；配套见[版本监管](RELEASE_VERSION_SUPERVISION.md#chinese-version)。
 
+替代方案：[参考数据的受审变更](REFERENCE_DATA_PLAN.md#chinese-version)把范围收窄到应用只读的小表，用迁移前后的步骤处理结构变更；选定后，本计划的大部分内容不再需要。
+
 ## 1. 现状与必须解决的问题
 
 `vc.tracked_table` 保存当前 `schema_version` 和有限的列描述；`vc.row_change` 带结构版本，但尚无完整的历史结构解释器。`vc.register_table` 只接受带主键的空普通表，拒绝 generated/identity 列；生成的 `agent` 视图通过当前真实表的复合类型解释 JSON（[001_core.sql](../sql/001_core.sql)）。因此，给表加列或改类型后，不能默认旧版本读取、分支写入和合入仍保持原语义。
@@ -115,6 +117,8 @@ JSON 历史读取必须带结构引用；面向 SQL 的类型化视图按结构�
 Date: October 25, 2026; revised the same day after a design review. Status: design and implementation backlog, not implemented. Code baseline: `c281b37cec116a03e6b2a98b42418fe373d86bf3`.
 
 The user has chosen low-cost adoption in established projects, with Forkpoint taking on database version management and maintenance previously performed manually. General multi-agent coding coordination, interface negotiation, test orchestration, code review, and merge queues remain unchanged; existing tools can supply them when needed. This document plans database schema capabilities only. The entry document is [adoption costs](LOW_COST_ADOPTION_PLAN.md#english-version), which holds the current engine's constraints (section 2), decisions D1–D9, and gates G0–G4; the related plan is [release supervision](RELEASE_VERSION_SUPERVISION.md#english-version).
+
+Alternative: [reviewed changes to reference data](REFERENCE_DATA_PLAN.md#english-version) narrows the scope to small tables the application only reads and handles schema changes with a step before and after each migration; if chosen, most of this plan is no longer needed.
 
 ## 1. Current state and required outcomes
 

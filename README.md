@@ -175,7 +175,7 @@ results/              raw results behind the numbers in the docs
 agent_state/          manager-agent state service and storage adapters
 experiments/          pre-registered experiments: GPT and Claude repeat rounds, read-set validation, context archive, checkable task state
 deploy/               staging VM setup and the on-hold ECS bundle
-docs/                 setup, design, validation records, technical blog
+docs/                 setup, design, validation records, plans, technical blog
 tests/                unit tests
 ```
 
@@ -191,6 +191,8 @@ tests/                unit tests
 - [agent_lab gateway](docs/AGENT_LAB_GATEWAY.md): an optional loopback process that keeps psql sessions warm for the agents' tool
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut
+- [Low-cost adoption plan](docs/LOW_COST_ADOPTION_PLAN.md), with the [schema evolution](docs/SCHEMA_EVOLUTION_PLAN.md) and [release supervision](docs/RELEASE_VERSION_SUPERVISION.md) plans: adopting Forkpoint in an established project's existing PostgreSQL; not implemented, with decisions D1–D17 left open
+- [Reference-data plan](docs/REFERENCE_DATA_PLAN.md): a narrower alternative for small tables the application reads but doesn't write; not chosen, not implemented
 - [Manager agent protocol](docs/MANAGER_AGENT_PROTOCOL.md) and [AGENTS.md](AGENTS.md): conventions for agents that work on this repo
 
 Most documents in `docs/` are written in Chinese first, with the English version below it in the same file.

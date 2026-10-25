@@ -6,6 +6,8 @@
 
 日期：2026-10-25；同日按设计审查修订。状态：用户方向已确定；以下成本清单、决策、门槛和研发任务均为计划，尚未实现，为这些文档也没有运行任何测试。代码基线：`c281b37cec116a03e6b2a98b42418fe373d86bf3`。本文是三份计划的入口，另两份为[结构与迁移](SCHEMA_EVOLUTION_PLAN.md#chinese-version)和[版本监管](RELEASE_VERSION_SUPERVISION.md#chinese-version)；决策 D1–D17 与门槛 G0–G8 在三份文档中统一编号，每项只在一处定义。
 
+替代方案：[参考数据的受审变更](REFERENCE_DATA_PLAN.md#chinese-version)把范围收窄到应用只读的小表，选定后取代这些计划的大部分内容；其决策与门槛接续编号（D18–D20、G9–G11）。
+
 ## 1. 已确定的产品边界
 
 1. 目标是让成熟项目以低成本、尽可能零业务代码改动接入 Forkpoint，把数据库版本、结构演进、运行核对和日常维护交给系统，减少人工维护。
@@ -205,6 +207,8 @@ D8 的候选：
 # Low-Cost Adoption and Database Maintenance for Established Projects
 
 Date: October 25, 2026; revised the same day after a design review. Status: user direction confirmed; the cost inventory, decisions, gates and tasks below are plans, nothing is implemented, and no test was run for these documents. Code baseline: `c281b37cec116a03e6b2a98b42418fe373d86bf3`. This is the entry document for three plans; the others are [schema and migrations](SCHEMA_EVOLUTION_PLAN.md#english-version) and [release supervision](RELEASE_VERSION_SUPERVISION.md#english-version). Decisions D1–D17 and gates G0–G8 are numbered across all three, and each is defined in one place.
+
+Alternative: [reviewed changes to reference data](REFERENCE_DATA_PLAN.md#english-version) narrows the scope to small tables the application only reads; if chosen, it replaces most of these plans, and its decisions and gates continue the numbering (D18–D20, G9–G11).
 
 ## 1. Agreed product boundaries
 

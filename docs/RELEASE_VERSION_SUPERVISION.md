@@ -8,6 +8,8 @@
 
 目标：用户能知道指定环境是否正在运行预期发布；出现偏离时，由监管 Agent 根据可核验证据诊断，并在既有授权和策略范围内调用现有发布工具修复，最后验证实际结果。它属于数据库与发布维护，通用编程任务编排保持现状；监管范围本身待定（D16）。入口文档是[低成本接入](LOW_COST_ADOPTION_PLAN.md#chinese-version)（决策 D1–D9、门槛 G0–G4），配套见[结构迁移](SCHEMA_EVOLUTION_PLAN.md#chinese-version)。
 
+替代方案：[参考数据的受审变更](REFERENCE_DATA_PLAN.md#chinese-version)把范围收窄到应用只读的小表，不建版本监管，只可选地在发布清单中记录参考数据 revision。
+
 ## 1. 监管对象和保证
 
 比较链条为：已提交源码 → 可追溯构建产物 → 指定环境的目标发布 → 实际实例 → 数据库结构/必要数据兼容性 → 健康与功能验证。
@@ -108,6 +110,8 @@ R0/R1 可先以本地服务或模拟部署 API 开发。样例中的版本号用
 Date: October 25, 2026; revised the same day after a design review. Status: the user has chosen this direction; the following design is not implemented. No supervisor process, model task, or deployment was started. The cloud state backend remains unverified against real services.
 
 Goal: establish whether a selected environment runs its intended release. On drift, the supervisor agent diagnoses from verifiable evidence, invokes existing deployment tools within established authorization and policy, and verifies the outcome. This is database/release maintenance; general coding orchestration remains unchanged. The supervisor's scope itself is open (D16). The entry document is [low-cost adoption](LOW_COST_ADOPTION_PLAN.md#english-version) (decisions D1–D9, gates G0–G4); the related plan is [schema evolution](SCHEMA_EVOLUTION_PLAN.md#english-version).
+
+Alternative: [reviewed changes to reference data](REFERENCE_DATA_PLAN.md#english-version) narrows the scope to small tables the application only reads; it builds no release supervisor and only optionally records a reference-data revision in the release manifest.
 
 ## 1. Scope and guarantees
 
