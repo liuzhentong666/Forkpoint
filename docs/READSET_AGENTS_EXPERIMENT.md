@@ -4,6 +4,8 @@
 
 状态：2026-10-28 在编写任何运行器代码、运行任何模型之前登记。用户已于同日确定两项待选内容：每轮两个真实 Agent，P 组提示词点明加锁方法。试运行和样本都须经用户同意使用模型额度。仅限本机，不访问任何云服务。
 
+2026-10-28 编写运行器时的补充（问题、预测与判定规则不变）：运行器以超级用户登录，再以 SET ROLE 切换为 `agentdb_client`，`RESET ROLE` 一类语句会让 Agent 离开这个角色，因此两组的工具除 `BEGIN`、`COMMIT`、`ROLLBACK` 外也拒绝切换角色（SET/RESET ROLE、SESSION AUTHORIZATION，以及以 `set_config` 设置它们）。Claude Code 的工具调用超时由每个 Agent 的 MCP 配置中该服务器的 `timeout` 字段设为 600,000 ms，`agentdb_mcp_server.py` 的等待也是 600 秒；在 2.1.308 中这一字段优先于 `MCP_TOOL_TIMEOUT`（默认 1e8 ms），并限制 stdio 服务器的空闲上限（默认 1,800,000 ms），试运行中仍须核实。已在 PostgreSQL 16.15 上核实：F 组分支视图上的 `SELECT … FOR UPDATE` 不报错，但只锁视图本身，不锁 main 的行。设计未规定的细节写在运行器中并记入 protocol.json：追加的系统指令、工具说明、返回给 Agent 的输出至多 8,192 字节、reads 用 SQL 中的表名，以及成功还要求两个 Agent 的回合都完成（与之前的运行框架相同）。
+
 本文取代[读集校验实验](READSET_EXPERIMENT.md)中第二阶段的提纲。那份提纲在 Forkpoint 内部比较 Agent 声明的读集与它实际的读取，没有回答决定读集合入对 Agent 是否有用的问题：在保护 Agent 的写入方面，它是否胜过普通 PostgreSQL 加上被告知如何保护写入的 Agent。
 
 ## 问题
@@ -90,7 +92,7 @@ F: when you merge, list in reads every row your decision depends on; the merge i
 1. 每轮两个真实 Agent，而不是一个 Agent 加一笔脚本化的销售。“任务”一节所述的暂扣，是本稿让两者在每一轮都发生冲突的方法；没有暂扣，是否冲突将取决于每个 Agent 碰巧有多快。
 2. P 组提示词点明加锁方法，详细程度与 F 组相同。
 
-## 文件与运行（计划中，尚未编写）
+## 文件与运行
 
 | 文件 | 用途 |
 |---|---|
@@ -98,7 +100,14 @@ F: when you merge, list in reads every row your decision depends on; the merge i
 | `experiments/readset_agents/fake_readset_claude.py` | 替身试运行所用的脚本化替身，不调用模型 |
 | `experiments/readset_agents/test_run_readset_agents.py` | 结果判定规则；暂扣与提交顺序（第一次写入被暂扣，直到另一方的到达、另一方的回合结束或过了 300 秒；较晚的调用结束或等锁时提交较早的）；每个工具应拒绝的输入；用两个替身分别以有保护和无保护的方式对两组做替身试运行，两组都必须分别得到正确和陈旧的结果 |
 
-命令和 AGENTS.md 中的行与代码一起加入，与之前的实验相同。原始记录同样只留在作者本机。
+| 内容 | 命令 |
+|---|---|
+| 测试 | `python -m unittest discover -s experiments/readset_agents -v`：20 项，自建并删除测试库；其中替身试运行四轮（两组各一轮有保护、一轮无保护），约需 1 分钟 |
+| 替身试运行（命令行） | `python experiments/readset_agents/run_readset_agents.py --claude experiments/readset_agents/fake_readset_claude.py --config-dir <目录> --workdir <新目录> --output <新目录> --runs-per-group 1 --pilot`：替身默认有保护；加上 `--child-env '{"READSET_STAND_IN_GUARDS": "0"}'` 则无保护 |
+| 试运行（须经用户同意使用额度） | `python experiments/readset_agents/run_readset_agents.py --claude <claude.exe> --config-dir <只含登录的 CLAUDE_CONFIG_DIR> --workdir <新目录> --output experiments/readset_agents/results/<日期>-pilot --runs-per-group 1 --pilot` |
+| 样本（须经用户同意） | 同上，去掉 `--pilot`，改为 `--runs-per-group 10`，输出到 `experiments/readset_agents/results/<日期>` |
+
+原始记录只保存在作者的机器上：`experiments/readset_agents/results/` 不纳入版本库（见该目录的 `.gitignore`）。每轮的测试库（`agentdb_test_plain_*` 或 `agentdb_test_gpt_*`）保留以便核查。
 
 ## 回滚
 
@@ -111,6 +120,8 @@ F: when you merge, list in reads every row your decision depends on; the merge i
 # Read Sets with Real Agents vs. Plain PostgreSQL: Experiment Design
 
 Status: registered on 2026-10-28, before any runner code was written or any model was run. The user settled its two open choices the same day: two real agents per round, and a P prompt that names the locking technique. The pilot and the sample need the user's approval for model quota. Local only; no cloud service is accessed.
+
+Added on 2026-10-28 while writing the runner (the question, predictions and decision rule are unchanged): the runner logs in as a superuser and then sets the role to `agentdb_client`, so `RESET ROLE` and the like would take an agent out of that role; besides `BEGIN`, `COMMIT` and `ROLLBACK`, both groups' tools therefore refuse role changes (SET/RESET ROLE and SESSION AUTHORIZATION, and `set_config` on them). Claude Code's tool-call timeout is set to 600,000 ms through the `timeout` field of each agent's MCP server config, and `agentdb_mcp_server.py` waits 600 s too; in 2.1.308 that field takes precedence over `MCP_TOOL_TIMEOUT` (default 1e8 ms) and also caps the idle limit for stdio servers (default 1,800,000 ms); the pilot still checks it. Checked on PostgreSQL 16.15: `SELECT … FOR UPDATE` on an F branch view runs without error but locks only the view, not main's rows. Details the design left open are in the runner and recorded in protocol.json: the appended system instructions, the tool texts, at most 8,192 bytes of output back to the agent, reads named by the tables the SQL uses, and that success also needs both agents' turns to complete (as in the earlier harnesses).
 
 This replaces the phase 2 outline in the [read-set experiment](READSET_EXPERIMENT.md). That outline compared, within Forkpoint, the read sets agents declare with the reads they make. It did not ask the question that decides whether the read-set merge helps agents at all: does it protect their writes better than plain PostgreSQL in the hands of agents told how to guard their writes?
 
@@ -198,7 +209,7 @@ Common to both groups: each agent has its own MCP tool, bound to its name (gpt-a
 1. Two real agents per round, rather than one agent and a scripted sale. The hold described under "Task" is this draft's way of making the two collide in every round; without it, whether they collide would depend on how fast each agent happens to be.
 2. P's prompt names the locking technique, at the same level of detail as F's.
 
-## Files and running (planned; nothing is written yet)
+## Files and running
 
 | File | Purpose |
 |---|---|
@@ -206,7 +217,14 @@ Common to both groups: each agent has its own MCP tool, bound to its name (gpt-a
 | `experiments/readset_agents/fake_readset_claude.py` | a scripted stand-in for dry runs; calls no model |
 | `experiments/readset_agents/test_run_readset_agents.py` | the outcome rule; the hold and the commit order (a first write held until the other's arrives, the other's turn ends or 300 s pass; the earlier committed when the later finishes or waits); what each tool refuses; a dry run of each group with two stand-ins, guarding and not guarding, which must give the correct and the stale outcome in both groups |
 
-The commands, and the rows in AGENTS.md, come with the code, as for the earlier experiments. Raw records stay on the author's machine only, as before.
+| What | Command |
+|---|---|
+| Tests | `python -m unittest discover -s experiments/readset_agents -v`: 20 tests; makes and drops its test databases; the stand-in dry run in it (four rounds: each group once guarding and once not) takes about a minute |
+| Stand-in dry run (command line) | `python experiments/readset_agents/run_readset_agents.py --claude experiments/readset_agents/fake_readset_claude.py --config-dir <dir> --workdir <new dir> --output <new dir> --runs-per-group 1 --pilot`: the stand-ins guard by default; add `--child-env '{"READSET_STAND_IN_GUARDS": "0"}'` for stand-ins that do not |
+| Pilot (needs the user's approval for quota) | `python experiments/readset_agents/run_readset_agents.py --claude <claude.exe> --config-dir <CLAUDE_CONFIG_DIR holding only the login> --workdir <new dir> --output experiments/readset_agents/results/<date>-pilot --runs-per-group 1 --pilot` |
+| Sample (needs the user's approval) | as above without `--pilot`, with `--runs-per-group 10`, output to `experiments/readset_agents/results/<date>` |
+
+Raw records stay on the author's machine only: `experiments/readset_agents/results/` is not committed (see the folder's `.gitignore`). Each round's test database (`agentdb_test_plain_*` or `agentdb_test_gpt_*`) is kept for checking.
 
 ## Rollback
 

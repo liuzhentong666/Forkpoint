@@ -2,7 +2,7 @@
 
 # Forkpoint：Agent 开发与维护约定
 
-适用范围：本目录及子目录。更新日期：2026-10-25。
+适用范围：本目录及子目录。更新日期：2026-10-28。
 
 **当前云服务状态：未经真实验证，云端部署暂缓。** OSS、GCS、S3 均无真实联调结果，ECS 尚未部署。用户当前不安排云资源采购或部署；只继续本地开发与模拟测试，不自动采购、部署或运行会访问真实云服务的测试。不得将 SDK 测试替身、内存服务模型、本机 HTTP 或本机 PostgreSQL 的结果表述为云存储已验证。
 
@@ -101,6 +101,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `experiments/readset/` | 读集校验实验：`xr` 原型只装入测试库，不修改 `vc.*`；见 [设计与结果](docs/READSET_EXPERIMENT.md) |
 | `experiments/context_archive/` | 上下文存档实验：`xc` 原型只装入测试库，不修改 `vc.*`；`replay.py`、`long_task.py` 与替身 `fake_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | `experiments/task_state/` | 可核查任务状态实验：事实标明读取的版本与行，恢复时标出新鲜度；任务状态在运行器的 MemoryStore 中，不修改 `vc.*` 与 `agent_state`；替身 `fake_state_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/TASK_STATE_EXPERIMENT.md) |
+| `experiments/readset_agents/` | 真实 Agent 的读集校验与普通 PostgreSQL 对比实验：每轮两个 Agent 同时运行，P 组在不纳管的 `agentdb_test_plain_*` 上执行 SQL，F 组在 `agent_lab.py init` 建的库中修改分支、以读集合入；每个 Agent 的第一次写入被暂扣，使两者冲突；不修改 `vc.*` 与 `agent_lab.py`；替身 `fake_readset_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/READSET_AGENTS_EXPERIMENT.md) |
 | `scripts/` | 基准、迁移核验与预发布演练；在项目根目录以 `python scripts/<name>.py` 运行，脚本自行把根目录加入 `sys.path`；纳入版本库的结果默认写入 `results/` |
 | `results/`、`examples/` | 文档中数字对应的原始结果（`results/staging/` 为预发布虚拟机）；可直接用 psql 运行的 SQL 示例 |
 
@@ -168,6 +169,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | 读集校验实验 | 单元测试、契约测试、变异检查、实验与两项核查的命令见 [设计文档](docs/READSET_EXPERIMENT.md)“文件与运行”一节 |
 | 上下文存档实验 | 测试、重放闸门、长任务离线检查、替身试运行与真实轮次的命令见 [实验设计](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)“文件与运行”一节 |
 | 可核查任务状态实验 | 测试、替身试运行与真实轮次的命令见 [实验设计](docs/TASK_STATE_EXPERIMENT.md)“文件与运行”一节 |
+| 真实 Agent 的读集校验与普通 PostgreSQL 对比实验 | 测试、替身试运行与真实轮次的命令见 [实验设计](docs/READSET_AGENTS_EXPERIMENT.md)“文件与运行”一节 |
 | 真实云端（未执行，当前暂缓） | `smoke_cloud.py` 仅保留为以后联调入口；当前不运行，不据此宣称任何提供商已通过验证 |
 
 真实模型实验遵循预登记协议：记录接口返回的精确模型 ID、推理强度、运行器版本、提示词与源文件哈希；不把未暴露的权重快照猜成确定版本。固定样本数并保留失败，不以新轮次替换失败轮次。保存未经摘要或截断的工具请求/响应 JSONL，逐 Agent 保存累计用量最后值；缓存输入与推理输出是子项，缺失用量保持未知。每次实际写入后独立核查已发布内容和对方分支，发生覆盖后又恢复仍计为失败。区分受控恢复提示、脚本压力测试和模型自主行为；云端状态仍未经真实验证。
@@ -184,7 +186,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 # Forkpoint: Conventions for Agent Development and Maintenance
 
-Scope: this directory and its subdirectories. Last updated: 2026-10-25.
+Scope: this directory and its subdirectories. Last updated: 2026-10-28.
 
 **Current cloud service status: not verified against real cloud services; cloud deployment is on hold.** OSS, GCS and S3 have no real integration results, and ECS has not been deployed. The user is not currently scheduling cloud resource purchases or deployment; only continue local development and simulated testing, and do not automatically purchase, deploy, or run tests that access real cloud services. Results from SDK test doubles, the in-memory service model, local HTTP or the local PostgreSQL must not be described as cloud storage having been verified.
 
@@ -283,6 +285,7 @@ The rule text that a formal task will adopt is stored as cloud evidence, and its
 | `experiments/readset/` | Read-set validation experiment: the `xr` prototype goes only into test databases and does not modify `vc.*`; see the [design and results](docs/READSET_EXPERIMENT.md) |
 | `experiments/context_archive/` | Context archive experiment: the `xc` prototype goes only into test databases and does not modify `vc.*`; `replay.py`, `long_task.py` and the stand-in `fake_claude.py` call no model, and real rounds need the user's approval; see the [design](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | `experiments/task_state/` | Checkable task state experiment: facts record the revision and rows they were read from, and resuming marks their freshness; task state lives in the runner's MemoryStore, and `vc.*` and `agent_state` are not modified; the stand-in `fake_state_claude.py` calls no model, and real rounds need the user's approval; see the [design](docs/TASK_STATE_EXPERIMENT.md) |
+| `experiments/readset_agents/` | Read sets with real agents vs. plain PostgreSQL: each round runs two agents at once, P running SQL on an unenrolled `agentdb_test_plain_*`, F changing a branch of an `agent_lab.py init` database and merging with a read set; each agent's first write is held so that the two collide; `vc.*` and `agent_lab.py` are not modified; the stand-in `fake_readset_claude.py` calls no model, and real rounds need the user's approval; see the [design](docs/READSET_AGENTS_EXPERIMENT.md) |
 | `scripts/` | Benchmarks, migration checks and staging drills; run from the project root as `python scripts/<name>.py`, each script adds the root to `sys.path` itself; committed results go to `results/` by default |
 | `results/`, `examples/` | Raw results behind the numbers in the docs (`results/staging/` is the staging VM); SQL examples that run directly with psql |
 
@@ -350,6 +353,7 @@ From the project root, choose checks according to the scope of the change; after
 | Read-set experiment | Commands for the unit and contract tests, the mutation check, the experiment and the two audits are in "Files and running" in the [design](docs/READSET_EXPERIMENT.md) |
 | Context archive experiment | Commands for the tests, the replay gate, the long-task check, the stand-in dry run and real rounds are in "Files and running" in the [design](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | Checkable task state experiment | Commands for the tests, the stand-in dry run and real rounds are in "Files and running" in the [design](docs/TASK_STATE_EXPERIMENT.md) |
+| Read sets with real agents vs. plain PostgreSQL | Commands for the tests, the stand-in dry run and real rounds are in "Files and running" in the [design](docs/READSET_AGENTS_EXPERIMENT.md) |
 | Real cloud (not run, currently on hold) | `smoke_cloud.py` is kept only as a future integration entry point; it is not run now, and no provider is claimed to have passed verification on its basis |
 
 Real-model experiments follow a pre-registered protocol: record the exact model ID returned by the interface, reasoning effort, runner version, and hashes of the prompts and source files; do not guess an unexposed weight snapshot as a definite version. Fix the sample size and keep failures; do not replace failed rounds with new ones. Save tool request/response JSONL without summarizing or truncating, and save the last value of each Agent's cumulative usage; cached input and reasoning output are sub-items, and missing usage stays unknown. After each actual write, independently check the published content and the other party's branch; an overwrite that is later restored still counts as a failure. Distinguish controlled recovery prompts, scripted stress tests and autonomous model behavior; cloud state is still not verified against real cloud services.
