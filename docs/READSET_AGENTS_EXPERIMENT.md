@@ -1,0 +1,213 @@
+中文 | [English](#english-version)
+
+# 真实 Agent 的读集校验与普通 PostgreSQL 对比：实验设计
+
+状态：2026-10-28 在编写任何运行器代码、运行任何模型之前登记。用户已于同日确定两项待选内容：每轮两个真实 Agent，P 组提示词点明加锁方法。试运行和样本都须经用户同意使用模型额度。仅限本机，不访问任何云服务。
+
+本文取代[读集校验实验](READSET_EXPERIMENT.md)中第二阶段的提纲。那份提纲在 Forkpoint 内部比较 Agent 声明的读集与它实际的读取，没有回答决定读集合入对 Agent 是否有用的问题：在保护 Agent 的写入方面，它是否胜过普通 PostgreSQL 加上被告知如何保护写入的 Agent。
+
+## 问题
+
+当两个真实 Agent 同时修改共享数据、且各自的决策都依赖对方写入的行时，Forkpoint（先在分支上修改，再由合入检查 Agent 列为已读的行）能否比普通 PostgreSQL（由被告知如何保护写入的 Agent 使用）更常阻止陈旧决策落地？
+
+## 背景
+
+- 第一阶段使用脚本写入者，不涉及模型。读集包含全部依赖行时，没有任何写偏斜冲突漏过；每个依赖行以 0.5 的概率被漏报时，70 个冲突中漏过 35 个。保护效果取决于读集是否完整。
+- 迄今的模型实验都只在有版本引擎的条件下运行 Agent：[重复实验](GPT_REPEAT_EXPERIMENT.md)中 GPT 与 Claude 各 10 轮都没有覆盖，但没有不使用引擎的对照组。[上下文存档](CONTEXT_ARCHIVE_EXPERIMENT.md)与[任务状态](TASK_STATE_EXPERIMENT.md)实验都没有发现其功能带来的优势：Opus 5.5 自己的笔记保留了所需的事实，也会自行重读变化过的行。
+- 普通 PostgreSQL 本身就能保护这种写入：在与写入相同的事务中，锁住决策读取的行（`SELECT … FOR UPDATE`）并再次检查规则。被告知这样做的 Agent 是否照做、是否做对，就是 Forkpoint 必须胜过的基线。
+
+## 任务
+
+两组相同，使用 4,000 行种子数据（价格 10，库存 100）：
+
+- 商品 101 与 202 作为套装出售：两者库存合计不得低于 180。没有数据库约束检查这一点（即第一阶段 W2 的规则，换成本种子的数字）。
+- 两个 Agent 同时开始。gpt-a 被要求出售 15 件商品 101，gpt-b 出售 15 件商品 202，都是仅当售出后套装合计仍不低于 180 时才出售，否则不出售。任一笔单独出售都允许（200 → 185）；两笔都出售则违反规则（170）。
+- 冲突：每个 Agent 第一次可能修改共享数据的调用（P 组为第一次 `execute`，F 组为第一次 `merge`）会被暂扣，直到另一个 Agent 的第一次此类调用到达、另一个 Agent 的回合结束，或过了 300 秒。随后运行器先在一个暂不提交的事务中执行较早到达的调用，再开始较晚的调用；较晚的调用一结束，或一被观察到在等锁（每 50 ms 查看一次），运行器就提交较早的调用，最迟在较晚的调用开始 10 秒后提交；较晚的调用随后提交。因此只要两个 Agent 都写入，较晚的写入方总是在较早一方的变更尚未提交时工作，这对它是最不利的时刻。除此之外，两者的节奏由它们自己决定。
+- 正确结果是恰好一笔销售落地（套装合计 185），另一个 Agent 不出售。陈旧：两笔都落地（合计 170）。
+
+提示词，两个 Agent、两组都相同，只有商品编号和最后一行不同（以英文发送；`{product}` 对 gpt-a 为 101，对 gpt-b 为 202）：
+
+```text
+You are an order agent for a shop database. Products 101 and 202 are sold as a bundle:
+their combined stock must never fall below 180. No database constraint checks this.
+A customer wants 15 units of product {product}. Sell them by lowering product {product}'s stock by 15,
+but only if the bundle still has at least 180 units afterwards; otherwise do not sell.
+Change nothing else. Finish by saying whether you sold, and the stock values your decision used.
+Other agents and processes change this database at the same time as you, including the stock
+of other products. Your change must not rest on values that changed after you read them:
+P: in the same execute call as the write, lock the rows your decision depends on
+   (SELECT ... FOR UPDATE) and check the rule again before changing anything.
+F: when you merge, list in reads every row your decision depends on; the merge is refused
+   if one of them changed on main.
+```
+
+## 组别
+
+| | P：普通 PostgreSQL | F：Forkpoint |
+|---|---|---|
+| 数据库 | 新建 `agentdb_test_plain_<10 位十六进制>`：`app.products` 与 `app.orders` 的定义同 `sql/002_demo_app.sql`，但不纳管，同样 4,000 行；没有 `vc` schema | `agent_lab.py init`（`agentdb_test_gpt_<10 位十六进制>`） |
+| 角色 | `agentdb_client`，对 `app` 的权限与 F 组相同 | `agentdb_client` |
+| `query` | 在实时表上以一个只读事务执行 Agent 的 SQL | 在 Agent 最新的分支上以一个只读事务执行 Agent 的 SQL；调用要求读 main 或 Agent 还没有分支时，读当前 main |
+| 修改 | `execute`：以一个读写事务执行 Agent 的 SQL，全部语句成功则提交 | `fork` 从当前 main 建分支（与 agent_lab 的 fork 相同）；`execute` 把 Agent 的 SQL 作为最新分支上的一个变更执行 |
+| 落地 | `execute` 的提交 | `merge`：运行器自己执行 agent_lab 的 `merge --reads` 所用的 SQL（迁移 008 的 `vc.merge_validated`），以便控制提交时机；`reads` 必填，可以为空；若 reads 中的行或分支写过的行自分支开始以来在 main 上有变化，则以 `read_conflict` 拒绝，并列出每个变化行在基线与当前的值 |
+
+两组共同的设置：每个 Agent 有自己的 MCP 工具，绑定其名字（gpt-a 或 gpt-b）；不带 schema 的表名在 P 组解析到 `app`，在 F 组解析到 `agent`（分支视图），Agent 在两组写相同的表名；事务由运行器开启和结束，Agent 的 SQL 可以以 `SET TRANSACTION ISOLATION LEVEL …` 开头，但 `BEGIN`、`COMMIT`、`ROLLBACK` 会被拒绝，F 组的 SQL 不得引用 `vc` 或 `app` schema；`lock_timeout` 为 10 秒，与 agent_lab 的合入相同；错误返回其 SQLSTATE；每个 Agent 40 次调用。运行框架沿用 `experiments/task_state/` 的（Claude Code 无界面模式，归档每个请求和响应，每次可能写入的调用之后做一次 SQL 核查），但两个 Agent 的进程同时运行（之前的实验每次只运行一个 Agent 的回合）；运行器使 Claude Code 的工具调用超时长于 300 秒的暂扣（在试运行中核实）。
+
+## 运行安排
+
+- 试运行：每组一轮，使用 `--pilot`，不计入样本，单独报告。
+- 样本：20 轮，奇数轮 P、偶数轮 F，每次运行一轮（每轮的两个 Agent 同时运行）；两个 Agent 都用 claude-opus-5-5，推理强度 xhigh，确切版本记入 protocol.json。保留所有轮次，不替换失败轮次，不人工补救。因用量额度中断的轮次保留，并如实标明；与存档实验一样每轮有两个 Agent，而存档实验的第 19、20 轮曾用尽 Pro 订阅的会话额度。
+
+## 测量
+
+- 主要指标（逐轮）：两笔销售是否都落地（结束时 101 与 202 都为 85）。
+- 次要指标：成功（恰好一笔销售落地；其余 3,998 行和 `app.orders` 不变；没有未结束的事务；每个响应都来自登记的模型；每个 MCP 请求都有回应）；结果（正确、陈旧或其他：没有销售，或任何其他改动）；冲突是否按设计发生（两个 Agent 都发出了第一次写入调用）以及哪个 Agent 较晚写入；较晚写入方实际使用的保护（P 组：它的第一次 `execute` 是否等待了较早一方的锁，或以序列化错误失败；F 组：它的 reads 是否包含另一件商品）；每个 Agent 收到的拒绝及其后续动作；每个 Agent 的调用次数、token（输入、其中缓存、输出）、耗时与被暂扣的时间。
+
+## 预测（运行前写定）
+
+- P：提示词点明了保护方法，多数较晚写入方会在写入的调用中锁住另一件商品；10 轮中陈旧 0–2 轮。可能的失败方式是不加锁的检查，无论在同一语句中还是在之前的 query 中；较早一方尚未提交的变更会让两者都失效。
+- F：10 轮中陈旧 0–1 轮；可能的失败方式是较晚写入方的 reads 漏掉另一件商品。
+- F 的每个 Agent 比 P 用更多调用和 token：需要 fork 与 merge，收到 `read_conflict` 后还要新建分支或重新读取。
+
+## 判定规则（现在决定）
+
+- 只有当 P 的陈旧轮次比 F 至少多 3 轮（各 10 轮中），且 F 的成功次数不更低时，才认为 Forkpoint 在本任务上有正确性优势。
+- 否则结论为：没有证据表明读集合入比普通 PostgreSQL 上得到指导的 Agent 更能保护这个决策；成本差异按实测报告。
+- F 中每一个陈旧轮次都连同两个 Agent 发送的 reads 一起报告，作为声明读集是否可靠的证据。
+
+## 本实验回答不了的问题
+
+- 这类冲突多常发生：暂扣使两次写入在两个 Agent 都写入的每一轮都发生冲突，因此测量的是冲突发生时的保护，而不是它发生的频率。
+- 每轮只检验一个保护：较早的写入方没有遇到任何变化，结果只取决于较晚写入方的保护。
+- 同一轮的两个写入方使用同一组的工具和提示词；保护所面对的是同类写入方，而不是应用程序或后台管理工具。（在 P 组中，不加锁的 SERIALIZABLE 只有在两个事务都使用它时才起作用。）
+- 只有一个任务：两行规则上的写偏斜，按键读取。基于范围查询的决策还可能被新插入的行（幻读）破坏，按键的读集发现不了。
+- 无关并发变更（改动决策未使用的行）的成本没有测量；第一阶段已用脚本写入者测过。
+- P 组的提示词点明了保护方法；只被告知他人同时写入的 Agent 不在测试范围内。
+- 只测 Claude Opus 5.5、推理强度 xhigh；每组 10 轮发现不了小的差异。
+
+## 用户已确定的选择（2026-10-28）
+
+1. 每轮两个真实 Agent，而不是一个 Agent 加一笔脚本化的销售。“任务”一节所述的暂扣，是本稿让两者在每一轮都发生冲突的方法；没有暂扣，是否冲突将取决于每个 Agent 碰巧有多快。
+2. P 组提示词点明加锁方法，详细程度与 F 组相同。
+
+## 文件与运行（计划中，尚未编写）
+
+| 文件 | 用途 |
+|---|---|
+| `experiments/readset_agents/run_readset_agents.py` | 运行器：两种数据库、每个 Agent 的工具、暂扣与提交顺序、核查、protocol.json 与逐轮记录 |
+| `experiments/readset_agents/fake_readset_claude.py` | 替身试运行所用的脚本化替身，不调用模型 |
+| `experiments/readset_agents/test_run_readset_agents.py` | 结果判定规则；暂扣与提交顺序（第一次写入被暂扣，直到另一方的到达、另一方的回合结束或过了 300 秒；较晚的调用结束或等锁时提交较早的）；每个工具应拒绝的输入；用两个替身分别以有保护和无保护的方式对两组做替身试运行，两组都必须分别得到正确和陈旧的结果 |
+
+命令和 AGENTS.md 中的行与代码一起加入，与之前的实验相同。原始记录同样只留在作者本机。
+
+## 回滚
+
+所有内容将位于 `experiments/readset_agents/` 与本文中；`vc.*`、`agent_lab.py` 和项目数据库都不改动。删除它们即恢复原状。
+
+---
+
+<a id="english-version"></a>
+
+# Read Sets with Real Agents vs. Plain PostgreSQL: Experiment Design
+
+Status: registered on 2026-10-28, before any runner code was written or any model was run. The user settled its two open choices the same day: two real agents per round, and a P prompt that names the locking technique. The pilot and the sample need the user's approval for model quota. Local only; no cloud service is accessed.
+
+This replaces the phase 2 outline in the [read-set experiment](READSET_EXPERIMENT.md). That outline compared, within Forkpoint, the read sets agents declare with the reads they make. It did not ask the question that decides whether the read-set merge helps agents at all: does it protect their writes better than plain PostgreSQL in the hands of agents told how to guard their writes?
+
+## Question
+
+When two real agents change shared data at the same time, and each one's decision depends on a row the other one writes, does Forkpoint (a branch, then a merge that checks the rows the agent lists as read) stop the stale decision more often than plain PostgreSQL used by agents that have been told how to guard their writes?
+
+## Background
+
+- Phase 1 used scripted writers and no model. With every dependency in the read set, no write-skew conflict got through; with each dependency left out at probability 0.5, 35 of 70 got through. The protection is only as good as the read set.
+- The model experiments so far ran agents with the engine only: no overwrite in 10 GPT and 10 Claude rounds of the [repeat experiments](GPT_REPEAT_EXPERIMENT.md), but no group worked without the engine. The [context archive](CONTEXT_ARCHIVE_EXPERIMENT.md) and [task state](TASK_STATE_EXPERIMENT.md) experiments found no advantage for their features: Opus 5.5's own notes kept the facts it needed, and it re-read the changed row by itself.
+- Plain PostgreSQL can guard such a write: in the same transaction as the write, lock the rows the decision read (`SELECT … FOR UPDATE`) and check the rule again. Whether agents told to do this do it, and do it correctly, is the baseline Forkpoint has to beat.
+
+## Task
+
+The same in both groups, on the 4,000-row seed (price 10, stock 100):
+
+- Products 101 and 202 are sold as a bundle: their combined stock must not fall below 180. No database constraint checks this (phase 1's W2 rule, with this seed's numbers).
+- Two agents start at the same time. gpt-a is asked to sell 15 units of product 101 and gpt-b 15 units of product 202, each only if the bundle still has at least 180 afterwards, and otherwise not to sell. Either sale alone is allowed (200 → 185); both together break the rule (170).
+- The collision: each agent's first call that can change shared data (P: its first `execute`; F: its first `merge`) is held until the other agent's first such call arrives, the other agent's turn ends, or 300 s pass. The runner then runs the earlier call in a transaction it does not commit yet, starts the later call, and commits the earlier one as soon as the later call finishes or is seen waiting for a lock (checked every 50 ms), and at most 10 s after the later call starts; the later call commits after that. So whenever both agents write, the later writer works while the earlier one's change is in flight, the worst moment for it. Otherwise each agent keeps its own pace.
+- The correct outcome is that exactly one sale lands (bundle 185) and the other agent does not sell. Stale: both sales land (170).
+
+The prompt, the same for both agents and both groups except for the product and the last line (sent in English; `{product}` is 101 for gpt-a and 202 for gpt-b):
+
+```text
+You are an order agent for a shop database. Products 101 and 202 are sold as a bundle:
+their combined stock must never fall below 180. No database constraint checks this.
+A customer wants 15 units of product {product}. Sell them by lowering product {product}'s stock by 15,
+but only if the bundle still has at least 180 units afterwards; otherwise do not sell.
+Change nothing else. Finish by saying whether you sold, and the stock values your decision used.
+Other agents and processes change this database at the same time as you, including the stock
+of other products. Your change must not rest on values that changed after you read them:
+P: in the same execute call as the write, lock the rows your decision depends on
+   (SELECT ... FOR UPDATE) and check the rule again before changing anything.
+F: when you merge, list in reads every row your decision depends on; the merge is refused
+   if one of them changed on main.
+```
+
+## Groups
+
+| | P: plain PostgreSQL | F: Forkpoint |
+|---|---|---|
+| Database | a new `agentdb_test_plain_<10 hex>`: `app.products` and `app.orders` defined as in `sql/002_demo_app.sql` but not enrolled, the same 4,000 rows; no `vc` schema | `agent_lab.py init` (`agentdb_test_gpt_<10 hex>`) |
+| Role | `agentdb_client`, with the same privileges on `app` as in F | `agentdb_client` |
+| `query` | the agent's SQL in one read-only transaction on the live tables | the agent's SQL in one read-only transaction on its newest branch; on current main if the call asks for main or the agent has no branch yet |
+| Changing | `execute`: the agent's SQL in one read-write transaction, committed if every statement succeeds | `fork` starts a branch from current main, as agent_lab's fork does; `execute` runs the agent's SQL as one change on the newest branch |
+| Landing | the `execute` commit | `merge`: the runner itself issues the SQL of agent_lab's `merge --reads` (`vc.merge_validated`, migration 008), so that it controls the commit; `reads` is required and may be empty; refused with `read_conflict`, listing each changed row's value at the base and now, if a row in reads or a row the branch wrote changed on main since the branch started |
+
+Common to both groups: each agent has its own MCP tool, bound to its name (gpt-a or gpt-b); table names without a schema resolve to `app` in P and to `agent` (the branch views) in F, so the agents write the same table names in both; the runner opens and closes each transaction, so an agent's SQL may begin with `SET TRANSACTION ISOLATION LEVEL …` but `BEGIN`, `COMMIT` and `ROLLBACK` are refused, and F's SQL may not name the `vc` or `app` schemas; `lock_timeout` is 10 s, as for agent_lab's merges; errors return their SQLSTATE; 40 calls per agent. The harness is `experiments/task_state/`'s (Claude Code headless, every request and response archived, an SQL audit after every call that can write), except that both agents' processes run at once (the earlier experiments ran one agent's turn at a time); the runner keeps Claude Code's tool-call timeout above the 300 s hold (checked in the pilot).
+
+## Schedule
+
+- Pilot: one round per group with `--pilot`, outside the sample, reported separately.
+- Sample: 20 rounds, odd rounds P and even rounds F, one round at a time (each round runs its two agents at once); claude-opus-5-5 at xhigh effort for both agents, exact versions recorded in protocol.json. All rounds are kept, none is replaced, and nothing is rescued by hand. A round stopped by a usage limit is kept and reported as such; like the archive experiment, every round has two agents, and that experiment's rounds 19 and 20 hit the Pro subscription's session limit.
+
+## Measurements
+
+- Primary, per round: whether both sales landed (101 and 202 both at 85 at the end).
+- Secondary: success (exactly one sale landed; the other 3,998 rows and `app.orders` unchanged; no open transaction; every response from the registered model; every MCP request answered); the outcome (correct, stale, or other: no sale, or any other change); whether the collision happened as designed (both agents made a first write call), and which agent wrote later; the later writer's guard (P: whether its first `execute` waited for the earlier one's lock or failed with a serialization error; F: whether its reads named the other product); the refusals each agent got and what it did next; per agent, calls, tokens (input, of which cached, and output), wall time and time held.
+
+## Predictions (written before running)
+
+- P: with the guard named in the prompt, most later writers lock the other product in their write call; 0–2 stale rounds in 10. The likely failure is a check without a lock, in the same statement or in an earlier query; the earlier writer's change in flight defeats both.
+- F: 0–1 stale rounds in 10; the likely failure is a later writer that leaves the other product out of reads.
+- Each F agent takes more calls and tokens than a P agent: fork and merge, and after `read_conflict` a new branch or a fresh read.
+
+## Decision rule (decided now)
+
+- Forkpoint shows a correctness advantage on this task only if P has a stale round in at least 3 more of its 10 rounds than F, and F's success count is not lower.
+- Otherwise the conclusion is: no evidence that the read-set merge protects this decision better than guided agents on plain PostgreSQL; the cost difference is reported as measured.
+- Every stale round in F is reported with the reads both agents sent, as evidence on whether declared read sets can be relied on.
+
+## What this experiment cannot tell us
+
+- How often such collisions happen: the hold makes the two writes collide in every round where both agents write, so this measures protection when a collision happens, not how often one does.
+- Each round tests one guard: the earlier writer meets no change, so the outcome depends only on the later writer's guard.
+- Both writers in a round use the same group's tool and prompt, so a guard is tested against a writer of the same kind, not against an application or an admin tool. (In P, SERIALIZABLE without locks holds only when both transactions use it.)
+- One task: write skew on a two-row rule, with reads by key. A decision based on a range query can also be broken by inserted rows (phantoms), which key-based read sets miss.
+- The cost of concurrent changes that don't matter (to rows the decision doesn't use) is not measured; phase 1 covered that with scripted writers.
+- P's prompt names the guard; agents told only that others write at the same time are not tested.
+- Claude Opus 5.5 at xhigh only; 10 rounds per group cannot detect small differences.
+
+## Choices settled by the user (2026-10-28)
+
+1. Two real agents per round, rather than one agent and a scripted sale. The hold described under "Task" is this draft's way of making the two collide in every round; without it, whether they collide would depend on how fast each agent happens to be.
+2. P's prompt names the locking technique, at the same level of detail as F's.
+
+## Files and running (planned; nothing is written yet)
+
+| File | Purpose |
+|---|---|
+| `experiments/readset_agents/run_readset_agents.py` | the runner: both kinds of database, each agent's tool, the hold and the commit order, the audits, protocol.json and the round records |
+| `experiments/readset_agents/fake_readset_claude.py` | a scripted stand-in for dry runs; calls no model |
+| `experiments/readset_agents/test_run_readset_agents.py` | the outcome rule; the hold and the commit order (a first write held until the other's arrives, the other's turn ends or 300 s pass; the earlier committed when the later finishes or waits); what each tool refuses; a dry run of each group with two stand-ins, guarding and not guarding, which must give the correct and the stale outcome in both groups |
+
+The commands, and the rows in AGENTS.md, come with the code, as for the earlier experiments. Raw records stay on the author's machine only, as before.
+
+## Rollback
+
+Everything will be in `experiments/readset_agents/` and this document; `vc.*`, `agent_lab.py` and the project database are not changed. Removing them restores the previous state.

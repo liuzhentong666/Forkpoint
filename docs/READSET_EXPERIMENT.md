@@ -128,6 +128,8 @@ xr.merge_validated(p_target text, p_source uuid, p_reads jsonb, p_author text) R
 
 通过 `agent_lab.py` 让真实 Agent 参与：合入工具要求提供 `relied_on`（键列表），并记录 Agent 的每一次读取。逐轮比较声明读集与记录读集，测量漏报与多报，再用测得的行为重跑 W2、W3。遵循 [GPT 重复实验](GPT_REPEAT_EXPERIMENT.md) 的预登记规则。
 
+注（2026-10-28）：此提纲由同日登记的[真实 Agent 的读集校验与普通 PostgreSQL 对比](READSET_AGENTS_EXPERIMENT.md)取代；它比较 Forkpoint 与使用普通 PostgreSQL 的 Agent，而不是在 Forkpoint 内部比较读集。
+
 ## 文件与运行
 
 | 文件 | 用途 |
@@ -389,6 +391,8 @@ If criterion 1 fails, the prototype is wrong. If criterion 3 fails, validation i
 ## Phase 2 (outline only; needs its own protocol and the user's approval to use model quota)
 
 Real Agents take part through `agent_lab.py`: the merge tool requires `relied_on` (a list of keys), and every read the Agent makes is recorded. Compare declared and recorded read sets turn by turn to measure under- and over-reporting, then rerun W2 and W3 with the measured behavior. Follows the pre-registration rules of the [GPT repeat experiment](GPT_REPEAT_EXPERIMENT.md).
+
+Note (2026-10-28): this outline is replaced by [Read sets with real agents vs. plain PostgreSQL](READSET_AGENTS_EXPERIMENT.md), registered the same day, which compares Forkpoint with agents on plain PostgreSQL instead of comparing read sets within Forkpoint.
 
 ## Files and running
 
