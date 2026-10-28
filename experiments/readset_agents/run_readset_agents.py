@@ -135,6 +135,10 @@ DOLLAR = re.compile(r"\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$"
 TRANSACTION_WORDS = {"begin", "start", "commit", "end", "rollback", "abort"}
 MODE_WORDS = {"isolation", "level", "serializable", "repeatable", "read", "committed", "uncommitted",
               "write", "only", "not", "deferrable"}
+# On a statement's words (keywords and identifiers, as words() joins them):
+LOCKING = re.compile(r"\bfor (?:update|no key update|share|key share)\b")
+WRITES_PRODUCTS = re.compile(r"\b(?:update(?: only)?|insert into|delete from|merge into) (?:app )?products\b")
+ISOLATION = re.compile(r"\blevel (serializable|repeatable read|read committed|read uncommitted)\b")
 
 
 def prompt_for(group, actor):
@@ -253,6 +257,29 @@ def plan_sql(sql, group):
     while statements and transaction_modes(statements[0][1]):
         prelude.append(transaction_modes(statements.pop(0)[1]))
     return prelude, [text for text, _ in statements]
+
+
+def words(tokens):
+    """A statement's keywords and identifiers in order: no strings, comments or punctuation."""
+    return " ".join(value.lower() for kind, value in tokens if kind in ("word", "quoted"))
+
+
+def p_guard(sql):
+    """P's guard as the SQL of the later writer's first execute wrote it (the document's note of
+    2026-10-28): locked_before_write, whether a statement before the first one that writes products
+    has a locking clause (FOR UPDATE, FOR NO KEY UPDATE, FOR SHARE or FOR KEY SHARE; a lock in the
+    writing statement itself, as in a CTE, does not count; None when no statement writes products
+    outside a string, as inside a DO block), and isolation, the level its leading SET TRANSACTION
+    statements set (read committed if none)."""
+    statements = split_sql(sql) if isinstance(sql, str) else []
+    isolation = "read committed"
+    while statements and transaction_modes(statements[0][1]):
+        level = ISOLATION.search(words(statements.pop(0)[1]))
+        isolation = level.group(1) if level else isolation
+    texts = [words(tokens) for _, tokens in statements]
+    write = next((index for index, text in enumerate(texts) if WRITES_PRODUCTS.search(text)), None)
+    return {"locked_before_write": None if write is None else any(LOCKING.search(text) for text in texts[:write]),
+            "isolation": isolation}
 
 
 def read_set(reads):
@@ -822,8 +849,9 @@ def take_turn(args, trial, agent, actor, prompt):
 
 def collision_summary(group, calls):
     """Whether both agents made a first write call, which wrote later, whether the earlier one's change
-    was in flight while the later ran, and the later writer's guard: P, whether its first execute waited
-    for the earlier's lock (or failed, with its SQLSTATE); F, whether its reads named the other product."""
+    was in flight while the later ran, and the later writer's guard: P, the guard its first execute's
+    SQL wrote (p_guard); F, whether its reads named the other product. Either way with the call's
+    error and SQLSTATE, if it failed."""
     holds = {call["actor"]: call for call in calls if "hold" in call}
     roles = {actor: call["hold"]["role"] for actor, call in holds.items()}
     later = next((actor for actor, role in roles.items() if role == "later"), None)
@@ -836,7 +864,7 @@ def collision_summary(group, calls):
         found.update(in_flight=call["hold"].get("in_flight"), commit_reason=holds[earlier]["hold"].get("commit_reason"))
         guard = {"error": call.get("error"), "sqlstate": call.get("sqlstate")}
         if group == "P":
-            guard["waited_for_lock"] = call["hold"].get("waited_for_lock")
+            guard.update(p_guard((call.get("arguments") or {}).get("sql")))
         else:
             reads = (call.get("arguments") or {}).get("reads")
             guard.update(reads=reads, named_other=any(isinstance(key, dict) and str(key.get("id")) == str(PRODUCTS[earlier])
@@ -999,6 +1027,8 @@ def register(args):
         "primary_metric": "Per round, whether both sales landed: products 101 and 202 both at 85 at the end (stale).",
         "outcomes": "correct: exactly one sale landed and nothing else changed; stale: both landed; other: no "
                     "sale, or any other change.",
+        "later_guard": {"P": " ".join(p_guard.__doc__.split()),
+                        "F": "whether the reads of the later writer's first merge named the other product"},
         "counting": "All registered rounds kept; no replacement of failed rounds; no manual rescue. A round "
                     "stopped by a usage limit is kept and reported as such. Tokens as in the 2026-10-20 Claude run.",
         "real_cloud_verified": False}

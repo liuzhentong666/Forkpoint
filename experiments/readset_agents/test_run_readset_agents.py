@@ -48,6 +48,24 @@ class OutcomeTests(unittest.TestCase):
         self.assertFalse(succeeded({"audit_errors": [{"error": "lost"}]}, final(85, 100)))
 
 
+class GuardTests(unittest.TestCase):
+    """P's guard as the SQL of the later writer's first execute wrote it (the note of 2026-10-28)."""
+
+    def test_four_scripts(self):
+        check = "(SELECT sum(stock) FROM products WHERE id IN (101, 202)) - 15 >= 180;"
+        guard = ("SELECT id, stock FROM products WHERE id IN (101, 202) FOR UPDATE;\n"
+                 "UPDATE products SET stock = stock - 15 WHERE id = 202\n   AND " + check)
+        weak = "UPDATE products SET stock = stock - 15\n WHERE id = 202\n   AND " + check  # waits, then lands
+        blind = "UPDATE products SET stock = stock - 15 WHERE id = 202;"
+        repeatable = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;\n" + weak
+        for sql, locked, isolation in ((guard, True, "read committed"), (weak, False, "read committed"),
+                                       (blind, False, "read committed"), (repeatable, False, "repeatable read")):
+            self.assertEqual(runner.p_guard(sql), {"locked_before_write": locked, "isolation": isolation}, sql)
+        for clause in ("FOR NO KEY UPDATE", "FOR SHARE", "FOR KEY SHARE"):
+            self.assertTrue(runner.p_guard(guard.replace("FOR UPDATE", clause))["locked_before_write"], clause)
+        self.assertIsNone(runner.p_guard("DO $$ BEGIN " + blind + " END $$")["locked_before_write"])  # unseen write
+
+
 class ProtocolTests(unittest.TestCase):
     def test_the_prompts_are_the_registered_text_word_for_word(self):
         halves = DOC.read_text(encoding="utf-8").split('<a id="english-version"></a>')
@@ -335,7 +353,8 @@ class DryRunTests(unittest.TestCase):
             self.assertEqual(collision["commit_reason"], "later_waiting" if waits else "later_finished", (group, guards))
             guard = collision["later_guard"]
             if group == "P":
-                self.assertEqual((guard["waited_for_lock"], guard["error"]), (guards, None))
+                self.assertEqual((guard["locked_before_write"], guard["isolation"], guard["error"]),
+                                 (guards, "read committed", None))
             else:
                 self.assertEqual((guard["named_other"], guard["error"]), (guards, "read_conflict" if guards else None))
 
