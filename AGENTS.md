@@ -2,7 +2,7 @@
 
 # Forkpoint：Agent 开发与维护约定
 
-适用范围：本目录及子目录。更新日期：2026-10-28。
+适用范围：本目录及子目录。更新日期：2026-10-29。
 
 **当前云服务状态：未经真实验证，云端部署暂缓。** OSS、GCS、S3 均无真实联调结果，ECS 尚未部署。用户当前不安排云资源采购或部署；只继续本地开发与模拟测试，不自动采购、部署或运行会访问真实云服务的测试。不得将 SDK 测试替身、内存服务模型、本机 HTTP 或本机 PostgreSQL 的结果表述为云存储已验证。
 
@@ -27,6 +27,7 @@
 - 管理任务的正式持久状态设计为使用满足项目协议的云端对象存储；GCS、阿里云 OSS 和 S3 是候选适配器，尚未完成真实云端接入；运行时使用有界内存缓存。不要因云端工作暂缓而改为 PostgreSQL `ops` schema、本地恢复文件或磁盘状态库。源码、配置和本地测试报告仍可保存在项目目录。
 - GCS、OSS、S3 适配代码、ECS 配置及 HTTP 维护客户端已编写。用户报告已创建杭州 OSS 桶 `<your-oss-bucket>`，但未核验其配置、权限或真实读写，且尚无 ECS。MemoryStore 仅用于测试。部署文档只是 [暂缓执行的草案](docs/ALIYUN_ECS_DEPLOYMENT.md)，不是已完成能力的证明。
 - 当前版本引擎仍是单节点 PostgreSQL，分支头发布使用锁；多区域缓存、数据分片、虚拟文件系统和统一版本服务 RPC 均不是已完成能力。新增这些能力必须有负载依据和明确迁移方案。
+- 自 2026-10-29 起暂停新增功能（见 README 的“状态”一节）：读集、上下文存档与任务状态实验都发现 Claude Opus 5.5 自己已做到这些功能所补充的事。只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后，才新增功能；参考数据计划也在此列。修复、测试与文档照常进行，不删除已有代码与实验。
 
 ## 必须保持的设计约束
 
@@ -186,7 +187,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 # Forkpoint: Conventions for Agent Development and Maintenance
 
-Scope: this directory and its subdirectories. Last updated: 2026-10-28.
+Scope: this directory and its subdirectories. Last updated: 2026-10-29.
 
 **Current cloud service status: not verified against real cloud services; cloud deployment is on hold.** OSS, GCS and S3 have no real integration results, and ECS has not been deployed. The user is not currently scheduling cloud resource purchases or deployment; only continue local development and simulated testing, and do not automatically purchase, deploy, or run tests that access real cloud services. Results from SDK test doubles, the in-memory service model, local HTTP or the local PostgreSQL must not be described as cloud storage having been verified.
 
@@ -211,6 +212,7 @@ These are design directions. Scion's scale, performance data and internal implem
 - The formal persistent state of management tasks is designed to use cloud object storage that satisfies the project protocol; GCS, Alibaba Cloud OSS and S3 are candidate adapters and have not completed real cloud integration; at runtime a bounded in-memory cache is used. Do not switch to a PostgreSQL `ops` schema, local recovery files or an on-disk state store because cloud work is on hold. Source code, configuration and local test reports can still be kept in the project directory.
 - The GCS, OSS and S3 adapter code, the ECS configuration and the HTTP maintenance client have been written. The user reports having created the Hangzhou OSS bucket `<your-oss-bucket>`, but its configuration, permissions or real reads/writes have not been verified, and there is no ECS yet. MemoryStore is for tests only. The deployment document is only a [draft on hold](docs/ALIYUN_ECS_DEPLOYMENT.md), not proof of a completed capability.
 - The current version engine is still single-node PostgreSQL, and branch head publishing uses locks; multi-region caching, data sharding, a virtual file system and a unified version-service RPC are not completed capabilities. Adding these capabilities requires a load-based justification and a clear migration plan.
+- New features are paused since 2026-10-29 (see the README's Status section): the read-set, context archive and task state experiments found Claude Opus 5.5 already doing what each feature added. Add a feature only after a pre-registered task first shows agents failing on plain PostgreSQL; this includes the reference-data plan. Fixes, tests and documentation continue; existing code and experiments are not deleted.
 
 ## Design constraints that must be kept
 

@@ -8,6 +8,19 @@
 
 原名 AgentDB，2026-10-20 更名。`agentdb_demo`、`agentdb_manager` 等数据库名和角色名仍沿用旧前缀。
 
+## 状态（2026-10-29）：暂停新增功能
+
+用 Claude Opus 5.5 做的预登记实验，都没有显示 Agent 需要 Forkpoint 所补充的能力：
+
+- [真实 Agent 的读集校验](docs/READSET_AGENTS_EXPERIMENT.md)：每一轮都让两个 Agent 发生冲突。在普通 PostgreSQL 上被告知锁住所读行的 Agent，与 Forkpoint 的分支加读集合入一样安全，两组各 10 轮都没有陈旧轮次，而 Forkpoint 用了约 3 倍的工具调用。
+- [上下文存档](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)：按采纳标准，没有证据表明逐字存档胜过模型自写的交接说明。
+- [可核查的任务状态](docs/TASK_STATE_EXPERIMENT.md)：Agent 自行重读了变化过的行，新鲜度标记没有可纠正的内容；未采纳。
+- [重复实验](docs/GPT_REPEAT_EXPERIMENT.md)在 20 轮中没有出现覆盖，但没有不使用 Forkpoint 的对照组。
+
+因此暂停新增功能：只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后，才新增功能；[参考数据计划](docs/REFERENCE_DATA_PLAN.md)也在此列。修复、测试与文档照常进行，不删除任何内容。有一种情形尚未测试：无法放进一次数据库调用、需要 Agent 分多步完成修改的工作；只有遇到这类真实任务时才值得测试。
+
+本 README 其余部分描述 Forkpoint 的现有功能。对于“为什么需要它”中读到已变化数据的问题，读集实验发现普通 PostgreSQL 上得到指导的 Agent 同样安全。
+
 ## 为什么需要它
 
 多个 Agent 同时修改同一个数据库时，会遇到 Git 曾经替开发者解决过的问题：一个 Agent 覆盖了另一个的修改；另一个 Agent 做到一半，读到的数据已经变了；还有一个改了代码里的定价规则，却没有改依赖它的价格。
@@ -192,7 +205,7 @@ tests/                单元测试
 - [agent_lab 网关](docs/AGENT_LAB_GATEWAY.md)：可选的回环常驻进程，为 Agent 的工具复用 psql 会话
 - [历史增长](docs/HISTORY_GROWTH.md) 与 [合入耗时分解](docs/MERGE_BENCHMARK.md)
 - [预发布 S1](docs/STAGING_S1_RESULTS.md) 与 [S4/S5 演练](docs/STAGING_S4_S5.md)：TLS 接入、增长、备份、断电、断网
-- [参考数据计划](docs/REFERENCE_DATA_PLAN.md)：在现有 PostgreSQL 中，对应用读取而不写入的小表做受审变更；尚未实现
+- [参考数据计划](docs/REFERENCE_DATA_PLAN.md)：在现有 PostgreSQL 中，对应用读取而不写入的小表做受审变更；尚未实现，已暂停（见“状态”一节）
 - [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md) 与 [AGENTS.md](AGENTS.md)：在本仓库中工作的 Agent 须遵守的约定
 
 `docs/` 中的大部分文档先写中文，英文版在同一文件的后半部分。

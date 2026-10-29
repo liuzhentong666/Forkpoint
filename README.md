@@ -8,6 +8,19 @@
 
 Formerly AgentDB, renamed on 2026-10-20. Database and role names such as `agentdb_demo` and `agentdb_manager` keep the old prefix.
 
+## Status (2026-10-29): new features paused
+
+Pre-registered experiments with Claude Opus 5.5 have not shown agents needing what Forkpoint adds:
+
+- [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): two agents were made to collide in every round. Agents on plain PostgreSQL that were told to lock the rows they read were as safe as Forkpoint's branches and read-set merge, with 0 stale rounds of 10 in each group, and Forkpoint took about 3 times the tool calls.
+- [Context archive](docs/CONTEXT_ARCHIVE_EXPERIMENT.md): by its adoption rule, no evidence that a word-for-word archive beats the model's own handoff note.
+- [Checkable task state](docs/TASK_STATE_EXPERIMENT.md): the agent re-read the changed row by itself, so freshness marks had nothing to correct; not adopted.
+- The [repeat experiments](docs/GPT_REPEAT_EXPERIMENT.md) saw no overwrite in 20 rounds, but had no group working without Forkpoint.
+
+New features are therefore paused: one is added only after a pre-registered task first shows agents failing on plain PostgreSQL. This includes the [reference-data plan](docs/REFERENCE_DATA_PLAN.md). Fixes, tests and documentation continue, and nothing is deleted. One case is untested: work that cannot fit in one database call, where an agent makes its change over many steps; it is worth testing only for a real task of that kind.
+
+The rest of this README describes Forkpoint as built. For the stale-read problem under "Why", the read-set experiment found a guided agent on plain PostgreSQL equally safe.
+
 ## Why
 
 When several agents edit the same database, they run into the problems Git solved for developers. One agent overwrites another's change. Another reads data that moved under it halfway through its task. A third changes a pricing rule in code but not the prices that depend on it.
@@ -192,7 +205,7 @@ tests/                unit tests
 - [agent_lab gateway](docs/AGENT_LAB_GATEWAY.md): an optional loopback process that keeps psql sessions warm for the agents' tool
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut
-- [Reference-data plan](docs/REFERENCE_DATA_PLAN.md): reviewed changes to small tables the application reads but doesn't write, inside an existing PostgreSQL; not implemented
+- [Reference-data plan](docs/REFERENCE_DATA_PLAN.md): reviewed changes to small tables the application reads but doesn't write, inside an existing PostgreSQL; not implemented, paused (see Status)
 - [Manager agent protocol](docs/MANAGER_AGENT_PROTOCOL.md) and [AGENTS.md](AGENTS.md): conventions for agents that work on this repo
 
 Most documents in `docs/` are written in Chinese first, with the English version below it in the same file.
