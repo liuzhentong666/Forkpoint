@@ -133,6 +133,32 @@ F: when you merge, list in reads every row your decision depends on; the merge i
 - F 组两个 Agent 都把分支上的 UPDATE 限定为 `stock = 100`（它们读到的值），并在 reads 中列出两件商品。gpt-b 收到 `read_conflict` 后新建分支、读到 101 为 85、决定不出售，然后合入这个没有改动、reads 列出两件商品的分支，用来确认它读到的值仍是 main 的当前值；合入被接受，main 的 revision 不变。
 - 与预测对照：两组都没有陈旧轮次（预测 P 为 0–2、F 为 0–1）；F 的调用次数和输入 token 更多（预测如此）。每组一轮不能据此对判定规则作出任何结论。
 
+## 结果（2026-10-29）
+
+经用户同意，在 commit be4aef1 上运行登记的样本：20 轮，奇数轮 P、偶数轮 F，设置与试运行相同。原始记录在 `experiments/readset_agents/results/2026-10-29`（不在版本库中）；20 个测试库保留。运行器退出码为 0；没有轮次失败或被替换，也没有遇到用量额度。
+
+| | P | F |
+|---|---|---|
+| 陈旧轮次（主要指标） | 0 / 10 | 0 / 10 |
+| 成功 | 10 / 10（Wilson 95% 区间 0.72–1.00） | 10 / 10（0.72–1.00） |
+| 冲突按设计发生（两方都写入、较晚一方在较早一方未提交时工作、较早一方在较晚一方等锁时提交） | 10 / 10 | 10 / 10 |
+| 较晚写入方的保护 | 10 / 10 在写入前加锁，READ COMMITTED | 10 / 10 的 reads 列出另一件商品，都收到 `read_conflict` |
+| 每轮工具调用（中位数，范围） | 4（4–5） | 12（11–14） |
+| 每轮输入 token（中位数）/ 输出 | 20,515 / 2,701 | 49,094 / 2,320 |
+| 全部 token：输入（其中缓存读取）/ 输出 | 209,844（175,651）/ 26,792 | 488,287（447,989）/ 23,128 |
+| Claude Code 报告的费用：合计（每轮中位数） | 0.84 美元（0.085） | 0.87 美元（0.088） |
+| 每轮耗时（中位数，范围） | 27.7 秒（22.3–30.7） | 43.1 秒（37.2–53.4） |
+| 暂扣时间（范围） | 0.16–6.34 秒 | 0.92–7.98 秒 |
+
+20 轮中每个 MCP 请求都有回应，每个响应都来自 claude-opus-5-5，没有核查错误或未结束的事务；其余 3,998 行不变，`app.orders` 为空。运行后对 20 个测试库的独立查询与记录一致：每轮恰好一笔销售，合计 185。
+
+判定规则：P 的陈旧轮次（0）没有比 F（0）多 3 轮，因此结论为：**没有证据表明读集合入比普通 PostgreSQL 上得到指导的 Agent 更能保护这个决策。** 实测的成本差异：F 每轮约用 3 倍的工具调用、2.4 倍的输入 token、1.6 倍的耗时；因为多出的输入大多是缓存读取，报告的费用只高约 4%。
+
+观察：
+- P 组每个较晚写入方都只用了一次 query 和一次 execute：在同一个 execute 中先对两行 `SELECT … FOR UPDATE`，再执行带条件的 UPDATE；等锁后它的检查看到另一笔销售，没有修改。
+- F 组每个较晚写入方在 `read_conflict` 后都新建分支并重新读取；其中 4 轮（2、6、10、20）还合入了没有改动的分支，用来确认读到的值。
+- 与预测对照：三项预测都成立（P 陈旧 0，预测 0–2；F 陈旧 0，预测 0–1；F 用更多调用和 token）。
+
 ## 回滚
 
 所有内容将位于 `experiments/readset_agents/` 与本文中；`vc.*`、`agent_lab.py` 和项目数据库都不改动。删除它们即恢复原状。
@@ -273,6 +299,32 @@ Observations:
 - In P both agents used the guard the prompt names, in one `execute`: `SELECT … FOR UPDATE` on both rows, then an UPDATE whose WHERE checks the bundle again. gpt-a also set READ COMMITTED explicitly.
 - In F both agents made their branch UPDATE conditional on `stock = 100`, the value they had read, and listed both products in reads. After `read_conflict`, gpt-b forked a new branch, read 101 at 85 and decided not to sell; it then merged that branch, which held no change, with both products as reads, to confirm the values it read were still main's. The merge was accepted and main's revision did not change.
 - Against the predictions: no stale round in either group (predicted 0–2 for P, 0–1 for F); F took more calls and input tokens, as predicted. One round per group says nothing about the decision rule.
+
+## Results (2026-10-29)
+
+With the user's approval, the registered sample was run at commit be4aef1: 20 rounds, odd rounds P and even rounds F, with the pilot's settings. Raw records are in `experiments/readset_agents/results/2026-10-29` (not in the repository); the 20 test databases are kept. The runner exited 0; no round failed or was replaced, and no usage limit was hit.
+
+| | P | F |
+|---|---|---|
+| Stale rounds (primary) | 0 / 10 | 0 / 10 |
+| Success | 10 / 10 (Wilson 95% interval 0.72–1.00) | 10 / 10 (0.72–1.00) |
+| Collision as designed (both wrote; the later one worked while the earlier change was in flight; the earlier one committed when the later was seen waiting) | 10 / 10 | 10 / 10 |
+| Later writer's guard | 10 / 10 locked before writing, READ COMMITTED | 10 / 10 named the other product in reads; all got `read_conflict` |
+| Tool calls per round (median, range) | 4 (4–5) | 12 (11–14) |
+| Input / output tokens per round (median) | 20,515 / 2,701 | 49,094 / 2,320 |
+| All tokens: input (of which cache read) / output | 209,844 (175,651) / 26,792 | 488,287 (447,989) / 23,128 |
+| Cost reported by Claude Code: total (median per round) | $0.84 ($0.085) | $0.87 ($0.088) |
+| Wall time per round (median, range) | 27.7 s (22.3–30.7) | 43.1 s (37.2–53.4) |
+| Time held (range) | 0.16–6.34 s | 0.92–7.98 s |
+
+In all 20 rounds every MCP request was answered, every response came from claude-opus-5-5, and there was no audit error or open transaction; the other 3,998 rows were unchanged and `app.orders` was empty. An independent query of the 20 test databases after the run agreed with the records: exactly one sale in every round, bundle 185.
+
+Decision rule: P's stale rounds (0) are not at least 3 more than F's (0), so the conclusion is: **no evidence that the read-set merge protects this decision better than guided agents on plain PostgreSQL.** The measured cost difference: per round, F used about 3 times the tool calls, 2.4 times the input tokens and 1.6 times the wall time; since most of the extra input was cache reads, the reported cost was only about 4% higher.
+
+Observations:
+- Every later writer in P used one query and one execute: `SELECT … FOR UPDATE` on both rows, then the conditional UPDATE, in the same execute. After the wait its check saw the other sale and it changed nothing.
+- Every later writer in F forked a new branch and read again after `read_conflict`; in 4 rounds (2, 6, 10, 20) it also merged that branch with no change in it to confirm the values it had read.
+- All three predictions held (P 0 stale, predicted 0–2; F 0 stale, predicted 0–1; F used more calls and tokens).
 
 ## Rollback
 

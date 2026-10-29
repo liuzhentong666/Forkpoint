@@ -188,7 +188,7 @@ tests/                unit tests
 - [Read-set experiment](docs/READSET_EXPERIMENT.md): read-set validation vs. the stale-head check in 75 pre-registered synthetic runs, replicated
 - [Context archive experiment](docs/CONTEXT_ARCHIVE_EXPERIMENT.md): a word-for-word archive of the context vs. the model's own handoff note after a reset; by its adoption rule, no evidence for the archive
 - [Checkable task state](docs/TASK_STATE_EXPERIMENT.md): checkpointed facts marked fresh or stale on resume; pilot only, not adopted
-- [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): Forkpoint's read-set merge vs. agents on plain PostgreSQL told to lock and re-check, two real agents per round; registered, pilot only (both rounds correct), sample not run
+- [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): Forkpoint's read-set merge vs. agents on plain PostgreSQL told to lock and re-check, two real agents per round; 0 stale rounds of 10 in each group, so by its decision rule no correctness advantage, while F took 3 times the tool calls
 - [agent_lab gateway](docs/AGENT_LAB_GATEWAY.md): an optional loopback process that keeps psql sessions warm for the agents' tool
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut
