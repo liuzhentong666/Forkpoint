@@ -10,6 +10,8 @@ Formerly AgentDB, renamed on 2026-10-20. Database and role names such as `agentd
 
 ## Status (2026-10-29): new features paused
 
+For a plain-language account of all five experiments, see [What we tested, and why it didn't work out](docs/EXPERIMENT_SUMMARY.md).
+
 Pre-registered experiments with Claude Opus 5.5 have not shown agents needing what Forkpoint adds:
 
 - [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): two agents were made to collide in every round. Agents on plain PostgreSQL that were told to lock the rows they read were as safe as Forkpoint's branches and read-set merge, with 0 stale rounds of 10 in each group, and Forkpoint took about 3 times the tool calls.
@@ -197,6 +199,7 @@ tests/                unit tests
 - [Setup and upgrades](docs/SETUP.md): connection options, passwords, TLS, WSL, migrations, tests
 - [Technical blog](docs/TECHNICAL_BLOG.md): architecture and what two real GPT agents taught us
 - [Design notes](docs/DESIGN_REVIEW.md): the version model and revisions to the original plan
+- [What we tested, and why it didn't work out](docs/EXPERIMENT_SUMMARY.md): the five experiments in plain language
 - [GPT and Claude repeat experiments](docs/GPT_REPEAT_EXPERIMENT.md): ten pre-registered rounds with each model, failures kept
 - [Read-set experiment](docs/READSET_EXPERIMENT.md): read-set validation vs. the stale-head check in 75 pre-registered synthetic runs, replicated
 - [Context archive experiment](docs/CONTEXT_ARCHIVE_EXPERIMENT.md): a word-for-word archive of the context vs. the model's own handoff note after a reset; by its adoption rule, no evidence for the archive

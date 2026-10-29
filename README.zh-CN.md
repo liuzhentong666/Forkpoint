@@ -10,6 +10,8 @@
 
 ## 状态（2026-10-29）：暂停新增功能
 
+五组实验的通俗说明见[我们测试了什么，为什么没有成功](docs/EXPERIMENT_SUMMARY.md)。
+
 用 Claude Opus 5.5 做的预登记实验，都没有显示 Agent 需要 Forkpoint 所补充的能力：
 
 - [真实 Agent 的读集校验](docs/READSET_AGENTS_EXPERIMENT.md)：每一轮都让两个 Agent 发生冲突。在普通 PostgreSQL 上被告知锁住所读行的 Agent，与 Forkpoint 的分支加读集合入一样安全，两组各 10 轮都没有陈旧轮次，而 Forkpoint 用了约 3 倍的工具调用。
@@ -197,6 +199,7 @@ tests/                单元测试
 - [安装与升级](docs/SETUP.md)：连接选项、密码、TLS、WSL、迁移、测试
 - [技术博客](docs/TECHNICAL_BLOG.md)：架构，以及两个真实 GPT Agent 带来的发现
 - [设计说明](docs/DESIGN_REVIEW.md)：版本模型以及对原计划的修订
+- [我们测试了什么，为什么没有成功](docs/EXPERIMENT_SUMMARY.md)：五组实验的通俗说明
 - [GPT 与 Claude 重复实验](docs/GPT_REPEAT_EXPERIMENT.md)：两种模型各预登记十轮，保留失败样本
 - [读集校验实验](docs/READSET_EXPERIMENT.md)：在 75 次预登记的合成运行中比较读集校验与陈旧 head 检查，并完整重复一次
 - [上下文存档实验](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)：重置后逐字存档的上下文与模型自写的交接说明对比；按采纳标准没有证据支持存档
