@@ -188,7 +188,7 @@ tests/                单元测试
 - [读集校验实验](docs/READSET_EXPERIMENT.md)：在 75 次预登记的合成运行中比较读集校验与陈旧 head 检查，并完整重复一次
 - [上下文存档实验](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)：重置后逐字存档的上下文与模型自写的交接说明对比；按采纳标准没有证据支持存档
 - [可核查的任务状态](docs/TASK_STATE_EXPERIMENT.md)：恢复时把检查点中的事实标为新鲜或过期；只做了试运行，未采纳
-- [真实 Agent 的读集校验](docs/READSET_AGENTS_EXPERIMENT.md)：Forkpoint 的读集合入与普通 PostgreSQL 上被要求加锁并复查的 Agent 对比，每轮两个真实 Agent；已登记，尚未运行
+- [真实 Agent 的读集校验](docs/READSET_AGENTS_EXPERIMENT.md)：Forkpoint 的读集合入与普通 PostgreSQL 上被要求加锁并复查的 Agent 对比，每轮两个真实 Agent；已登记，只做了试运行（两轮都正确），样本尚未运行
 - [agent_lab 网关](docs/AGENT_LAB_GATEWAY.md)：可选的回环常驻进程，为 Agent 的工具复用 psql 会话
 - [历史增长](docs/HISTORY_GROWTH.md) 与 [合入耗时分解](docs/MERGE_BENCHMARK.md)
 - [预发布 S1](docs/STAGING_S1_RESULTS.md) 与 [S4/S5 演练](docs/STAGING_S4_S5.md)：TLS 接入、增长、备份、断电、断网

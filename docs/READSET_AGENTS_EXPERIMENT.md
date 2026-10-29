@@ -111,6 +111,28 @@ F: when you merge, list in reads every row your decision depends on; the merge i
 
 原始记录只保存在作者的机器上：`experiments/readset_agents/results/` 不纳入版本库（见该目录的 `.gitignore`）。每轮的测试库（`agentdb_test_plain_*` 或 `agentdb_test_gpt_*`）保留以便核查。
 
+## 试运行（2026-10-29，不计入样本）
+
+经用户同意，在 commit bff680f 上以 `--pilot` 每组运行一轮：Claude Code 2.1.308，两个 Agent 都用 claude-opus-5-5，推理强度 xhigh。原始记录在 `experiments/readset_agents/results/2026-10-29-pilot`（不在版本库中）；测试库为 `agentdb_test_plain_6c9b51e27c`（P）与 `agentdb_test_gpt_0509d9d754`（F）。
+
+| | P | F |
+|---|---|---|
+| 结果 | 成功，正确：202 售出（85），101 未售（100） | 成功，正确：101 售出（85），202 未售（100） |
+| 较早 / 较晚写入方 | gpt-b / gpt-a | gpt-a / gpt-b |
+| 冲突 | 按设计发生：gpt-b 的写入被暂扣 5.6 秒，直到 gpt-a 的写入到达；观察到 gpt-a 等锁时提交 gpt-b | 按设计发生：gpt-a 的 merge 被暂扣 0.8 秒；观察到 gpt-b 的 merge 等锁时提交 gpt-a |
+| 较晚写入方的保护 | 在带条件的 UPDATE 之前对 101 与 202 执行 `SELECT … FOR UPDATE`，READ COMMITTED；等锁后读到 202 为 85，没有修改 | reads 列出 101 与 202；merge 因 101 被拒（`read_conflict`，RS001） |
+| 工具调用（gpt-a / gpt-b） | 4（2 / 2） | 12（5 / 7） |
+| token：输入（其中缓存读取）/ 输出 | 20,775（12,494）/ 2,620 | 48,627（39,336）/ 2,345 |
+| Claude Code 报告的费用 | 0.12 美元 | 0.13 美元 |
+| 耗时 | 25 秒 | 39 秒 |
+
+两轮中每个 MCP 请求都有回应，每个响应都来自 claude-opus-5-5，没有核查错误或未结束的事务，其余 3,998 行不变，`app.orders` 为空；运行后对两个测试库的独立查询结果相同。
+
+观察：
+- P 组两个 Agent 都在一次 `execute` 中使用了提示词点明的保护：先对两行 `SELECT … FOR UPDATE`，再执行在 WHERE 中重新检查套装合计的 UPDATE；gpt-a 还显式设置了 READ COMMITTED。
+- F 组两个 Agent 都把分支上的 UPDATE 限定为 `stock = 100`（它们读到的值），并在 reads 中列出两件商品。gpt-b 收到 `read_conflict` 后新建分支、读到 101 为 85、决定不出售，然后合入这个没有改动、reads 列出两件商品的分支，用来确认它读到的值仍是 main 的当前值；合入被接受，main 的 revision 不变。
+- 与预测对照：两组都没有陈旧轮次（预测 P 为 0–2、F 为 0–1）；F 的调用次数和输入 token 更多（预测如此）。每组一轮不能据此对判定规则作出任何结论。
+
 ## 回滚
 
 所有内容将位于 `experiments/readset_agents/` 与本文中；`vc.*`、`agent_lab.py` 和项目数据库都不改动。删除它们即恢复原状。
@@ -229,6 +251,28 @@ Common to both groups: each agent has its own MCP tool, bound to its name (gpt-a
 | Sample (needs the user's approval) | as above without `--pilot`, with `--runs-per-group 10`, output to `experiments/readset_agents/results/<date>` |
 
 Raw records stay on the author's machine only: `experiments/readset_agents/results/` is not committed (see the folder's `.gitignore`). Each round's test database (`agentdb_test_plain_*` or `agentdb_test_gpt_*`) is kept for checking.
+
+## Pilot (2026-10-29, not part of the sample)
+
+With the user's approval, one round of each group was run with `--pilot` at commit bff680f: Claude Code 2.1.308, claude-opus-5-5 at xhigh effort for both agents. Raw records are in `experiments/readset_agents/results/2026-10-29-pilot` (not in the repository); the test databases are `agentdb_test_plain_6c9b51e27c` (P) and `agentdb_test_gpt_0509d9d754` (F).
+
+| | P | F |
+|---|---|---|
+| Result | success, correct: 202 sold (85), 101 not sold (100) | success, correct: 101 sold (85), 202 not sold (100) |
+| Earlier / later writer | gpt-b / gpt-a | gpt-a / gpt-b |
+| Collision | as designed: gpt-b's write held 5.6 s until gpt-a's arrived; gpt-b committed when gpt-a was seen waiting for a lock | as designed: gpt-a's merge held 0.8 s; gpt-a committed when gpt-b's merge was seen waiting |
+| Later writer's guard | `SELECT … FOR UPDATE` on 101 and 202 before the conditional UPDATE, READ COMMITTED; after the wait it read 202 at 85 and changed nothing | reads named 101 and 202; the merge was refused on 101 (`read_conflict`, RS001) |
+| Tool calls (gpt-a / gpt-b) | 4 (2 / 2) | 12 (5 / 7) |
+| Tokens: input (of which cache read) / output | 20,775 (12,494) / 2,620 | 48,627 (39,336) / 2,345 |
+| Cost reported by Claude Code | $0.12 | $0.13 |
+| Wall time | 25 s | 39 s |
+
+In both rounds every MCP request was answered, every response came from claude-opus-5-5, and there was no audit error or open transaction; the other 3,998 rows were unchanged and `app.orders` was empty. An independent query of both test databases after the run agreed.
+
+Observations:
+- In P both agents used the guard the prompt names, in one `execute`: `SELECT … FOR UPDATE` on both rows, then an UPDATE whose WHERE checks the bundle again. gpt-a also set READ COMMITTED explicitly.
+- In F both agents made their branch UPDATE conditional on `stock = 100`, the value they had read, and listed both products in reads. After `read_conflict`, gpt-b forked a new branch, read 101 at 85 and decided not to sell; it then merged that branch, which held no change, with both products as reads, to confirm the values it read were still main's. The merge was accepted and main's revision did not change.
+- Against the predictions: no stale round in either group (predicted 0–2 for P, 0–1 for F); F took more calls and input tokens, as predicted. One round per group says nothing about the decision rule.
 
 ## Rollback
 
