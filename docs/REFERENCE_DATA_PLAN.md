@@ -4,13 +4,13 @@
 
 # 参考数据的受审变更
 
-日期：2026-10-25。状态：计划，尚未实现，为本文没有运行测试。代码基线：`8df240733dcd73f9d0fbd47b8dadfff3005f1ccc`。标为"实测"的行为是 2026-10-25 在本机 PostgreSQL 16 的一次性测试库中观察到的，未保留结果文件。
+日期：2026-10-25，2026-10-28 修订（内容哈希检查改由管理 Agent 执行），2026-10-30 修订（云存储已移除、功能暂停、记录未解决的问题）。状态：计划，尚未实现，自 2026-10-29 起暂停：只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后才恢复（见 [README](../README.zh-CN.md) 的"状态"一节），恢复前须先解决第 8 节的问题。除第 8 节标明的结果外，为本文没有运行测试。代码基线：`8df240733dcd73f9d0fbd47b8dadfff3005f1ccc`。标为"实测"的行为是 2026-10-25 在本机 PostgreSQL 16 的一次性测试库中观察到的，未保留结果文件。
 
 ## 1. 目标与边界
 
 许多团队通过后台管理界面或种子数据迁移修改价格表、商品目录、功能配置和权限表，往往缺少审阅，历史不完整，也没有干净的撤销办法。本计划让这些表像代码一样修改：在分支上改，以 diff 审阅，合入时针对真实数据校验，可以撤销。一切发生在团队现有的 PostgreSQL 中，应用照常读取普通表。
 
-边界：继续使用既有 PostgreSQL；Git 仍是代码的权威来源，Forkpoint 只为纳管表的行记录版本；迁移、备份和部署交给现有工具；通用多 Agent 编程协调不在本计划内。本计划不代表已获准采购、访问真实云服务或修改生产数据库；云端部署仍暂缓。
+边界：继续使用既有 PostgreSQL；Git 仍是代码的权威来源，Forkpoint 只为纳管表的行记录版本；迁移、备份和部署交给现有工具；通用多 Agent 编程协调不在本计划内。本计划不代表已获准采购、访问真实云服务或修改生产数据库；云存储已于 2026-10-30 从本项目移除。
 
 此前面向整个生产库接入的三份计划（低成本接入、结构与迁移、版本监管）已于 2026-10-25 删除，由本计划取代；其中仍然适用的引擎约束、试点选择、只读盘点、短暂停写的纳管路径和退出方式已并入本文。原文保留在 git 历史中，例如 `git show 7875f59:docs/LOW_COST_ADOPTION_PLAN.md`。
 
@@ -30,7 +30,7 @@
 | 3 合入 | `vc.merge_validated` 先做读集检查：分支依据的行若在 main 上已被改动，报 RS001（[008_read_set_merge.sql](../sql/008_read_set_merge.sql)）；随后 `vc.merge` 把行写入真实表，因此 PostgreSQL 自己的约束针对真实数据运行，包括未纳管表的外键：删除仍被订单引用的商品会失败。按代码，分支上只检查主键唯一，CHECK、NOT NULL、其他 UNIQUE 和外键在合入时检查。合入持有 main 的锁直到提交，因此依次进行；在参考数据的修改频率下这不是问题。 | 已有 |
 | 4 撤销 | 撤销是另一个变更：恢复某次合入之前的行，按同样方式校验后合入。 | 新增辅助函数 |
 | 5 审计 | `vc.pin` 和 `vc.rows_at` 按 revision 给出表当时的内容；`vc.history` 给出每个 changeset 的作者、说明和时间。 | 已有 |
-| 6 防护 | 变更之外的写入会失败（实测 P0001），TRUNCATE 被阻止。另加定期内容哈希：把每张纳管表与 `rows_at(main head)` 比较，发现绕过触发器的写入，例如禁用触发器的数据恢复，或有权限的角色把 `session_replication_role` 设为 `replica` 之后的写入。 | 已有；内容哈希为新增 |
+| 6 防护 | 变更之外的写入会失败（实测 P0001），TRUNCATE 被阻止。另由管理 Agent 在维护轮次中做内容哈希检查（与 `check_history` 并列）：把每张纳管表与 `rows_at(main head)` 比较，发现绕过触发器的写入，例如禁用触发器的数据恢复，或有权限的角色把 `session_replication_role` 设为 `replica` 之后的写入。它经一个只授权给 `agentdb_manager` 的 STABLE 函数读取（该角色目前既不能读纳管表，也不能调用 `vc.rows_at`），以捕获触发器的固定设置（[009_canonical_row_docs.sql](../sql/009_canonical_row_docs.sql)）渲染真实表的行，把每表结果作为事实发布；不一致时以 uncertainty 与 next_action 报告该表，不修复数据；结果不变的重跑不发布。 | 已有；内容哈希检查为新增 |
 | 7 结构变更 | 迁移前后各加一步，见下文。 | 新增 |
 | 8 退出 | 删除捕获触发器、TRUNCATE 防护和分支视图，表恢复为普通表；历史留在 `vc` 中，可另行导出。 | 基本已有 |
 
@@ -48,7 +48,7 @@
 | 分支、`agent` 视图、`begin_change`/`finish_change`、`merge_validated`、`diff_rows`、`rows_at`/`pin`、快照（`materialize`、`snapshot_due`）、`history_health`、受限角色、`agent_lab.py` | 已有 | 按现状使用 |
 | 纳管已有数据的表 | 新增 | 第 3 节第 1 步 |
 | 迁移前后步骤与重新基线 | 新增 | 含结构版本的只追加表，以及拒绝跨结构变更的旧分支合入 |
-| 内容哈希检查 | 新增 | 小表可做全表哈希 |
+| 内容哈希检查 | 新增 | `agent_state/maintenance.py` 中与 `check_history` 并列的管理 Agent 检查，加一个只授权给 `agentdb_manager` 的 STABLE 函数，做法同 `vc.history_health`（[006_history_health.sql](../sql/006_history_health.sql)）；小表可做全表哈希 |
 | 撤销辅助函数 | 新增 | 第 3 节第 4 步 |
 | 只能写分支的角色 | 视 D2 而定 | 示例安装中的 `agentdb_client` 可以对 main 调用 `vc.begin_change`，也可以直接写 `app` 下的表（[002_demo_app.sql](../sql/002_demo_app.sql)） |
 
@@ -56,7 +56,7 @@
 
 ## 5. 不做的事
 
-应用自己的写入路径、大表、变更数据捕获、迁移管理、备份、部署漂移（都交给现有工具）、版本监管、云端状态。管理 Agent 的正式任务状态仍等待云端工作安排；小表在初期不需要定时的快照维护。发布清单中可以可选地记录每次发布对应的参考数据 revision，但不建监管进程。
+应用自己的写入路径、大表、变更数据捕获、迁移管理、备份、部署漂移（都交给现有工具）、版本监管、云端状态。管理 Agent 的任务状态只保存在内存中（`MemoryStore`），进程结束即丢失，因此内容哈希检查只在 G2 中用 MemoryStore 测试（同 `check_history`），不定时运行（由此留下的问题见第 8 节）；小表在初期不需要定时的快照维护。发布清单中可以可选地记录每次发布对应的参考数据 revision，但不建监管进程。
 
 ## 6. 待用户决定的事项
 
@@ -74,12 +74,22 @@
 | 门槛 | 在此之前 | 检查 | 产出 |
 |---|---|---|---|
 | G1 试点与盘点 | 开始实现 | 已选定 D1；只读盘点候选表的行数、写入方、指向它的外键、DDL 频率和同名表；确定表大小上限、纳管时的停写预算和读取延迟预算 | 纳管表清单与经用户确认的预算 |
-| G2 构建核验 | 在试点项目上纳管任何表 | 在专用测试库中用试点表的副本检查：纳管时读取不中断、停写在预算内；第 3 节的四种 DDL 和一次带回填的迁移经前后步骤后，`rows_at(main head)` 与真实表一致，跨结构变更的旧分支合入被拒绝；内容哈希能发现绕过触发器的写入；撤销后再次通过校验；D2、D3 所选路径可用 | 逐项的通过/失败 |
+| G2 构建核验 | 在试点项目上纳管任何表 | 在专用测试库中用试点表的副本检查：纳管时读取不中断、停写在预算内；第 3 节的四种 DDL 和一次带回填的迁移经前后步骤后，`rows_at(main head)` 与真实表一致，跨结构变更的旧分支合入被拒绝；管理 Agent 的内容哈希检查（MemoryStore）能发现绕过触发器的写入并报告该表，结果不变的重跑不发布；撤销后再次通过校验；D2、D3 所选路径可用 | 逐项的通过/失败 |
 | G3 试点运行 | 宣称本计划可用或扩大范围 | 让试点项目固定数量的真实变更走分支流程，度量事先登记 | 实测结果，按停止规则决定是否继续 |
 
 G3 事先登记的度量：合入时拦下的错误变更（分别按约束和读集检查计）、从提出到生效的时间、撤销次数、被拦下的直接写入、纳管时的停写时长、需要前后步骤的迁移次数、业务代码改动行数（目标为 0）。停止规则：若固定样本中没有拦下任何现有流程会漏掉的错误，且新流程更慢，就停止，并照项目实验惯例保留失败记录。
 
-顺序：G1（约第 1 周）→ 实现第 4 节的新增部分（若 D2 选 (b)，还有只能写分支的角色）→ G2（约第 2–3 周）→ G3。
+暂停解除后的顺序：G1（约第 1 周）→ 实现第 4 节的新增部分（若 D2 选 (b)，还有只能写分支的角色）→ G2（约第 2–3 周）→ G3。
+
+## 8. 未解决的问题
+
+以下问题在 2026-10-30 审查本计划时发现，恢复本计划、开始实现之前须先解决。标"实测（原型）"的是当天在一次性测试库中用审查时写的原型函数观察到的，未保留结果文件；其余是从本文与代码推断的，没有运行。
+
+- **试点期间没有检查。** 内容哈希检查不定时运行，G3 也不要求运行它，试点中绕过触发器的写入因此不会被发现。实测（原型）：绕过触发器改一行后比较结果不一致；之后一次改到该行的合入覆盖了被改的值，比较又恢复一致。可以在 G3 中规定固定的检查时点，例如每次合入和迁移之前，并把结果列入事先登记的度量。
+- **不一致的报告留不下来。** 任务状态在进程结束时丢失，下一个进程看不到之前的报告，按 `check_history` 的做法会再次发布版本 0；"结果不变的重跑不发布"也只在同一进程内成立。需要决定报告记在哪里。
+- **重新基线会吸收此前的绕过写入。** 迁移后的步骤把全部差异记为该迁移的变更，此前绕过触发器的写入因此成为历史，之后的检查也恢复一致。第 3 节只接受迁移窗口内其他写入方的改动。可以把检查作为迁移前步骤的第一步，不一致时停止。
+- **已退出的表仍在检查范围内。** `vc.tracked_table` 拒绝 DELETE 和 UPDATE，目前无法记录退出。实测（原型）：删除该行报 55000；删除触发器和分支视图后该行仍在，应用写入一次后比较结果不一致，此后每轮都会报告。可以增加一张只追加的退出记录，检查跳过其中的表。
+- **迁移窗口内会误报。** 迁移前的步骤删除捕获触发器，在重新基线之前，真实表可以合法地与 `rows_at(main head)` 不同（例如加列或回填之后），检查会把它报告为绕过写入。可以让迁移前的步骤留下标记，检查把该表报告为迁移中。
 
 ---
 
@@ -89,13 +99,13 @@ G3 事先登记的度量：合入时拦下的错误变更（分别按约束和�
 
 # Reviewed Changes to Reference Data
 
-Date: October 25, 2026. Status: plan, not implemented; no test was run for this document. Code baseline: `8df240733dcd73f9d0fbd47b8dadfff3005f1ccc`. Behaviors marked "observed" were seen on 2026-10-25 in a throwaway test database on the local PostgreSQL 16; no result file was kept.
+Date: October 25, 2026; revised October 28, 2026 (the manager agent runs the content-hash check); revised October 30, 2026 (cloud storage removed, the pause, open problems recorded). Status: plan, not implemented, and paused since 2026-10-29: it resumes only after a pre-registered task first shows agents failing on plain PostgreSQL (see the Status section of the [README](../README.md)), and the problems in section 8 must be solved first. Apart from the results marked in section 8, no test was run for this document. Code baseline: `8df240733dcd73f9d0fbd47b8dadfff3005f1ccc`. Behaviors marked "observed" were seen on 2026-10-25 in a throwaway test database on the local PostgreSQL 16; no result file was kept.
 
 ## 1. Goal and boundaries
 
 Many teams change price lists, product catalogs, feature configuration, and permission tables through admin screens or seed-data migrations, often with little review, patchy history, and no clean undo. This plan lets them change those tables the way they change code: on a branch, reviewed as a diff, checked against live data at merge, and reversible. It all happens inside the team's existing PostgreSQL, and the application keeps reading ordinary tables.
 
-Boundaries: the existing PostgreSQL stays; Git remains the authority for code, and Forkpoint versions only the rows of enrolled tables; migrations, backups, and deployment stay with existing tools; general multi-agent coding coordination is outside this plan. This plan does not authorize procurement, real cloud access, or production database changes; cloud deployment remains on hold.
+Boundaries: the existing PostgreSQL stays; Git remains the authority for code, and Forkpoint versions only the rows of enrolled tables; migrations, backups, and deployment stay with existing tools; general multi-agent coding coordination is outside this plan. This plan does not authorize procurement, real cloud access, or production database changes; cloud storage was removed from this project on 2026-10-30.
 
 Three earlier plans for enrolling whole production databases (low-cost adoption, schema and migrations, release supervision) were deleted on 2026-10-25 and replaced by this plan; the parts that still apply (engine constraints, the pilot choice, the read-only inventory, the short write-pause enrollment path, and the exit) are folded in here. Their text remains in git history, for example `git show 7875f59:docs/LOW_COST_ADOPTION_PLAN.md`.
 
@@ -115,7 +125,7 @@ Three earlier plans for enrolling whole production databases (low-cost adoption,
 | 3 Merge | `vc.merge_validated` first checks the read set: if rows the branch relied on have changed on main, it raises RS001 ([008_read_set_merge.sql](../sql/008_read_set_merge.sql)). `vc.merge` then writes the rows to the real table, so PostgreSQL's own constraints run against live data, including foreign keys from unmanaged tables: deleting a product that orders still reference fails. From the code, only primary-key uniqueness is checked on a branch; CHECK, NOT NULL, other UNIQUE, and foreign-key constraints are checked at merge. A merge holds main's lock until commit, so merges run one at a time, which is no problem at the rate reference data changes. | Exists |
 | 4 Undo | A revert is another change: it restores the rows from before a merge and is checked and merged the same way. | New helper |
 | 5 Audit | `vc.pin` and `vc.rows_at` give a table's contents at a revision; `vc.history` gives each changeset's author, message, and time. | Exists |
-| 6 Guard | Writes outside a change fail (observed P0001), and TRUNCATE is blocked. A periodic content hash compares each enrolled table with `rows_at(main head)` to catch writes that bypass triggers, such as a data restore with triggers disabled, or writes after a role with the privilege sets `session_replication_role` to `replica`. | Exists; the content hash is new |
+| 6 Guard | Writes outside a change fail (observed P0001), and TRUNCATE is blocked. In addition, the manager agent runs a content-hash check in its maintenance round, beside `check_history`: it compares each enrolled table with `rows_at(main head)` to catch writes that bypass triggers, such as a data restore with triggers disabled, or writes after a role with the privilege sets `session_replication_role` to `replica`. It reads through a STABLE function granted only to `agentdb_manager` (that role can neither read enrolled tables nor call `vc.rows_at` today), renders the live rows with the capture trigger's fixed settings ([009_canonical_row_docs.sql](../sql/009_canonical_row_docs.sql)), and publishes each table's result as facts. On a mismatch it reports the table through uncertainties and next_action and does not repair the data; a rerun with the same result publishes nothing. | Exists; the content-hash check is new |
 | 7 Schema change | A step before and after each migration, described below. | New |
 | 8 Exit | Drop the capture trigger, the TRUNCATE guard, and the branch view; the table is ordinary again, and history stays in `vc` for optional export. | Mostly exists |
 
@@ -133,7 +143,7 @@ Three earlier plans for enrolling whole production databases (low-cost adoption,
 | Branches, `agent` views, `begin_change`/`finish_change`, `merge_validated`, `diff_rows`, `rows_at`/`pin`, snapshots (`materialize`, `snapshot_due`), `history_health`, restricted roles, `agent_lab.py` | Exists | Used as is |
 | Enrolling a table that already has rows | New | Section 3, step 1 |
 | Migration steps and re-baseline | New | Includes the append-only schema-version table and refusing old-branch merges across a schema change |
-| Content-hash check | New | Small tables can be hashed in full |
+| Content-hash check | New | A manager-agent check in `agent_state/maintenance.py` beside `check_history`, plus a STABLE function granted only to `agentdb_manager`, as `vc.history_health` is ([006_history_health.sql](../sql/006_history_health.sql)); small tables can be hashed in full |
 | Revert helper | New | Section 3, step 4 |
 | Branch-only role | Depends on D2 | The demo installation's `agentdb_client` can call `vc.begin_change` on main and can write the tables in `app` directly ([002_demo_app.sql](../sql/002_demo_app.sql)) |
 
@@ -141,7 +151,7 @@ A rough estimate for the new pieces is a few weeks of work; G2 gives the real an
 
 ## 5. Out of scope
 
-The application's own write path, large tables, change data capture, migration management, backups, deployment drift (all left to existing tools), release supervision, and cloud state. The manager agent's formal task state still waits for cloud work; small tables need no scheduled snapshot maintenance at first. A release manifest may optionally record the reference-data revision each release was tested with, but no supervisor process is built.
+The application's own write path, large tables, change data capture, migration management, backups, deployment drift (all left to existing tools), release supervision, and cloud state. The manager agent's task state lives only in memory (`MemoryStore`) and is lost when the process ends, so the content-hash check is tested only in G2 with MemoryStore, as `check_history` is, and does not run on a schedule (section 8 covers what this leaves open). Small tables need no scheduled snapshot maintenance at first. A release manifest may optionally record the reference-data revision each release was tested with, but no supervisor process is built.
 
 ## 6. Decisions left to the user
 
@@ -159,9 +169,19 @@ Each decision stays open until the user chooses; "Settle with" names the evidenc
 | Gate | Before | Checks | Output |
 |---|---|---|---|
 | G1 Pilot and inventory | Starting implementation | D1 chosen; read-only inventory of candidate tables: row counts, writers, foreign keys pointing at them, DDL frequency, and same-named tables; fix the table-size limit, the write-pause budget for enrollment, and the read-latency budget | The list of tables to enroll and a budget the user has confirmed |
-| G2 Build check | Enrolling any table in the pilot project | In a dedicated test database with copies of the pilot's tables: reads continue during enrollment and the write pause stays within budget; after the four DDL cases of section 3 and one migration with a backfill, run through the migration steps, `rows_at(main head)` matches the table and old-branch merges across the schema change are refused; the content hash catches writes that bypass triggers; a revert passes the checks again; the paths chosen in D2 and D3 work | Pass/fail per check |
+| G2 Build check | Enrolling any table in the pilot project | In a dedicated test database with copies of the pilot's tables: reads continue during enrollment and the write pause stays within budget; after the four DDL cases of section 3 and one migration with a backfill, run through the migration steps, `rows_at(main head)` matches the table and old-branch merges across the schema change are refused; the manager agent's content-hash check (with MemoryStore) catches writes that bypass triggers and reports the table, and a rerun with the same result publishes nothing; a revert passes the checks again; the paths chosen in D2 and D3 work | Pass/fail per check |
 | G3 Pilot run | Claiming this plan works or widening its scope | A fixed number of the pilot project's real changes go through branches, with measures registered beforehand | Measured results, and a continue-or-stop decision by the stop rule |
 
 Measures registered before G3: bad changes caught at merge (counted separately for constraints and for the read-set check), time from proposal to live, reverts, blocked direct writes, the write pause during enrollment, migrations that needed the steps, and lines of business code changed (target: 0). Stop rule: if the fixed sample catches no bad change the current process would miss and the new workflow is slower, stop, and keep the failure on record as the project's experiments do.
 
-Order: G1 (about week 1) → build the new pieces of section 4 (plus the branch-only role if D2 is (b)) → G2 (about weeks 2–3) → G3.
+Order once the pause ends: G1 (about week 1) → build the new pieces of section 4 (plus the branch-only role if D2 is (b)) → G2 (about weeks 2–3) → G3.
+
+## 8. Open problems
+
+These were found when this plan was reviewed on 2026-10-30, and must be solved before the plan resumes and implementation starts. Items marked "observed (prototype)" were seen that day in a throwaway test database, using a prototype function written for the review; no result file was kept. The rest are inferred from this document and the code, and were not run.
+
+- **Nothing checks during the pilot.** The content-hash check does not run on a schedule and G3 does not require it, so writes that bypass triggers during the pilot would go unnoticed. Observed (prototype): after a bypass write to a row the comparison failed; a later merge touching that row overwrote the bypassed value, and the comparison matched again. G3 could fix points at which the check runs, such as before each merge and migration, and register its result as a measure.
+- **A mismatch report does not last.** Task state is lost when the process ends, so the next process cannot see an earlier report and, following `check_history`, publishes version 0 again; "a rerun with the same result publishes nothing" holds only within one process. Where the report is kept needs deciding.
+- **A re-baseline absorbs earlier bypass writes.** The after-migration step records every difference as that migration's change, so an earlier write that bypassed the triggers becomes history and the next check matches. Section 3 accepts this only for other writers during the migration window. The check could be the first action of the before-migration step, stopping on a mismatch.
+- **Exited tables stay in scope for the check.** `vc.tracked_table` rejects DELETE and UPDATE, so an exit cannot be recorded today. Observed (prototype): deleting the row raises 55000; with the triggers and branch view dropped the row stays, and after one application write the comparison fails, so every later round would report it. An append-only exit record could list those tables for the check to skip.
+- **False alarms during a migration.** The before-migration step drops the capture trigger, so until the re-baseline the real table can legitimately differ from `rows_at(main head)`, for example after adding a column or a backfill, and the check would report a bypass write. The before-migration step could leave a marker, and the check could report the table as migrating.
