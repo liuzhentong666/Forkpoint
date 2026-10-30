@@ -172,6 +172,8 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 - **分支可以暂时无效。** UNIQUE 和外键只在合入 `main` 时检查。
 - **读取需要回放历史。** 分支视图由历史加快照解析，用不到表自身的索引，因此需要维护任务按 `vc.snapshot_due` 生成快照。快照与历史目前都不回收。
 - **单节点、单租户。** 没有复制、配额或租户隔离；同一分支的写入串行执行，所有合入 `main` 的操作都要取得 `main` 的锁。
+- **Agent 之间没有隔离。** 所有 Agent 共用一个数据库角色 `agentdb_client`，引擎不检查调用者：任何 Agent 都能直接提交到 `main`，读取、修改或合入其他 Agent 的分支，并填写任意作者名。这个角色能挡住的是直接访问版本表，以及 `COPY ... TO PROGRAM` 这类服务器级操作。
+- **`SET ROLE` 不是沙箱。** 在用 `--role` 切换过角色的连接上，`RESET ROLE` 会回到登录用户，所以这个角色只能限制无法在该连接上自行执行 SQL 的 Agent。独立的受限登录角色可以堵住这条路（[真实 Agent 的读集校验实验](docs/READSET_AGENTS_EXPERIMENT.md)就这样做），但 Agent 之间仍然没有隔离。Forkpoint 适用于受信任的 Agent 和你可控的服务器，不适用于不受信任的 Agent 或多租户。
 - **表类型有限。** 表必须有主键，并且要在空表时注册；不支持 generated 和 identity 列。
 
 ## 目录结构

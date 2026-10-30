@@ -172,6 +172,8 @@ If you need a mature, general-purpose versioned database, use Dolt. Forkpoint is
 - **Branches may be temporarily invalid.** UNIQUE and foreign keys are checked only when merging into `main`.
 - **Reads replay history.** Branch views resolve from history plus snapshots, not the table's own indexes, so a maintenance job should create snapshots (`vc.snapshot_due` says when). Snapshots and history are not reclaimed yet.
 - **Single node and single tenant.** There is no replication, quota or tenant isolation. Writes to one branch are serialized, and every merge into `main` takes `main`'s lock.
+- **No separation between agents.** All agents share one database role, `agentdb_client`, and the engine doesn't check who is calling. Any agent can commit directly to `main`, read, change or merge another agent's branch, and record any author name. The role does keep agents away from the version tables and from server-level operations such as `COPY ... TO PROGRAM`.
+- **`SET ROLE` is not a sandbox.** On a connection that switched roles with `--role`, `RESET ROLE` returns to the login user, so the role only limits an agent that can't run its own SQL on that connection. A separate restricted login closes this route (the [read-set agents experiment](docs/READSET_AGENTS_EXPERIMENT.md) uses one), but agents still aren't separated from each other. Forkpoint is for trusted agents on a server you control, not for untrusted agents or multiple tenants.
 - **Limited table types.** Tables need a primary key and must be registered while empty. Generated and identity columns aren't supported.
 
 ## Project layout

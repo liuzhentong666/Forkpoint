@@ -2,7 +2,7 @@
 
 # Forkpoint：Agent 开发与维护约定
 
-适用范围：本目录及子目录。更新日期：2026-10-30。
+适用范围：本目录及子目录。更新日期：2026-10-31。
 
 **云存储已于 2026-10-30 移除。** GCS、OSS、S3 适配器、HTTP 状态服务与 ECS 部署从未在真实云上运行过，也没有任务显示需要它们；代码留在 git 历史中（最后存在于 `d342ccf`）。不要自动采购、部署或访问云服务。
 
@@ -60,6 +60,8 @@
 管理 Agent 可以在用户授权范围内修改系统规则与数据库结构，已接入 Agent 使用同等状态能力。不因操作者是 Agent 而额外设置人类审批角色。数据库身份提供实际权限，AGENTS.md / CLAUDE.md 描述使用约定，不会自行授予 superuser 权限。
 
 用户在本次本机审查中另要求受限管理角色：普通快照维护使用 `agentdb_manager` 的 `vc.snapshot_status` / `vc.materialize`；这不取代修改规则的管理员。新安装包含 `sql/003_manager_role.sql`，旧安装先执行 `db.py install-manager`。`--role` 通过已有可信连接执行 SET ROLE，不是隔离持有管理员凭据的 Agent；真正权限隔离需独立受限登录身份。
+
+`agentdb_client` 只限制 Agent 对服务器和版本历史能做什么，有两个缺口（2026-10-30 在专用测试库、PostgreSQL 16.15 上手工核实，写入均已回滚；`scripts/check_agent_boundaries.py` 不检查这两项）。第一，Agent 之间没有隔离：所有 Agent 共用这个角色，引擎函数不检查调用者，任何 Agent 都能直接提交到 `main`，读取、修改其他 Agent 的分支并把它合入 `main`；作者名由调用方填写，不能当作身份证据。第二，SET ROLE 不是沙箱：在切换过角色的连接上（`--role`、`agent_lab.py`），`RESET ROLE` 回到登录用户，本机配置下是超级用户 `postgres`。因此这个角色只能限制无法在该连接上自行执行 SQL 的 Agent；`agent_lab.py` 靠参数校验做到这一点，但它不是操作系统沙箱。`experiments/readset_agents/` 为每轮新建的非超级用户登录角色堵住了第二个缺口，第一个缺口仍然存在。当前只适用于受信任的 Agent 和用户可控的服务器；不要声称这些角色能约束不受信任的 Agent 或隔离多租户。
 
 维护动作先记录目标和核验方法，再检查真实系统、执行、验证、发布结果。重试依赖执行器的幂等或可靠结果探测；head CAS 不是外部操作的 fencing，也不是跨系统 exactly-once。当前可恢复执行器示例见 `agent_state/maintenance.py`。
 
@@ -177,7 +179,7 @@
 
 # Forkpoint: Conventions for Agent Development and Maintenance
 
-Scope: this directory and its subdirectories. Last updated: 2026-10-30.
+Scope: this directory and its subdirectories. Last updated: 2026-10-31.
 
 **Cloud storage was removed on 2026-10-30.** The GCS, OSS and S3 adapters, the HTTP state service and the ECS deployment never ran against a real cloud, and no task showed a need for them; the code remains in git history (last present in `d342ccf`). Do not automatically purchase, deploy or access cloud services.
 
@@ -235,6 +237,8 @@ The default context limit is 8,192 UTF-8 bytes. Required fields are kept; when o
 The manager Agent may change system rules and database structure within the scope the user has authorized, and connected Agents use the same state capabilities. No extra human approval role is set up just because the operator is an Agent. Database identities provide the actual permissions; AGENTS.md / CLAUDE.md describe usage conventions and do not by themselves grant superuser permissions.
 
 In this local review the user additionally required a restricted management role: ordinary snapshot maintenance uses `agentdb_manager`'s `vc.snapshot_status` / `vc.materialize`; this does not replace the administrator who changes rules. New installations include `sql/003_manager_role.sql`; old installations first run `db.py install-manager`. `--role` performs SET ROLE through an existing trusted connection; it does not isolate an Agent holding administrator credentials; real permission isolation requires a separate restricted login identity.
+
+`agentdb_client` limits only what an agent can do to the server and to version history, and it has two gaps (checked by hand on 2026-10-30 on a dedicated test database, PostgreSQL 16.15, with every write rolled back; `scripts/check_agent_boundaries.py` does not check them). First, agents are not separated from each other: they all share this role and the engine functions do not check the caller, so any agent can commit directly to `main`, read and change another agent's branch and merge it into `main`; the author name is whatever the caller passes and is not evidence of identity. Second, SET ROLE is not a sandbox: on a connection that switched roles (`--role`, `agent_lab.py`), `RESET ROLE` returns to the login user, which on the local configuration is the superuser `postgres`. So this role limits only an agent that cannot run its own SQL on that connection; `agent_lab.py` achieves that through argument validation, but it is not an OS sandbox. The non-superuser login that `experiments/readset_agents/` creates for each round closes the second gap; the first remains. For now this suits trusted agents on a server the user controls; do not claim that these roles restrain untrusted agents or isolate tenants.
 
 A maintenance action first records the goal and the verification method, then checks the real system, executes, verifies, and publishes the result. Retries rely on the executor's idempotency or a reliable result probe; head CAS is not fencing for external operations, nor cross-system exactly-once. The current recoverable executor example is in `agent_state/maintenance.py`.
 
