@@ -19,7 +19,9 @@ Pre-registered experiments with Claude Opus 5.5 have not shown agents needing wh
 - [Checkable task state](docs/TASK_STATE_EXPERIMENT.md): the agent re-read the changed row by itself, so freshness marks had nothing to correct; not adopted.
 - The [repeat experiments](docs/GPT_REPEAT_EXPERIMENT.md) saw no overwrite in 20 rounds, but had no group working without Forkpoint.
 
-New features are therefore paused: one is added only after a pre-registered task first shows agents failing on plain PostgreSQL. This includes the [reference-data plan](docs/REFERENCE_DATA_PLAN.md). Fixes, tests and documentation continue, and nothing is deleted. One case is untested: work that cannot fit in one database call, where an agent makes its change over many steps; it is worth testing only for a real task of that kind.
+New features are therefore paused: one is added only after a pre-registered task first shows agents failing on plain PostgreSQL. This includes the [reference-data plan](docs/REFERENCE_DATA_PLAN.md). Fixes, tests and documentation continue. One case is untested: work that cannot fit in one database call, where an agent makes its change over many steps; it is worth testing only for a real task of that kind.
+
+Cloud storage was removed on 2026-10-30: the GCS, OSS and S3 adapters, the HTTP state service and the ECS deployment had never run against a real cloud, and no task showed a need for them. The manager agent's task state now lives only in memory. The code remains in git history (last present in `d342ccf`).
 
 The rest of this README describes Forkpoint as built. For the stale-read problem under "Why", the read-set experiment found a guided agent on plain PostgreSQL equally safe.
 
@@ -171,7 +173,6 @@ If you need a mature, general-purpose versioned database, use Dolt. Forkpoint is
 - **Reads replay history.** Branch views resolve from history plus snapshots, not the table's own indexes, so a maintenance job should create snapshots (`vc.snapshot_due` says when). Snapshots and history are not reclaimed yet.
 - **Single node and single tenant.** There is no replication, quota or tenant isolation. Writes to one branch are serialized, and every merge into `main` takes `main`'s lock.
 - **Limited table types.** Tables need a primary key and must be registered while empty. Generated and identity columns aren't supported.
-- **The cloud state service is unverified.** The manager agent's state service has GCS, Alibaba Cloud OSS and S3 adapters, but none has run against a real cloud, and deployment is on hold. See [docs/STORAGE_BACKENDS.md](docs/STORAGE_BACKENDS.md).
 
 ## Project layout
 
@@ -181,15 +182,14 @@ run_tests.py          integration tests (creates its own agentdb_test_* database
 review_local.py       local review: maintenance recovery, restricted role, ten branches merged
 agent_lab.py          the tool CLI the GPT and Claude agents use in the experiments
 agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
-smoke_cloud.py        cloud state-service smoke test (not run yet)
 compose.yaml          the one-command Docker demo
 sql/                  the version engine, installed in order 001–010
 examples/             runnable SQL examples
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs
-agent_state/          manager-agent state service and storage adapters
+agent_state/          manager-agent task state, in memory only
 experiments/          pre-registered experiments: GPT and Claude repeat rounds, read-set validation, context archive, checkable task state
-deploy/               staging VM setup and the on-hold ECS bundle
+deploy/               staging VM setup and the Docker demo image
 docs/                 setup, design, validation records, plans, technical blog
 tests/                unit tests
 ```

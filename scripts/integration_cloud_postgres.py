@@ -1,4 +1,4 @@
-"""Real local PostgreSQL + in-memory cloud-protocol integration, with crash injection."""
+"""Real local PostgreSQL + the in-memory state store, with crash injection."""
 import argparse
 import json
 from pathlib import Path
@@ -16,17 +16,16 @@ from agent_state.maintenance import SnapshotMaintenance
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     add_connection_arguments(parser)
-    parser.add_argument("--test-backend", choices=["memory", "oss-protocol"], default="memory")
     args = parser.parse_args()
     connection = Connection(args)
     if not connection.settings["database"].startswith("agentdb_test_"):
         parser.error("Use an existing agentdb_test_ database; this test creates a branch there")
     details = connection.check()
-    name = "cloud-recovery-" + uuid.uuid4().hex[:12]
+    name = "state-recovery-" + uuid.uuid4().hex[:12]
     connection.sql(f"""
       BEGIN;
       SELECT vc.fork('{name}',vc.head());
-      SELECT vc.begin_change('{name}',vc.head('{name}'),'integration','cloud resume test');
+      SELECT vc.begin_change('{name}',vc.head('{name}'),'integration','state resume test');
       UPDATE agent.products SET price=123 WHERE id=301;
       SELECT vc.finish_change();
       COMMIT;
@@ -34,13 +33,7 @@ def main():
     target = json.loads(connection.sql(f"""
       SELECT json_build_object('revision',vc.head('{name}'),'table_id',vc.table_id('app.products'));
     """))
-    if args.test_backend == "oss-protocol":
-        from agent_state.oss import OSSStore
-        from tests.oss_fake import FakeOSS
-        store = OSSStore("test-bucket", "cn-hangzhou", client=FakeOSS())
-        store.check()
-    else:
-        store = MemoryStore()
+    store = MemoryStore()
     runtime = Runtime(Engine(store))
     runner = SnapshotMaintenance(runtime, connection)
     assert not runner.inspect(target)["snapshot_exists"]
@@ -66,11 +59,9 @@ def main():
     assert connection.sql("SELECT count(*) FROM vc.work_tx;") == "0"
     output = dict(postgresql=details, database=connection.settings["database"], branch=name,
                   target=target, resumed=result, fixed_revision_price=state_price,
-                  cloud_backend=args.test_backend + "-test-only", real_gcs_verified=False,
-                  real_oss_verified=False,
+                  state_backend="memory-test-only",
                   note="Existing local PostgreSQL; no instance initialized, started or stopped. Test branch retained.")
-    report = "cloud-postgres-oss-protocol.json" if args.test_backend == "oss-protocol" else "cloud-postgres-integration.json"
-    Path(report).write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
+    Path("cloud-postgres-integration.json").write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(output, indent=2))
 
 

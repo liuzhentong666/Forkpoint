@@ -2,6 +2,8 @@
 
 # 历史增长：有界的历史遍历与快照策略
 
+> 注（2026-10-30）：云存储（GCS、OSS、S3）、HTTP 状态服务与 ECS 部署已移除，代码和专门文档留在 git 历史中（最后存在于提交 `d342ccf`）；状态引擎只保留内存后端。下文按当时情况保留，其中提到的这些文件已不存在。
+
 2026-10-18。处理 [S4/S5](STAGING_S4_S5.md) 第 2 节测出的随历史长度增长的成本。预发布虚拟机上 main 有 2,000 个提交时，一次 10 行合入耗时 50.7 s，提交 499 ms，head 读取 1.2 s。改动在分支 `perf/history-bounded-costs`，迁移为 [`sql/005_bounded_history.sql`](../sql/005_bounded_history.sql)。所有数字来自本机现有的 Ubuntu WSL PostgreSQL 16.15，客户端与服务器在同一台笔记本上，只作前后对比。**预发布虚拟机上尚未重跑；未使用任何云服务。**
 
 ## 1. 原因（在 1,000 个提交的库上实测）
@@ -96,6 +98,8 @@
 <a id="english-version"></a>
 
 # History Growth: Bounded History Traversal and a Snapshot Policy
+
+> Note (2026-10-30): cloud storage (GCS, OSS, S3), the HTTP state service and the ECS deployment have been removed; the code and their own docs remain in git history (last present in commit `d342ccf`), and the state engine keeps only its in-memory backend. What follows is kept as it was, and the files it names for these no longer exist.
 
 2026-10-18. Deals with the costs growing with history length measured in section 2 of [S4/S5](STAGING_S4_S5.md). On the staging VM, with 2,000 commits on main, one 10-row merge took 50.7 s, a commit 499 ms, and a head read 1.2 s. The change is on the branch `perf/history-bounded-costs`, and the migration is [`sql/005_bounded_history.sql`](../sql/005_bounded_history.sql). All numbers come from the existing local Ubuntu WSL PostgreSQL 16.15, with client and server on the same laptop, and are only for before/after comparison. **Not yet rerun on the staging VM; no cloud services were used.**
 

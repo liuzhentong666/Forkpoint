@@ -6,13 +6,10 @@ connection.*.local.json
 *.pem
 pgpass.conf
 .venv-cloud/
-cloud.local.json
 cloud-read-benchmark.json
-cloud-postgres-integration.json
-cloud.*.local.json
 oss-protocol-benchmark.json
 cloud-postgres-oss-protocol.json
-dist/
+cloud-postgres-integration.json
 local-review-results.json
 
 # Raw model transcripts and local experiment metadata stay on this machine.

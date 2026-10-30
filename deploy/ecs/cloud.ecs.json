@@ -1,9 +1,0 @@
-{
-  "provider": "oss",
-  "bucket": "your-oss-bucket",
-  "region": "cn-hangzhou",
-  "endpoint": "https://oss-cn-hangzhou-internal.aliyuncs.com",
-  "prefix": "agentdb-state",
-  "host": "127.0.0.1",
-  "port": 8844
-}

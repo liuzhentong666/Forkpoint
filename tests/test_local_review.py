@@ -1,24 +1,12 @@
 from concurrent.futures import ThreadPoolExecutor
-import contextlib
-import io
 import json
-from pathlib import Path
-import sys
-import tempfile
 import threading
 import unittest
-from unittest.mock import Mock, patch
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from agent_state.engine import Engine
 from agent_state.maintenance import SnapshotMaintenance
-from agent_state.oss import OSSStore
 from agent_state.runtime import Runtime
 from agent_state.storage import Conflict, MemoryStore, Missing
-from agent_state import server
-import maintain_snapshot
-from oss_fake import FakeOSS
 
 TARGET = ("00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")
 
@@ -78,39 +66,13 @@ class MaintenanceReviewTests(unittest.TestCase):
         self.assertEqual(database.applications, 1)
         self.assertEqual(Engine(store).read("intent-crash")["state"]["status"], "completed")
 
-    def test_nondefault_prefix_through_json_factory_maintenance_cli_and_server(self):
-        fake, database = FakeOSS(), DatabaseDouble()
+    def test_nondefault_prefix_keeps_tasks_apart(self):
+        store, database = MemoryStore(), DatabaseDouble()
         prefix = "review/nondefault"
-        store = OSSStore("test-bucket", "cn-hangzhou", client=fake)
-        def factory(bucket, region, endpoint=None):
-            self.assertEqual((bucket, region), ("test-bucket", "cn-hangzhou"))
-            return OSSStore(bucket, region, endpoint, client=fake)
-        observed = []
-        def listener(runtime, *args):
-            handle = Mock()
-            def serve(**kwargs):
-                observed.append(runtime.read("config-task", fresh=True))
-                self.assertEqual(runtime.engine.objects.prefix, prefix)
-            handle.serve_forever.side_effect = serve
-            return handle
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "state.json"
-            path.write_text(json.dumps(dict(provider="oss", bucket="test-bucket", region="cn-hangzhou", prefix=prefix)))
-            command = ["maintain_snapshot.py", "--cloud-config", str(path), "--task", "config-task",
-                       "--actor", "agent", "--revision", TARGET[0], "--table-id", TARGET[1]]
-            with patch("agent_state.oss.OSSStore", side_effect=factory), \
-                    patch("maintain_snapshot.Connection", return_value=database), \
-                    patch.object(sys, "argv", command), contextlib.redirect_stdout(io.StringIO()):
-                maintain_snapshot.main()
-            with patch("agent_state.oss.OSSStore", side_effect=factory), \
-                    patch("agent_state.server.make_server", side_effect=listener), \
-                    patch.object(sys, "argv", ["server", "--config", str(path)]):
-                server.main()
-        self.assertEqual(len(observed), 1)
-        self.assertEqual(observed[0]["state"]["status"], "completed")
-        self.assertEqual(Engine(store, prefix).read("config-task"), observed[0])
+        SnapshotMaintenance(Runtime(Engine(store, prefix)), database).run("prefix-task", "agent", *TARGET)
+        self.assertEqual(Engine(store, prefix).read("prefix-task")["state"]["status"], "completed")
         with self.assertRaises(Missing):
-            Engine(store).read("config-task")
+            Engine(store).read("prefix-task")
 
 
 if __name__ == "__main__":

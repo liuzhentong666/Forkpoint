@@ -2,6 +2,8 @@
 
 # 状态模块本地测试范围（非云端验证）
 
+> 注（2026-10-30）：云存储（GCS、OSS、S3）、HTTP 状态服务与 ECS 部署已移除，代码和专门文档留在 git 历史中（最后存在于提交 `d342ccf`）；状态引擎只保留内存后端。下文按当时情况保留，其中提到的这些文件已不存在。
+
 更新日期：2026-10-17。**云服务未经真实验证，云端部署暂缓。** 本文不包含 GCS、OSS 或 S3 的真实读写、持久性、一致性、性能或部署结果。
 
 本文仅说明本机代码测试的来源与范围；原始本地记录不作为云存储已验证的依据。
@@ -12,7 +14,7 @@
 - [cloud-read-benchmark.json](../results/cloud-read-benchmark.json)：内存后端中的读取结构实验，计数不是云端实测流量，也不能推导云端延迟、吞吐或费用。
 - [cloud-postgres-integration.json](../results/cloud-postgres-integration.json)：现有 Ubuntu WSL PostgreSQL 与内存状态后端的接手实验。`resumed.verified` 只表示已核验本机数据库快照，不能解释为云存储验证成功。
 
-这些文件保留本地测试事实；文件名中的 cloud 是历史命名，不表示运行地点或真实云连接。后续适配器的本地范围见 [多后端本地测试](STORAGE_BACKENDS_VALIDATION.md)。
+这些文件保留本地测试事实；文件名中的 cloud 是历史命名，不表示运行地点或真实云连接。后续适配器的本地范围见 多后端本地测试。
 
 ## 尚无结果的云端项目
 
@@ -26,6 +28,8 @@
 
 # Scope of the State Module's Local Tests (Not Cloud Verification)
 
+> Note (2026-10-30): cloud storage (GCS, OSS, S3), the HTTP state service and the ECS deployment have been removed; the code and their own docs remain in git history (last present in commit `d342ccf`), and the state engine keeps only its in-memory backend. What follows is kept as it was, and the files it names for these no longer exist.
+
 Last updated: 2026-10-17. **Cloud services are not verified against real cloud services, and cloud deployment is on hold.** This document contains no results of real reads/writes, durability, consistency, performance or deployment for GCS, OSS or S3.
 
 This document only describes the source and scope of the local code tests; the raw local records are not evidence that cloud storage has been verified.
@@ -36,7 +40,7 @@ This document only describes the source and scope of the local code tests; the r
 - [cloud-read-benchmark.json](../results/cloud-read-benchmark.json): a read-structure experiment in the in-memory backend; the counts are not measured cloud traffic, and cloud latency, throughput or cost cannot be derived from them.
 - [cloud-postgres-integration.json](../results/cloud-postgres-integration.json): a hand-off experiment between the existing Ubuntu WSL PostgreSQL and the in-memory state backend. `resumed.verified` only means the local database snapshot was verified, and cannot be interpreted as successful cloud storage verification.
 
-These files keep the facts of the local tests; "cloud" in the file names is historical naming and does not indicate where they ran or a real cloud connection. The local scope of the later adapters is in [Multi-backend local tests](STORAGE_BACKENDS_VALIDATION.md).
+These files keep the facts of the local tests; "cloud" in the file names is historical naming and does not indicate where they ran or a real cloud connection. The local scope of the later adapters is in Multi-backend local tests.
 
 ## Cloud items with no results yet
 

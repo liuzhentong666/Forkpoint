@@ -2,6 +2,8 @@
 
 # 生产环境测试计划
 
+> 注（2026-10-30）：云存储（GCS、OSS、S3）、HTTP 状态服务与 ECS 部署已移除，代码和专门文档留在 git 历史中（最后存在于提交 `d342ccf`）；状态引擎只保留内存后端。下文按当时情况保留，其中提到的这些文件已不存在。S2、S3 两个阶段不再适用。
+
 2026-10-18 起草；用户已选定方案 B（本机虚拟机），S1、S4、S5 的数据库部分已执行，各阶段状态见下表。云服务仍未经真实验证，云端工作仍暂缓；本文不改变这一状态，也不授权采购资源、运行 `smoke_cloud.py` 或使用真实业务数据。文中标注「待定」的条目需要用户决定，其余是建议的默认做法。
 
 ## 1. 要证明什么
@@ -37,7 +39,7 @@
 
 - 只用合成数据（`review_local.py` / `run_tests.py` 的 4,000 行种子），直到 S5 通过且已建立独立登录身份。
 - 预发布 PostgreSQL 使用专用登录角色，不使用超级用户运行测试；口令只交给 `.pgpass` 或 `--password` 提示，不写进 JSON、命令参数或聊天。
-- 对象存储只写一个专用 prefix；不开启版本控制、保留策略或删除活跃前缀的生命周期规则（见 [多后端设计](STORAGE_BACKENDS.md)）。
+- 对象存储只写一个专用 prefix；不开启版本控制、保留策略或删除活跃前缀的生命周期规则（见 多后端设计）。
 - 每个阶段结束时记录保留的测试库与对象前缀，测试完成后由用户决定是否清理。
 
 ## 5. 需要用户决定的事项
@@ -57,6 +59,8 @@
 <a id="english-version"></a>
 
 # Production Test Plan
+
+> Note (2026-10-30): cloud storage (GCS, OSS, S3), the HTTP state service and the ECS deployment have been removed; the code and their own docs remain in git history (last present in commit `d342ccf`), and the state engine keeps only its in-memory backend. What follows is kept as it was, and the files it names for these no longer exist. Phases S2 and S3 no longer apply.
 
 Drafted 2026-10-18; the user chose option B (a local VM), and S1, S4 and the database part of S5 have run, with each phase's status in the table below. Cloud services are still not verified against real cloud services, and cloud work is still on hold; this document does not change that status, and does not authorize purchasing resources, running `smoke_cloud.py` or using real business data. Items marked "to be decided" need the user's decision; the rest are suggested defaults.
 
@@ -93,7 +97,7 @@ Each phase starts only after the previous phase passes; if any item fails, stop 
 
 - Use only synthetic data (the 4,000-row seed of `review_local.py` / `run_tests.py`) until S5 passes and a separate login identity has been established.
 - The staging PostgreSQL uses a dedicated login role, and tests are not run as a superuser; the password is given only to `.pgpass` or the `--password` prompt, and is not written into JSON, command arguments or chat.
-- Object storage writes only to one dedicated prefix; do not enable versioning, retention policies or lifecycle rules that delete an active prefix (see [Multi-backend design](STORAGE_BACKENDS.md)).
+- Object storage writes only to one dedicated prefix; do not enable versioning, retention policies or lifecycle rules that delete an active prefix (see Multi-backend design).
 - At the end of each phase, record the test databases and object prefixes kept; after testing, the user decides whether to clean them up.
 
 ## 5. Items for the user to decide

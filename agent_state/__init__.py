@@ -1,2 +1,2 @@
-"""Bounded agent state backed by immutable cloud objects and a conditional head."""
+"""Bounded agent state: immutable objects and a conditional head, kept in memory."""
 

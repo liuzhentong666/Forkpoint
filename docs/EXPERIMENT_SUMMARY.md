@@ -117,7 +117,7 @@
 
 ## 接下来
 
-新功能已经暂停。只有在一项事先写下的测试先显示 Agent 在普通数据库上出错之后，才会添加新功能。没有删除任何东西：引擎、它的测试和每一份实验记录都留在仓库中。
+新功能已经暂停。只有在一项事先写下的测试先显示 Agent 在普通数据库上出错之后，才会添加新功能。引擎、它的测试和每一份实验记录都留在仓库中。
 
 ## 详细记录
 
@@ -248,7 +248,7 @@ These results come from small tasks and mostly one strong model (Claude Opus 5.5
 
 ## What happens now
 
-New features are paused. One will be added only after a test, written down in advance, first shows agents failing on an ordinary database. Nothing has been deleted: the engine, its tests and every experiment record stay in the repository.
+New features are paused. One will be added only after a test, written down in advance, first shows agents failing on an ordinary database. The engine, its tests and every experiment record stay in the repository.
 
 ## The detailed records
 

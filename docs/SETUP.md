@@ -90,7 +90,7 @@ python run_tests.py
 
 测试每次新建 `agentdb_test_<随机后缀>` 专用数据库，在其中安装 SQL、生成 4,000 行，执行集成测试和 10 连接并发验证，不写入项目库。结果保存到 `test-results-local.json`（不纳入版本库），测试库保留供检查。连接账户需要创建数据库、安装对象以及切换到 `agentdb_client` 角色的权限。
 
-状态服务与存储适配器的单元测试需要先安装 `requirements-storage-tests.txt`：
+状态引擎的单元测试只需 Python 标准库：
 
 ```console
 python -m unittest discover -s tests -v
@@ -98,20 +98,12 @@ python -m unittest discover -s tests -v
 
 基准测试、迁移检查和预发布演练在 `scripts/` 中，原始结果在 `results/` 中。按改动范围应运行哪些检查，见 [AGENTS.md](../AGENTS.md) 的“验证入口与交付要求”。
 
-## 管理 Agent 状态服务（云端，未经验证）
+## 管理 Agent 的任务状态
 
-> **云服务状态：未经真实验证。** 阿里云 OSS、GCS、S3 均未完成真实云端读写或联调，ECS 状态服务未部署，云端部署暂缓。本地测试结果不能作为云存储已验证或部署可用的依据。
+云存储（GCS、OSS、S3）、HTTP 状态服务与 ECS 部署已于 2026-10-30 移除，代码留在 git 历史中（最后存在于 `d342ccf`）。任务状态现在只保存在内存中（`MemoryStore`），进程结束即丢失；代码与业务数据的版本仍由 PostgreSQL 负责。较早的记录中可能出现 `.\.venv-cloud\Scripts\python.exe`，现在用 `python` 即可。
 
-设计目标是把管理任务的最新状态、事件、规则版本与证据保存到配置选择的云端对象存储（GCS / 阿里云 OSS / S3），常驻进程只保留有界内存缓存。适配代码已编写，任务入口、条件发布、命令去重、分页历史和带预算的上下文 API 目前只有本地实现与测试。PostgreSQL 继续负责代码与业务数据的版本，管理状态不写入 PostgreSQL。
-
-OSS 适配器每个任务最多发布 524,288 次，达到后需显式建立后继任务；这不是实测的云端容量，也还没有透明的日志轮转。
-
-- [多后端设计](STORAGE_BACKENDS.md)：OSS 条件追加发布、GCS/S3 条件写入、兼容与容量边界
-- [原始设计](CLOUD_STATE_DESIGN.md)：有界状态、幂等命令与跨系统恢复
-- [运行与 API](CLOUD_STATE_RUNBOOK.md)：GCS 配置、常驻服务、上下文读取和 PostgreSQL 维护示例
-- [管理 Agent 协议](MANAGER_AGENT_PROTOCOL.md)：可固定为云端规则对象的 superuser Agent 操作约定
-- [多后端本地测试](STORAGE_BACKENDS_VALIDATION.md)：内存服务模型和 SDK 测试替身的结果，不含真实云存储
-- [ECS 部署草案（暂缓）](ALIYUN_ECS_DEPLOYMENT.md)：保留供以后参考；[部署脚本本地检查](ALIYUN_ECS_VALIDATION.md)不代表已部署或已完成云端验证
+- [状态引擎设计](CLOUD_STATE_DESIGN.md)：有界状态、幂等命令与跨系统恢复（其中的云端部分已移除）
+- [管理 Agent 协议](MANAGER_AGENT_PROTOCOL.md)：superuser Agent 的操作约定
 
 ---
 
@@ -207,7 +199,7 @@ python run_tests.py
 
 Each run creates a dedicated `agentdb_test_<random suffix>` database, installs the SQL, generates 4,000 rows, and runs the integration tests and a 10-connection concurrency check; it never writes to the project database. Results go to `test-results-local.json` (not committed), and the test database is kept for inspection. The connecting account needs permission to create databases, install objects and switch to the `agentdb_client` role.
 
-The unit tests for the state service and storage adapters need `requirements-storage-tests.txt` installed first:
+The unit tests for the state engine need only the Python standard library:
 
 ```console
 python -m unittest discover -s tests -v
@@ -215,17 +207,9 @@ python -m unittest discover -s tests -v
 
 Benchmarks, migration checks and staging drills are in `scripts/`, and their raw results in `results/`. Which checks to run for which kind of change is listed in [AGENTS.md](../AGENTS.md) under "Verification entry points and delivery requirements".
 
-## Manager Agent state service (cloud, not verified)
+## Manager Agent task state
 
-> **Cloud service status: not verified against real cloud services.** None of Alibaba Cloud OSS, GCS or S3 has completed real cloud reads/writes or integration testing, the ECS state service has not been deployed, and cloud deployment is on hold. Local test results are not evidence that cloud storage works or that a deployment is usable.
+Cloud storage (GCS, OSS, S3), the HTTP state service and the ECS deployment were removed on 2026-10-30; the code remains in git history (last present in `d342ccf`). Task state now lives only in memory (`MemoryStore`) and is lost when the process ends; PostgreSQL still versions code and business data. Older records may show `.\.venv-cloud\Scripts\python.exe`; `python` works now.
 
-The design keeps the latest state, events, rule versions and evidence of management tasks in the cloud object storage chosen by configuration (GCS / Alibaba Cloud OSS / S3), with the long-running process holding only a bounded in-memory cache. The adapter code is written; the task entry point, conditional publishing, command deduplication, paginated history and the budgeted context API have only local implementations and tests so far. PostgreSQL keeps versioning code and business data; management state is not written to PostgreSQL.
-
-The OSS adapter allows at most 524,288 publishes per task, after which a successor task must be created explicitly. This is not a measured cloud capacity, and there is no transparent log rotation yet.
-
-- [Multi-backend design](STORAGE_BACKENDS.md): OSS conditional-append publishing, GCS/S3 conditional writes, compatibility and capacity limits
-- [Original design](CLOUD_STATE_DESIGN.md): bounded state, idempotent commands and cross-system recovery
-- [Operation and API](CLOUD_STATE_RUNBOOK.md): GCS configuration, the long-running service, context reads and PostgreSQL maintenance examples
-- [Manager Agent protocol](MANAGER_AGENT_PROTOCOL.md): operating conventions for the superuser Agent, which can be pinned as a cloud rule object
-- [Multi-backend local tests](STORAGE_BACKENDS_VALIDATION.md): results from the in-memory service model and SDK test doubles, with no real cloud storage
-- [ECS deployment draft (on hold)](ALIYUN_ECS_DEPLOYMENT.md): kept for later reference; the [local check of the deployment scripts](ALIYUN_ECS_VALIDATION.md) does not mean anything was deployed or verified in the cloud
+- [State engine design](CLOUD_STATE_DESIGN.md): bounded state, idempotent commands and cross-system recovery (its cloud parts have been removed)
+- [Manager Agent protocol](MANAGER_AGENT_PROTOCOL.md): operating conventions for the superuser Agent

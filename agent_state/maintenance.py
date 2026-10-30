@@ -1,6 +1,6 @@
 """A resumable, idempotent PostgreSQL snapshot maintenance example.
 
-The cloud task records intent and verification. PostgreSQL remains authoritative
+The task records intent and verification. PostgreSQL remains authoritative
 for the actual snapshot. This executor does not claim cross-system transactions.
 """
 import copy
@@ -165,7 +165,7 @@ class SnapshotMaintenance:
             raise Conflict("Task uses a different fixed policy version")
         if after_intent:
             after_intent()  # Test hook: durable intent, before database inspection/action.
-        # Even a cloud 'completed' record is checked against the real system.
+        # Even a 'completed' record is checked against the real system.
         actual = self.inspect(target)
         if not actual["revision_exists"] or not actual["table_exists"]:
             raise Invalid("PostgreSQL target does not exist")
@@ -174,7 +174,7 @@ class SnapshotMaintenance:
             self.connection.sql(f"SELECT vc.materialize('{target['revision']}','{target['table_id']}');")
             applied = True
         if after_apply:
-            after_apply()  # Test hook: crash after DB commit, before cloud receipt.
+            after_apply()  # Test hook: crash after DB commit, before the receipt is published.
         actual = self.inspect(target)
         if not actual["snapshot_exists"]:
             raise Conflict("Snapshot verification failed")

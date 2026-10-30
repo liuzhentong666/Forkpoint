@@ -3,16 +3,13 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import threading
 import unittest
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
 
 from agent_state.engine import Engine
 from agent_state.maintenance import HISTORY_ACTION, SnapshotMaintenance
 from agent_state.objects import digest, encode
 from agent_state.runtime import Runtime
-from agent_state.server import make_server
 from agent_state.storage import (MemoryStore, Object, Conflict, Corrupt, Missing,
-                                 Invalid, TooLarge, BudgetError, GCSStore)
+                                 Invalid, TooLarge, BudgetError)
 
 
 def state(number=0):
@@ -152,25 +149,20 @@ class StateTests(unittest.TestCase):
         self.assertEqual(runtime.read("task")["state"]["goal"], state()["goal"])
         self.assertEqual(self.store.metrics.snapshot()["reads"], before)
 
-    def test_cache_limits_ttl_and_notifications(self):
+    def test_cache_limits_ttl_and_invalidation(self):
         clock = [0.0]
         runtime = Runtime(self.engine, max_tasks=2, max_bytes=1400, ttl=10, clock=lambda: clock[0])
         runtime.read("task")
-        original = runtime.read("task")
         self.engine.publish("task", "step", "agent", state(1), 0)
         self.assertEqual(runtime.read("task")["version"], 0)
         clock[0] = 11
         self.assertEqual(runtime.read("task")["version"], 1)
-        self.assertFalse(runtime.notify(dict(objectId=self.engine.head_key("task"), eventType="OBJECT_FINALIZE",
-                                             objectGeneration=str(original["generation"]))))
+        self.assertFalse(runtime.invalidate("task", runtime.read("task")["generation"]))  # already current
         self.engine.publish("task", "step2", "agent", state(2), 1)
         _, generation = self.engine.head("task")
-        notification = dict(objectId=self.engine.head_key("task"), eventType="OBJECT_FINALIZE",
-                            objectGeneration=str(generation), bucketId="test")
-        self.assertFalse(runtime.notify(notification, bucket="wrong"))
-        self.assertTrue(runtime.notify(notification, bucket="test"))
+        self.assertTrue(runtime.invalidate("task", generation))
         self.assertEqual(runtime.read("task")["version"], 2)
-        self.assertFalse(runtime.notify(notification, bucket="test"))
+        self.assertFalse(runtime.invalidate("task", generation))
         for i in range(5):
             self.engine.publish(f"task-{i}", "create", "agent", state())
             runtime.read(f"task-{i}")
@@ -189,7 +181,7 @@ class StateTests(unittest.TestCase):
         self.assertEqual(result["uncertainties"], value["uncertainties"])
         self.assertEqual(result["omitted_facts"] + len(result["facts"]), 20)
 
-    def test_notification_during_cold_read_does_not_cache_stale_state(self):
+    def test_invalidation_during_cold_read_does_not_cache_stale_state(self):
         entered, release = threading.Event(), threading.Event()
         store = self.store
         class SlowEngine(Engine):
@@ -237,41 +229,6 @@ class StateTests(unittest.TestCase):
     def test_essential_context_is_never_silently_truncated(self):
         with self.assertRaises(BudgetError):
             Runtime(self.engine).context("task", max_bytes=256)
-
-
-class HTTPTests(unittest.TestCase):
-    def test_http_authenticated_publish_read_context_and_conflict(self):
-        store = MemoryStore()
-        server = make_server(Runtime(Engine(store)), port=0, token="test-token")
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        url = f"http://127.0.0.1:{server.server_port}"
-        def request(path, method="GET", body=None, token=True):
-            headers = {"Content-Type":"application/json"}
-            if token:
-                headers["Authorization"] = "Bearer test-token"
-            req = Request(url + path, data=encode(body) if body is not None else None,
-                          headers=headers, method=method)
-            with urlopen(req, timeout=5) as response:
-                return json.loads(response.read())
-        try:
-            with self.assertRaises(HTTPError) as error:
-                request("/health", token=False)
-            self.assertEqual(error.exception.code, 401)
-            create = dict(command_id="create", actor="agent", state=state())
-            self.assertEqual(request("/v1/tasks/t", "POST", create)["version"], 0)
-            self.assertEqual(request("/v1/tasks/t")["version"], 0)
-            self.assertEqual(request("/v1/tasks/t/context", "POST", {})["goal"], state()["goal"])
-            update = dict(command_id="update", actor="agent", state=state(1), expected_version=0)
-            self.assertEqual(request("/v1/tasks/t", "PUT", update)["version"], 1)
-            update["command_id"] = "another"
-            with self.assertRaises(HTTPError) as error:
-                request("/v1/tasks/t", "PUT", update)
-            self.assertEqual(error.exception.code, 409)
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join(timeout=5)
 
 
 class FakeConnection:
@@ -404,55 +361,6 @@ class HistoryHealthTests(unittest.TestCase):
                 runner.check_history("manager", task_id="history-bad", **kwargs)
         with self.assertRaises(Missing):
             engine.read("history-bad")
-
-
-class GCSContractTests(unittest.TestCase):
-    def test_sdk_generation_preconditions_and_pinned_download(self):
-        try:
-            from google.api_core.exceptions import PreconditionFailed, NotFound
-        except ImportError:
-            self.skipTest("Install requirements-cloud.txt to test the official SDK adapter")
-        memory = MemoryStore()
-        calls = []
-        class Blob:
-            def __init__(self, key, obj=None):
-                self.key = key
-                self.generation = obj.generation if obj else None
-                self.size = len(obj.data) if obj else None
-            def upload_from_string(self, data, **kwargs):
-                calls.append(("put", kwargs))
-                try:
-                    self.generation = memory.put(self.key, data, kwargs["if_generation_match"])
-                except Conflict as error:
-                    raise PreconditionFailed("condition") from error
-            def download_as_bytes(self, **kwargs):
-                calls.append(("get", kwargs))
-                obj = memory.get(self.key)
-                if obj.generation != kwargs["if_generation_match"]:
-                    raise NotFound("generation disappeared")
-                return obj.data
-        class Bucket:
-            def blob(self, key):
-                return Blob(key)
-            def get_blob(self, key, **kwargs):
-                try:
-                    return Blob(key, memory.get(key))
-                except Missing:
-                    return None
-        class Client:
-            def bucket(self, name):
-                self.name = name
-                return Bucket()
-        store = GCSStore("contract-test", client=Client())
-        generation = store.put("key", b"value", 0)
-        self.assertEqual(store.get("key").data, b"value")
-        with self.assertRaises(Conflict):
-            store.put("key", b"bad", 0)
-        with self.assertRaises(TooLarge):
-            store.get("key", max_bytes=2)
-        self.assertEqual(calls[0][1]["if_generation_match"], 0)
-        self.assertEqual(calls[1][1]["if_generation_match"], generation)
-        self.assertIsNotNone(calls[0][1]["retry"])
 
 
 if __name__ == "__main__":

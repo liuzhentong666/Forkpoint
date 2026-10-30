@@ -1,4 +1,0 @@
--r requirements-cloud.txt
--r requirements-oss.txt
--r requirements-ecs.txt
--r requirements-s3.txt

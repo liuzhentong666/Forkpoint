@@ -2,6 +2,8 @@
 
 # agent_lab 常驻网关：设计与本机结果
 
+> 注（2026-10-30）：云存储（GCS、OSS、S3）、HTTP 状态服务与 ECS 部署已移除，代码和专门文档留在 git 历史中（最后存在于提交 `d342ccf`）；状态引擎只保留内存后端。下文按当时情况保留，其中提到的这些文件已不存在。
+
 2026-10-18。代码为 [agent_lab_gateway.py](../agent_lab_gateway.py)，默认关闭。只连接现有 WSL PostgreSQL 中的 `agentdb_test_gpt_*` 专用库，不启停数据库，也不访问任何云服务。目前没有任何真实 GPT 实验通过网关运行；[十轮实验](GPT_REPEAT_EXPERIMENT.md) 使用的仍是逐次起进程的路径。
 
 ## 问题
@@ -70,6 +72,8 @@
 <a id="english-version"></a>
 
 # agent_lab Long-Running Gateway: Design and Local Results
+
+> Note (2026-10-30): cloud storage (GCS, OSS, S3), the HTTP state service and the ECS deployment have been removed; the code and their own docs remain in git history (last present in commit `d342ccf`), and the state engine keeps only its in-memory backend. What follows is kept as it was, and the files it names for these no longer exist.
 
 2026-10-18. The code is [agent_lab_gateway.py](../agent_lab_gateway.py), off by default. It only connects to the dedicated `agentdb_test_gpt_*` databases in the existing WSL PostgreSQL, does not start or stop the database, and does not access any cloud service. So far no real GPT experiment has run through the gateway; the [ten-round experiment](GPT_REPEAT_EXPERIMENT.md) still used the spawn-a-process-per-call path.
 

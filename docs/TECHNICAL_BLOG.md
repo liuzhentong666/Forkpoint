@@ -2,6 +2,8 @@
 
 # 让 Agent 的工作可以提交、分支和接手：Forkpoint 的第一阶段实现
 
+> 注（2026-10-30）：云存储（GCS、OSS、S3）、HTTP 状态服务与 ECS 部署已移除，代码和专门文档留在 git 历史中（最后存在于提交 `d342ccf`）；状态引擎只保留内存后端。下文按当时情况保留，其中提到的这些文件已不存在。
+
 2026 年 10 月 16 日 · 项目阶段记录；云服务状态、本机审查与真实 GPT 实验补充于 2026 年 10 月 17 日修订。
 
 > **云服务未经真实验证，云端部署暂缓。** OSS、GCS、S3 均没有真实云端联调结果，ECS 未部署。本文的云存储部分描述代码设计与本地模型，不代表已经在云端运行或验证成功。
@@ -257,11 +259,11 @@ OSS 的 `PutObject` 不支持 `If-Match` / `If-None-Match` 这组条件参数，
 
 条件冲突后，适配器不能自动改用最新末尾再追加。那会让本来基于旧状态的修改绕过竞争检查。恢复必须回到 Engine，检查原命令回执或重新判断业务意图。
 
-读取当前入口时，先取得长度，再通过范围请求读取最后一条 8 KiB 记录。若两次请求之间又发生追加，原先选定的记录仍然完整有效，返回它对应的版本即可；后续写入仍由位置条件判断是否过时。实现还检查类型、长度对齐、返回范围和校验值，异常时直接拒绝读取。[OSS 适配器实现](../agent_state/oss.py)
+读取当前入口时，先取得长度，再通过范围请求读取最后一条 8 KiB 记录。若两次请求之间又发生追加，原先选定的记录仍然完整有效，返回它对应的版本即可；后续写入仍由位置条件判断是否过时。实现还检查类型、长度对齐、返回范围和校验值，异常时直接拒绝读取。OSS 适配器实现
 
 这带来了固定的额外空间成本，也有明确的寿命上限：首版把每个任务的追加文件限制为 **4 GiB，也就是 524,288 次发布**。达到上限会拒绝新发布并保留旧状态，尚无透明轮转；更长的工作流需要显式建立后继任务。这个上限只计算入口记录，状态、事件和索引对象还会额外占用空间。
 
-桶配置同样属于协议前提。不可变普通对象采用禁止覆盖的创建方式，而 OSS 在开启或暂停版本控制时不会按该请求头禁止同名覆盖，因此当前适配器要求版本控制从未开启，并拒绝不支持的保留策略配置。运行期间也不能删除或替换活跃入口、复用任务 ID。[OSS PutObject](https://help.aliyun.com/zh/oss/developer-reference/putobject)、[本项目存储协议](STORAGE_BACKENDS.md)
+桶配置同样属于协议前提。不可变普通对象采用禁止覆盖的创建方式，而 OSS 在开启或暂停版本控制时不会按该请求头禁止同名覆盖，因此当前适配器要求版本控制从未开启，并拒绝不支持的保留策略配置。运行期间也不能删除或替换活跃入口、复用任务 ID。[OSS PutObject](https://help.aliyun.com/zh/oss/developer-reference/putobject)、本项目存储协议
 
 为隔离这些差异，Engine 依赖独立的 `HeadStore`，只关心读取和条件发布。存储返回的 generation、ETag 或追加位置都作为不透明标记使用；缓存的新旧排序依据应用层 `version`，不尝试比较两个 ETag 谁“更大”。
 
@@ -295,7 +297,7 @@ OSS 的 `PutObject` 不支持 `If-Match` / `If-None-Match` 这组条件参数，
 | 4,000 行、10 并发连接 | 独立分支 10 个成功；同一旧 main head 竞争时 1 成功、9 个陈旧版本错误 | 合成并发连接模拟 Agent 写入，不包含模型推理 |
 | 数据库接手 | 中断后成功核验，未重复物化 | 真实 PostgreSQL 加内存 OSS 协议模型 |
 
-数据库结果见 [本机验证记录](VALIDATION.md) 与 [原始测试报告](../results/test-results-local.json)。状态适配器的本地环境及范围见 [本地测试说明](STORAGE_BACKENDS_VALIDATION.md)，其中不包含云端成功记录。
+数据库结果见 [本机验证记录](VALIDATION.md) 与 [原始测试报告](../results/test-results-local.json)。状态适配器的本地环境及范围见 本地测试说明，其中不包含云端成功记录。
 
 历史增长实验也只运行于内存 OSS 模型；其读取计数不属于真实 OSS 流量或性能测量。这里不列作云存储验证结果，原始本地数据保留在 [模型实验记录](../results/oss-protocol-benchmark.json)。真实一致性、持久性、延迟、吞吐、容量和费用均未经验证。
 
@@ -324,6 +326,8 @@ Forkpoint 下一阶段要继续验证的是：在历史更长、任务更多、�
 <a id="english-version"></a>
 
 # Making Agent Work Committable, Branchable and Hand-off-able: The First-Phase Implementation of Forkpoint
+
+> Note (2026-10-30): cloud storage (GCS, OSS, S3), the HTTP state service and the ECS deployment have been removed; the code and their own docs remain in git history (last present in commit `d342ccf`), and the state engine keeps only its in-memory backend. What follows is kept as it was, and the files it names for these no longer exist.
 
 16 October 2026 · Project phase record; the cloud service status, local review and real GPT experiment additions were revised on 17 October 2026.
 
@@ -586,11 +590,11 @@ Suppose the file is currently 16,384 bytes long and two writers both ask to appe
 
 After a condition conflict, the adapter must not automatically switch to the latest end and append again. That would let a change based on old state bypass the contention check. Recovery must go back to Engine, check the original command receipt or re-evaluate the business intent.
 
-When reading the current entry point, the length is obtained first, then the last 8 KiB record is read with a range request. If another append happens between the two requests, the record originally selected is still complete and valid, and the version it corresponds to can be returned; later writes are still judged stale or not by the position condition. The implementation also checks the type, length alignment, returned range and checksum, and rejects the read directly on anomalies. [OSS adapter implementation](../agent_state/oss.py)
+When reading the current entry point, the length is obtained first, then the last 8 KiB record is read with a range request. If another append happens between the two requests, the record originally selected is still complete and valid, and the version it corresponds to can be returned; later writes are still judged stale or not by the position condition. The implementation also checks the type, length alignment, returned range and checksum, and rejects the read directly on anomalies. OSS adapter implementation
 
 This brings a fixed extra space cost, and also a clear lifetime limit: the first version limits each task's append file to **4 GiB, i.e. 524,288 publishes**. Reaching the limit rejects new publishes and keeps the old state; there is no transparent rotation yet; longer workflows need to explicitly create a successor task. This limit counts only entry-point records; state, event and index objects take additional space.
 
-Bucket configuration is likewise a protocol precondition. Immutable ordinary objects use a no-overwrite creation method, but when versioning is enabled or suspended, OSS does not prevent same-name overwrites based on that request header, so the current adapter requires that versioning has never been enabled and rejects unsupported retention policy configurations. During operation, the active entry point must also not be deleted or replaced, nor task IDs reused. [OSS PutObject](https://help.aliyun.com/zh/oss/developer-reference/putobject), [this project's storage protocol](STORAGE_BACKENDS.md)
+Bucket configuration is likewise a protocol precondition. Immutable ordinary objects use a no-overwrite creation method, but when versioning is enabled or suspended, OSS does not prevent same-name overwrites based on that request header, so the current adapter requires that versioning has never been enabled and rejects unsupported retention policy configurations. During operation, the active entry point must also not be deleted or replaced, nor task IDs reused. [OSS PutObject](https://help.aliyun.com/zh/oss/developer-reference/putobject), this project's storage protocol
 
 To isolate these differences, Engine depends on a separate `HeadStore`, which only deals with reads and conditional publishing. The generation, ETag or append position returned by storage are all used as opaque markers; the cache's newer/older ordering is based on the application-level `version`, without trying to compare which of two ETags is "larger".
 
@@ -624,7 +628,7 @@ The existing results come from the local PostgreSQL, in-memory service models, S
 | 4,000 rows, 10 concurrent connections | 10 separate branches succeeded; competing on the same old main head, 1 succeeded and 9 got stale-version errors | Synthetic concurrent connections simulating Agent writes, not including model reasoning |
 | Database hand-off | Verified successfully after the interruption, without repeated materialization | Real PostgreSQL plus the in-memory OSS protocol model |
 
-The database results are in the [local validation record](VALIDATION.md) and the [raw test report](../results/test-results-local.json). The local environment and scope of the state adapters are in the [local test notes](STORAGE_BACKENDS_VALIDATION.md), which contain no records of cloud success.
+The database results are in the [local validation record](VALIDATION.md) and the [raw test report](../results/test-results-local.json). The local environment and scope of the state adapters are in the local test notes, which contain no records of cloud success.
 
 The history growth experiment also ran only on the in-memory OSS model; its read counts are not real OSS traffic or performance measurements. It is not listed here as a cloud storage verification result, and the raw local data is kept in the [model experiment record](../results/oss-protocol-benchmark.json). Real consistency, durability, latency, throughput, capacity and cost are all not verified.
 

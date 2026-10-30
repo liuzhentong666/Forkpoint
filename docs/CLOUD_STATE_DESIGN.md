@@ -2,9 +2,11 @@
 
 # 常驻 Agent 的云端状态与上下文服务
 
+> 注（2026-10-30）：云存储（GCS、OSS、S3）、HTTP 状态服务与 ECS 部署已移除，代码和专门文档留在 git 历史中（最后存在于提交 `d342ccf`）；状态引擎只保留内存后端。下文按当时情况保留，其中提到的这些文件已不存在。
+
 > 状态更新（2026-10-17）：本文是设计与代码说明，云服务未经真实验证，云端部署暂缓。下文存储布局和恢复流程不表示已有云端运行结果。
 
-日期：2026-10-16。本文记录最初的 GCS 实现设计。当前已扩展为 GCS / OSS / S3 多后端，提供商选择、任务入口协议及兼容边界以 [STORAGE_BACKENDS.md](STORAGE_BACKENDS.md) 为准；本文的有界状态、幂等和跨系统恢复原则继续适用。
+日期：2026-10-16。本文记录最初的 GCS 实现设计。当前已扩展为 GCS / OSS / S3 多后端，提供商选择、任务入口协议及兼容边界以 STORAGE_BACKENDS.md 为准；本文的有界状态、幂等和跨系统恢复原则继续适用。
 
 ## 目标与边界
 
@@ -87,9 +89,11 @@ PostgreSQL 示例继续使用 connection.local.json 的现有本地服务。云�
 
 # Cloud State and Context Service for Long-Running Agents
 
+> Note (2026-10-30): cloud storage (GCS, OSS, S3), the HTTP state service and the ECS deployment have been removed; the code and their own docs remain in git history (last present in commit `d342ccf`), and the state engine keeps only its in-memory backend. What follows is kept as it was, and the files it names for these no longer exist.
+
 > Status update (2026-10-17): this document is a design and code description; cloud services are not verified against real cloud services, and cloud deployment is on hold. The storage layout and recovery flow below do not mean there are any cloud run results.
 
-Date: 2026-10-16. This document records the original GCS implementation design. It has since been extended to multiple backends (GCS / OSS / S3); for provider selection, the task entry-point protocol and compatibility boundaries, [STORAGE_BACKENDS.md](STORAGE_BACKENDS.md) takes precedence; this document's principles of bounded state, idempotency and cross-system recovery continue to apply.
+Date: 2026-10-16. This document records the original GCS implementation design. It has since been extended to multiple backends (GCS / OSS / S3); for provider selection, the task entry-point protocol and compatibility boundaries, STORAGE_BACKENDS.md takes precedence; this document's principles of bounded state, idempotency and cross-system recovery continue to apply.
 
 ## Goals and boundaries
 

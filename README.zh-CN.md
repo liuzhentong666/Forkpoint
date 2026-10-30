@@ -19,7 +19,9 @@
 - [可核查的任务状态](docs/TASK_STATE_EXPERIMENT.md)：Agent 自行重读了变化过的行，新鲜度标记没有可纠正的内容；未采纳。
 - [重复实验](docs/GPT_REPEAT_EXPERIMENT.md)在 20 轮中没有出现覆盖，但没有不使用 Forkpoint 的对照组。
 
-因此暂停新增功能：只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后，才新增功能；[参考数据计划](docs/REFERENCE_DATA_PLAN.md)也在此列。修复、测试与文档照常进行，不删除任何内容。有一种情形尚未测试：无法放进一次数据库调用、需要 Agent 分多步完成修改的工作；只有遇到这类真实任务时才值得测试。
+因此暂停新增功能：只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后，才新增功能；[参考数据计划](docs/REFERENCE_DATA_PLAN.md)也在此列。修复、测试与文档照常进行。有一种情形尚未测试：无法放进一次数据库调用、需要 Agent 分多步完成修改的工作；只有遇到这类真实任务时才值得测试。
+
+云存储已于 2026-10-30 移除：GCS、OSS、S3 适配器、HTTP 状态服务与 ECS 部署从未在真实云上运行过，也没有任务显示需要它们。管理 Agent 的任务状态现在只保存在内存中。代码留在 git 历史中（最后存在于 `d342ccf`）。
 
 本 README 其余部分描述 Forkpoint 的现有功能。对于“为什么需要它”中读到已变化数据的问题，读集实验发现普通 PostgreSQL 上得到指导的 Agent 同样安全。
 
@@ -171,7 +173,6 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 - **读取需要回放历史。** 分支视图由历史加快照解析，用不到表自身的索引，因此需要维护任务按 `vc.snapshot_due` 生成快照。快照与历史目前都不回收。
 - **单节点、单租户。** 没有复制、配额或租户隔离；同一分支的写入串行执行，所有合入 `main` 的操作都要取得 `main` 的锁。
 - **表类型有限。** 表必须有主键，并且要在空表时注册；不支持 generated 和 identity 列。
-- **云端状态服务未经验证。** 管理 Agent 的状态服务有 GCS、阿里云 OSS 和 S3 适配器，但都没有在真实云上运行过，部署也已暂缓。见 [docs/STORAGE_BACKENDS.md](docs/STORAGE_BACKENDS.md)。
 
 ## 目录结构
 
@@ -181,15 +182,14 @@ run_tests.py          集成测试（自行创建 agentdb_test_* 库）
 review_local.py       本机审查：维护恢复、受限角色、十个分支全部合入
 agent_lab.py          实验中 GPT 与 Claude Agent 使用的工具命令行
 agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
-smoke_cloud.py        云端状态服务冒烟测试（尚未运行）
 compose.yaml          一条命令的 Docker 演示
 sql/                  版本引擎，按 001–010 顺序安装
 examples/             可运行的 SQL 示例
 scripts/              基准测试、迁移检查、预发布演练
 results/              文档中各项数字对应的原始结果
-agent_state/          管理 Agent 状态服务与存储适配器
+agent_state/          管理 Agent 的任务状态，只在内存中
 experiments/          预登记的实验：GPT 与 Claude 重复实验、读集校验、上下文存档、可核查的任务状态
-deploy/               预发布虚拟机配置和暂缓的 ECS 部署包
+deploy/               预发布虚拟机配置和 Docker 演示镜像
 docs/                 安装、设计、验证记录、计划、技术博客
 tests/                单元测试
 ```

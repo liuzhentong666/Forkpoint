@@ -4,7 +4,7 @@
 
 适用范围：本目录及子目录。更新日期：2026-10-30。
 
-**当前云服务状态：未经真实验证，云端部署暂缓。** OSS、GCS、S3 均无真实联调结果，ECS 尚未部署。用户当前不安排云资源采购或部署；只继续本地开发与模拟测试，不自动采购、部署或运行会访问真实云服务的测试。不得将 SDK 测试替身、内存服务模型、本机 HTTP 或本机 PostgreSQL 的结果表述为云存储已验证。
+**云存储已于 2026-10-30 移除。** GCS、OSS、S3 适配器、HTTP 状态服务与 ECS 部署从未在真实云上运行过，也没有任务显示需要它们；代码留在 git 历史中（最后存在于 `d342ccf`）。不要自动采购、部署或访问云服务。
 
 本文件是任务入口与架构约束，不是完整操作历史。先读本文，再按任务读取对应模块和文档，避免每次把整个项目装入上下文。用户当前明确要求优先于本文；本文不改变运行环境的权限边界。
 
@@ -12,7 +12,7 @@
 
 - [Anthropic：Redesigning source control at Anthropic](https://www.anthropic.com/engineering/redesigning-source-control)：2026-10-16 重新读取，页面标注 2026-10-15 更新。采用其架构原则，按本项目的数据库和管理状态场景落实。
 - 模块重构框架（作者的本地文档，不在本仓库中）：采用分阶段、行为保持、可验证和可回退的重构流程。
-- 当前实现与用户已确定的约束见 [README](README.md)、[版本引擎设计](docs/DESIGN_REVIEW.md)、[云端状态设计](docs/CLOUD_STATE_DESIGN.md) 和 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md)。以下具体接口、容量与事务要求来自本项目。
+- 当前实现与用户已确定的约束见 [README](README.md)、[版本引擎设计](docs/DESIGN_REVIEW.md)、[状态引擎设计](docs/CLOUD_STATE_DESIGN.md)（其中的云端部分已移除） 和 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md)。以下具体接口、容量与事务要求来自本项目。
 
 ## Scion 原则的提炼
 
@@ -24,10 +24,9 @@
 
 - 第一阶段负载为单表约 4,000 行、10 个并发 Agent。目标是检验 Agent 的分支、固定版本、联合提交、维护与恢复流程；不能因数据库曾面向人类开发者，就推断 PostgreSQL 或 Spanner 已无法承载需求。
 - 代码及业务数据版本由现有 Ubuntu WSL PostgreSQL 管理。使用 `connection.local.json` 和 `db.py`；不要替换为 SQLite、临时 PostgreSQL 实例或旧 `.runtime` 中的服务。
-- 管理任务的正式持久状态设计为使用满足项目协议的云端对象存储；GCS、阿里云 OSS 和 S3 是候选适配器，尚未完成真实云端接入；运行时使用有界内存缓存。不要因云端工作暂缓而改为 PostgreSQL `ops` schema、本地恢复文件或磁盘状态库。源码、配置和本地测试报告仍可保存在项目目录。
-- GCS、OSS、S3 适配代码、ECS 配置及 HTTP 维护客户端已编写。用户报告已创建杭州 OSS 桶 `<your-oss-bucket>`，但未核验其配置、权限或真实读写，且尚无 ECS。MemoryStore 仅用于测试。部署文档只是 [暂缓执行的草案](docs/ALIYUN_ECS_DEPLOYMENT.md)，不是已完成能力的证明。
+- 管理任务的状态只保存在内存中（`MemoryStore`），进程结束即丢失；持久的事实在 PostgreSQL 中，快照与历史检查都可以从那里重新得出。在预登记的任务证明需要之前，不建立持久的管理状态，也不要用 PostgreSQL `ops` schema、本地恢复文件或磁盘状态库代替。
 - 当前版本引擎仍是单节点 PostgreSQL，分支头发布使用锁；多区域缓存、数据分片、虚拟文件系统和统一版本服务 RPC 均不是已完成能力。新增这些能力必须有负载依据和明确迁移方案。
-- 自 2026-10-29 起暂停新增功能（见 README 的“状态”一节）：读集、上下文存档与任务状态实验都发现 Claude Opus 5.5 自己已做到这些功能所补充的事。只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后，才新增功能；参考数据计划也在此列。修复、测试与文档照常进行，不删除已有代码与实验。
+- 自 2026-10-29 起暂停新增功能（见 README 的“状态”一节）：读集、上下文存档与任务状态实验都发现 Claude Opus 5.5 自己已做到这些功能所补充的事。只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后，才新增功能；参考数据计划也在此列。修复、测试与文档照常进行；实验记录不删除，其他代码只在用户决定时移除（如 2026-10-30 的云存储）。
 
 ## 必须保持的设计约束
 
@@ -44,31 +43,29 @@
 - 封口后的 changeset、代码内容和历史记录不可追加修改；工作事务先暂存，`finish_change()` 再封口。管理 Agent 的 superuser 能力不把破坏历史一致性变成正常写入方式。
 - 分支读取固定版本，不叠加实时 main。状态回放沿第一父链；共同祖先查询使用全部父边，不能混用。
 - 快照、缓存和查询索引应标明输入版本、完成条件与重建方式。派生数据不能成为唯一事实来源。任务 head 及其发布的命令去重索引涉及协议语义，不能当作普通缓存随意丢弃。
-- PG 内代码与业务记录的联合变更、原生约束校验和版本发布保持同一事务；失败整体回滚。云端状态发布与 PG 执行不共享事务。
-- 所有后端先写不可变对象，再通过 HeadStore 条件发布任务入口。GCS 使用 generation，S3 使用 ETag 条件写，OSS 使用固定记录的条件追加；存储标记只作相等条件，缓存排序使用应用层 version。重复命令先查已发布结果；相同 command_id、相同请求返回原结果，复用 ID 改变内容则拒绝。发生冲突后重新判断意图，不能只改 expected_version 覆盖。
+- PG 内代码与业务记录的联合变更、原生约束校验和版本发布保持同一事务；失败整体回滚。管理状态发布与 PG 执行不共享事务。
+- 状态先写不可变对象，再通过 HeadStore 条件发布任务入口；存储标记只作相等条件，缓存排序使用应用层 version。重复命令先查已发布结果；相同 command_id、相同请求返回原结果，复用 ID 改变内容则拒绝。发生冲突后重新判断意图，不能只改 expected_version 覆盖。
 - 内容哈希依赖稳定的编码规则。压缩、分块或序列化调整涉及对象格式兼容，必须明确哈希所针对的字节、版本识别与旧对象读取方式；不能当作文件移动式重构。
 
 ### 增长成本与上下文预算
 
 新增写路径应说明成本取决于变更量、表行数还是历史长度；先测量写放大、锁竞争、读取量与恢复成本，再决定更换存储引擎或分片。避免引入跨任务的全局写锁；现有分支锁与快照协调只能在正确性得到替代保障后调整。
 
-管理状态当前上限为 32 KiB，每次发布保存完整的有界检查点。常规冷恢复读取任务入口和当前状态两个逻辑对象，不扫描 bucket、不回放整个事件链；OSS 每次只读取追加文件尾部的固定记录；这是管理上下文的约束，不是所有 SQL 历史查询的性能承诺。逻辑读取数、SDK 调用数和实际 HTTP 请求数分别计量。
+管理状态当前上限为 32 KiB，每次发布保存完整的有界检查点。常规冷恢复读取任务入口和当前状态两个逻辑对象，不回放整个事件链；这是管理上下文的约束，不是所有 SQL 历史查询的性能承诺。
 
 上下文默认上限为 8,192 UTF-8 字节。必要字段保留，可选内容超限时返回省略标记与引用；禁止静默丢失未决事项或用摘要取代证据。精确 token 预算须指定编码器。缓存同时限制条目数和字节数；重要操作前读取 fresh 状态。持续在线不等于上下文永久存在，也不等于网络和进程永不失效。
 
-OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上限即拒绝写入；需要更多发布时显式建立后继任务，未实现透明轮转。不得删除/覆盖活跃追加文件、复用 task_id 或在运行期间开启桶版本控制/保留策略。历史与孤儿对象仍会占用空间。今后引入 GC、保留期或压缩前，先定义可达性、并发发布与恢复规则；不能将对象存储描述为无需容量管理。
-
 ### Superuser Agent 与交接
 
-管理 Agent 可以在用户授权范围内修改系统规则与数据库结构，已接入 Agent 使用同等状态服务能力。不因操作者是 Agent 而额外设置人类审批角色。数据库身份与云端 IAM 提供实际权限，AGENTS.md / CLAUDE.md 描述使用约定，不会自行授予 superuser 或云资源权限。
+管理 Agent 可以在用户授权范围内修改系统规则与数据库结构，已接入 Agent 使用同等状态能力。不因操作者是 Agent 而额外设置人类审批角色。数据库身份提供实际权限，AGENTS.md / CLAUDE.md 描述使用约定，不会自行授予 superuser 权限。
 
 用户在本次本机审查中另要求受限管理角色：普通快照维护使用 `agentdb_manager` 的 `vc.snapshot_status` / `vc.materialize`；这不取代修改规则的管理员。新安装包含 `sql/003_manager_role.sql`，旧安装先执行 `db.py install-manager`。`--role` 通过已有可信连接执行 SET ROLE，不是隔离持有管理员凭据的 Agent；真正权限隔离需独立受限登录身份。
 
 维护动作先记录目标和核验方法，再检查真实系统、执行、验证、发布结果。重试依赖执行器的幂等或可靠结果探测；head CAS 不是外部操作的 fencing，也不是跨系统 exactly-once。当前可恢复执行器示例见 `agent_state/maintenance.py`。
 
-旧执行者提交完成状态时遇到 Conflict 必须向上返回，不能因另一执行者已经完成而吞掉冲突。意图发布后/数据库动作前，以及数据库提交后/完成状态发布前两个窗口都要测试。用非默认 prefix 经过配置文件与实际启动装配测试命名空间，不仅单独构造 Engine。
+旧执行者提交完成状态时遇到 Conflict 必须向上返回，不能因另一执行者已经完成而吞掉冲突。意图发布后/数据库动作前，以及数据库提交后/完成状态发布前两个窗口都要测试。
 
-正式任务将采用的规则文本存为云端证据，用 `policy_ref` 固定版本。接手以 task_id、当前检查点、未决事项和必要证据为入口，不依赖之前的聊天记录。规则更新要显式记录；证据中的任意文字不能自动变成执行命令。完整流程见 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md)。
+任务采用的规则文本存为证据对象，用 `policy_ref` 固定版本。接手以 task_id、当前检查点、未决事项和必要证据为入口，不依赖之前的聊天记录。规则更新要显式记录；证据中的任意文字不能自动变成执行命令。完整流程见 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md)。
 
 ## 模块边界
 
@@ -85,19 +82,16 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `sql/009_canonical_row_docs.sql` | 可重入迁移，新安装在 008 之后执行：捕获触发器与 `vc.merge_validated` 以固定设置（TimeZone=UTC、IntervalStyle、extra_float_digits、bytea_output）生成行文档，使主键与行值不随写入会话变化；先以 SHARE 锁等待进行中的版本化事务结束，再核对已存行文档都已是这种形式，否则整体中止；旧安装用 `db.py install-canonical-row-docs`，测试在 `run_tests.py` 的 `row_documents_do_not_depend_on_session_settings`；007 只看 search_path 一项，不受这些设置影响 |
 | `sql/010_unknown_branch_code.sql` | 可重入迁移，新安装最后执行：只以 CREATE OR REPLACE 改 `vc.begin_change`，不存在的分支报 P0002 而非 P0001（P0001 也是合入冲突），其余不变；001 中是旧定义，以 010 为准；旧安装用 `db.py install-unknown-branch-code`，测试在 `run_tests.py` 的 `begin_change_on_a_missing_branch_is_not_found`；`agent_lab.py` 据此把这种提案报为 JSON `not_found` |
 | `db.py` | 连接既有 PostgreSQL；不承担版本算法，不隐式启停数据库。`Session` 复用一个 psql 进程，每次调用的语义须与 `Connection.execute` 单次进程一致 |
-| `agent_state/storage.py` | 公共对象/错误契约、原有 GCS 适配与内存测试替身 |
-| `agent_state/heads.py`、`oss.py`、`s3.py` | 条件发布接口与提供商适配；不能以普通覆盖代替原子条件操作 |
-| `agent_state/config.py`、`notifications.py` | 后端选择、配置校验与通知转换；SDK 按需加载 |
+| `agent_state/storage.py` | 公共对象/错误契约与内存后端 `MemoryStore` |
+| `agent_state/heads.py` | 条件发布接口；不能以普通覆盖代替原子条件操作 |
 | `agent_state/objects.py` | 稳定编码、内容寻址、不可变对象与命令索引 |
 | `agent_state/engine.py` | 状态发布、版本竞争、幂等与历史语义 |
-| `agent_state/runtime.py` | 有界缓存、通知失效与上下文预算 |
-| `agent_state/server.py` | HTTP、认证、启动装配与通知接入；不复制领域规则 |
-| `agent_state/client.py` | 本机维护执行器访问远程状态 API；无持久缓存，不隐式重试或改写命令 |
+| `agent_state/runtime.py` | 有界缓存、失效与上下文预算 |
 | `agent_state/maintenance.py` | 通过状态接口和数据库连接执行可探测、可恢复的维护；`run_due` 按快照策略 `vc.snapshot_due` 逐个目标调用 `run`；`check_history` 读取 `vc.history_health`，按任务 policy_ref 中的阈值（默认 20,000 个可达 changeset、合入中位 500 ms）发布事实，越线时以 uncertainty 与 next_action 报告需要代数索引（见 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md#历史增长检查)） |
-| `deploy/` | ECS 打包、首次安装与 systemd；显式文件清单，排除本机连接及凭据配置 |
+| `deploy/docker/` | Docker 演示（`compose.yaml`）的镜像 |
 | `deploy/staging/` | 预发布虚拟机的脚本：`make_certs.sh` 在客户端生成私有 CA 与服务器证书；`configure_postgres.sh` 在虚拟机上以 root 配置只接受 TLS 的远程访问与失联客户端超时（见 [预发布虚拟机](docs/STAGING_VM.md)）；`create_staging_role.sql` 建专用登录角色（非超级用户，仅 CREATEDB，对两个 NOLOGIN 角色只有 SET 权限），由服务器管理员执行，口令交互设置，不写入文件（见 [预发布接入](docs/STAGING.md)） |
 | `review_local.py`、`agent_lab.py` | 仅限现有本机 PostgreSQL 的专用测试库；分别记录脚本并发与真实模型（GPT、Claude）行为 |
-| `agent_lab_gateway.py` | 可选的回环常驻进程，为 `agent_lab.py` 的工作动作复用 `db.Session`；默认关闭，未运行时 `agent_lab.py` 行为不变；不重试，不并入 `agent_state/server.py`（见 [设计](docs/AGENT_LAB_GATEWAY.md)） |
+| `agent_lab_gateway.py` | 可选的回环常驻进程，为 `agent_lab.py` 的工作动作复用 `db.Session`；默认关闭，未运行时 `agent_lab.py` 行为不变；不重试（见 [设计](docs/AGENT_LAB_GATEWAY.md)） |
 | `experiments/gpt_repeat/` | 真实 GPT 重复实验、原始 RPC JSONL、独立 SQL 核验及离线统计；不修改生产版本算法，不把预期冲突或服务中断隐藏为成功 |
 | `experiments/readset/` | 读集校验实验：`xr` 原型只装入测试库，不修改 `vc.*`；见 [设计与结果](docs/READSET_EXPERIMENT.md) |
 | `experiments/context_archive/` | 上下文存档实验：`xc` 原型只装入测试库，不修改 `vc.*`；`replay.py`、`long_task.py` 与替身 `fake_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
@@ -106,11 +100,11 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `scripts/` | 基准、迁移核验与预发布演练；在项目根目录以 `python scripts/<name>.py` 运行，脚本自行把根目录加入 `sys.path`；纳入版本库的结果默认写入 `results/` |
 | `results/`、`examples/` | 文档中数字对应的原始结果（`results/staging/` 为预发布虚拟机）；可直接用 psql 运行的 SQL 示例 |
 
-以下文件留在根目录，不要移入 `scripts/`：`db.py`、`run_tests.py` 是主入口；`experiments/gpt_repeat/run_gpt_repeats.py` 按根目录路径调用并记录 `agent_lab.py`、`review_local.py` 的哈希；`agent_lab.py` 按模块名导入 `agent_lab_gateway`；ECS 部署包与 `install.sh` 按根目录路径使用 `smoke_cloud.py` 和 `requirements-*.txt`。
+以下文件留在根目录，不要移入 `scripts/`：`db.py`、`run_tests.py` 是主入口；`experiments/gpt_repeat/run_gpt_repeats.py` 按根目录路径调用并记录 `agent_lab.py`、`review_local.py` 的哈希；`agent_lab.py` 按模块名导入 `agent_lab_gateway`。
 
-核心依赖方向为 `runtime → engine → objects / HeadStore → 存储适配器`。网络、时钟、数据库与存储通过明确边界接入，便于替换和故障注入。SDK 集成留在适配器或启动装配层；新增薄层必须解决实际耦合，不为每个函数制造接口。
+核心依赖方向为 `runtime → engine → objects / HeadStore → MemoryStore`。时钟、数据库与存储通过明确边界接入，便于替换和故障注入。新增薄层必须解决实际耦合，不为每个函数制造接口。
 
-公共契约包括 SQL 函数、HTTP 请求/响应与错误、配置项、对象编码/哈希、head 协议、游标、命令重试语义和缓存新鲜度。对这些内容的改变属于行为或兼容性变更，即使函数签名没变。
+公共契约包括 SQL 函数、错误码、配置项、对象编码/哈希、head 协议、游标、命令重试语义和缓存新鲜度。对这些内容的改变属于行为或兼容性变更，即使函数签名没变。
 
 ## 模块重构流程
 
@@ -148,38 +142,34 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 ## 验证入口与交付要求
 
-协议与限制以 [多后端设计](docs/STORAGE_BACKENDS.md) 为准。全套适配器本地测试需安装 `requirements-storage-tests.txt`；单个后端运行只需其依赖。本地记录见 [多后端本地测试](docs/STORAGE_BACKENDS_VALIDATION.md)，其中不含真实云端结果。
-
 在项目根目录按改动范围选择检查；完成相关检查后，只有新改动、失败或未解风险才扩展/重复测试。
 
 | 范围 | 命令与条件 |
 |---|---|
 | PostgreSQL 版本引擎 | `python run_tests.py`：连接现有服务并创建专用测试数据库；不向项目业务库导入测试数据 |
 | Docker 演示 | `docker compose up --build --exit-code-from demo`：在内存中的 PostgreSQL 16 上用 `db.py` 安装，再运行 `examples/two_agents.sql`；结果不符时退出码非零。这是给访客的演示，不取代上面基于现有 WSL PostgreSQL 的开发与测试；需要 Docker Desktop 正在运行 |
-| 管理状态与 HTTP | `.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v` |
+| 管理状态 | `python -m unittest discover -s tests -v` |
 | agent_lab 网关 | 单元测试含在上一行中（基于黄金样本，不连数据库）；`python scripts/compare_agent_lab_gateway.py` 新建两个 `agentdb_test_gpt_*` 库，对比逐次起进程与经网关两条路径的输出和耗时 |
-| 恢复读取结构 | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_cloud_state.py`：内存后端，检查历史增长时的读取量 |
-| 维护与 PG 接手 | `.\.venv-cloud\Scripts\python.exe scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING`：替换为已安装示例的测试库 |
-| OSS 读取结构 | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_oss_protocol.py`：使用内存 OSS 服务模型，不代表云端性能 |
-| 本机审查与全部合入 | `.\.venv-cloud\Scripts\python.exe review_local.py`：新建专用测试库；18 项原断言、受限角色、两个中断窗口和十个分支最终全部合入，以及 main 锁被占用时合入报告 `lock_timeout`；计时包含 COMMIT；写入者默认每人复用一个长连接，`--client spawn` 恢复为每次调用启动进程 |
-| 历史增长迁移 | `.\.venv-cloud\Scripts\python.exe scripts/check_history_migration.py`：新建旧版（0bf7309）测试库，迁移两次后逐项比较读取与合入结果、授权和新安装定义，并经 `SnapshotMaintenance.run_due`（MemoryStore）执行快照策略 |
-| 历史健康检查 | `.\.venv-cloud\Scripts\python.exe scripts/check_history_health.py`：新建 006 之前（d5c68b0）的测试库并写入分支、合入与快照历史，迁移两次后核对数据、读取与合入结果及已有函数不变，`vc.history_health` 为 STABLE、仅 `agentdb_manager` 可执行、与新安装一致，各分支数值与独立查询及 `vc.snapshot_due` 相符，再经 `SnapshotMaintenance.check_history`（MemoryStore）发布一次、重跑不发布；单元测试见 `tests/test_cloud_state.py` 的 `HistoryHealthTests` |
-| search_path 加固迁移 | `.\.venv-cloud\Scripts\python.exe scripts/check_search_path_migration.py`：新建 007 之前（a7e60d9）的测试库，迁移两次后核对数据与历史不变、vc 中每个函数除设置了 search_path 的函数的 search_path 外属性不变、再执行 008–010 后与新安装一致 |
-| Agent 边界对抗检查 | `.\.venv-cloud\Scripts\python.exe scripts/check_agent_boundaries.py`：经 `agent_lab.py init` 新建 `agentdb_test_gpt_*`，审计 `agentdb_client` 可执行的函数、可访问的表、可建对象的 schema 与设置了 search_path 的函数（含全部 SECURITY DEFINER 函数）的 search_path；以 `agentdb_client` 自写 SQL 尝试目录审计看不到的操作（停用捕获触发器、关闭会话触发器、未开启变更就写分支视图）、经授权函数破坏版本历史，并向 `agent_lab.py` 传入应被拒绝的参数（须由对应检查拒绝：参数错误，或 agent_lab 以 JSON 报告的引擎拒绝；退出码 2、无 Python traceback）；最后核对 main 不变。越界记为 GAP 并以退出码 1 结束；连接参数只接受 `--config` |
-| 预发布虚拟机 S4/S5 | `.\.venv-cloud\Scripts\python.exe scripts/staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`：只对 [预发布虚拟机](docs/STAGING_VM.md) 运行；restart/crash/netcut 会通过 VBoxManage 断电、重启或断网，切勿指向重要数据库；结果见 [S4/S5](docs/STAGING_S4_S5.md) |
+| 恢复读取结构 | `python scripts/benchmark_cloud_state.py`：内存后端，检查历史增长时的读取量 |
+| 维护与 PG 接手 | `python scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING`：替换为已安装示例的测试库 |
+| 本机审查与全部合入 | `python review_local.py`：新建专用测试库；18 项原断言、受限角色、两个中断窗口和十个分支最终全部合入，以及 main 锁被占用时合入报告 `lock_timeout`；计时包含 COMMIT；写入者默认每人复用一个长连接，`--client spawn` 恢复为每次调用启动进程 |
+| 历史增长迁移 | `python scripts/check_history_migration.py`：新建旧版（0bf7309）测试库，迁移两次后逐项比较读取与合入结果、授权和新安装定义，并经 `SnapshotMaintenance.run_due`（MemoryStore）执行快照策略 |
+| 历史健康检查 | `python scripts/check_history_health.py`：新建 006 之前（d5c68b0）的测试库并写入分支、合入与快照历史，迁移两次后核对数据、读取与合入结果及已有函数不变，`vc.history_health` 为 STABLE、仅 `agentdb_manager` 可执行、与新安装一致，各分支数值与独立查询及 `vc.snapshot_due` 相符，再经 `SnapshotMaintenance.check_history`（MemoryStore）发布一次、重跑不发布；单元测试见 `tests/test_cloud_state.py` 的 `HistoryHealthTests` |
+| search_path 加固迁移 | `python scripts/check_search_path_migration.py`：新建 007 之前（a7e60d9）的测试库，迁移两次后核对数据与历史不变、vc 中每个函数除设置了 search_path 的函数的 search_path 外属性不变、再执行 008–010 后与新安装一致 |
+| Agent 边界对抗检查 | `python scripts/check_agent_boundaries.py`：经 `agent_lab.py init` 新建 `agentdb_test_gpt_*`，审计 `agentdb_client` 可执行的函数、可访问的表、可建对象的 schema 与设置了 search_path 的函数（含全部 SECURITY DEFINER 函数）的 search_path；以 `agentdb_client` 自写 SQL 尝试目录审计看不到的操作（停用捕获触发器、关闭会话触发器、未开启变更就写分支视图）、经授权函数破坏版本历史，并向 `agent_lab.py` 传入应被拒绝的参数（须由对应检查拒绝：参数错误，或 agent_lab 以 JSON 报告的引擎拒绝；退出码 2、无 Python traceback）；最后核对 main 不变。越界记为 GAP 并以退出码 1 结束；连接参数只接受 `--config` |
+| 预发布虚拟机 S4/S5 | `python scripts/staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`：只对 [预发布虚拟机](docs/STAGING_VM.md) 运行；restart/crash/netcut 会通过 VBoxManage 断电、重启或断网，切勿指向重要数据库；结果见 [S4/S5](docs/STAGING_S4_S5.md) |
 | 读集校验实验 | 单元测试、契约测试、变异检查、实验与两项核查的命令见 [设计文档](docs/READSET_EXPERIMENT.md)“文件与运行”一节 |
 | 上下文存档实验 | 测试、重放闸门、长任务离线检查、替身试运行与真实轮次的命令见 [实验设计](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)“文件与运行”一节 |
 | 可核查任务状态实验 | 测试、替身试运行与真实轮次的命令见 [实验设计](docs/TASK_STATE_EXPERIMENT.md)“文件与运行”一节 |
 | 真实 Agent 的读集校验与普通 PostgreSQL 对比实验 | 测试、替身试运行与真实轮次的命令见 [实验设计](docs/READSET_AGENTS_EXPERIMENT.md)“文件与运行”一节 |
-| 真实云端（未执行，当前暂缓） | `smoke_cloud.py` 仅保留为以后联调入口；当前不运行，不据此宣称任何提供商已通过验证 |
 
-真实模型实验遵循预登记协议：记录接口返回的精确模型 ID、推理强度、运行器版本、提示词与源文件哈希；不把未暴露的权重快照猜成确定版本。固定样本数并保留失败，不以新轮次替换失败轮次。保存未经摘要或截断的工具请求/响应 JSONL，逐 Agent 保存累计用量最后值；缓存输入与推理输出是子项，缺失用量保持未知。每次实际写入后独立核查已发布内容和对方分支，发生覆盖后又恢复仍计为失败。区分受控恢复提示、脚本压力测试和模型自主行为；云端状态仍未经真实验证。
+真实模型实验遵循预登记协议：记录接口返回的精确模型 ID、推理强度、运行器版本、提示词与源文件哈希；不把未暴露的权重快照猜成确定版本。固定样本数并保留失败，不以新轮次替换失败轮次。保存未经摘要或截断的工具请求/响应 JSONL，逐 Agent 保存累计用量最后值；缓存输入与推理输出是子项，缺失用量保持未知。每次实际写入后独立核查已发布内容和对方分支，发生覆盖后又恢复仍计为失败。区分受控恢复提示、脚本压力测试和模型自主行为。
 
 现有记录见 [真实 GPT 重复实验](docs/GPT_REPEAT_EXPERIMENT.md)。在项目根目录用 `python -m unittest discover -s experiments/gpt_repeat -p test_repeat_scoring.py -v` 检查计数与覆盖判定；用 `python experiments/gpt_repeat/analyze_repeat_logs.py experiments/gpt_repeat/results/2026-10-17` 和 `python experiments/gpt_repeat/audit_repeat_logs.py experiments/gpt_repeat/results/2026-10-17` 重新分析本地证据。这些离线命令不调用模型、不写数据库；重新跑模型的命令及额度影响见实验报告，不能为文档修改自动重跑。
 
 涉及并发/恢复的变更至少核验：旧版本竞争、旧命令重试、发布前后中断、缓存失效竞态、固定版本一致性与上下文省略提示。涉及新格式时增加旧数据兼容检查；不要用跑通新建空库代替迁移验证。
 
-交付说明改了什么、为什么、本地检查结果和剩余限制。区分内存模拟、SDK 契约与真实本机 PostgreSQL；各云提供商均须注明未经真实验证，删除任何将本地结果包装为云端成功的表述。容量与延迟结论注明负载和环境。本机记录见 [版本引擎验证](docs/VALIDATION.md) 与 [状态模块本地测试](docs/CLOUD_STATE_VALIDATION.md)，不能当作以后改动已经自动通过的证明。
+交付说明改了什么、为什么、本地检查结果和剩余限制。区分内存模拟与真实本机 PostgreSQL。容量与延迟结论注明负载和环境。本机记录见 [版本引擎验证](docs/VALIDATION.md) 与 [状态模块本地测试](docs/CLOUD_STATE_VALIDATION.md)，不能当作以后改动已经自动通过的证明。
 
 ---
 
@@ -189,7 +179,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 Scope: this directory and its subdirectories. Last updated: 2026-10-30.
 
-**Current cloud service status: not verified against real cloud services; cloud deployment is on hold.** OSS, GCS and S3 have no real integration results, and ECS has not been deployed. The user is not currently scheduling cloud resource purchases or deployment; only continue local development and simulated testing, and do not automatically purchase, deploy, or run tests that access real cloud services. Results from SDK test doubles, the in-memory service model, local HTTP or the local PostgreSQL must not be described as cloud storage having been verified.
+**Cloud storage was removed on 2026-10-30.** The GCS, OSS and S3 adapters, the HTTP state service and the ECS deployment never ran against a real cloud, and no task showed a need for them; the code remains in git history (last present in `d342ccf`). Do not automatically purchase, deploy or access cloud services.
 
 This file is the task entry point and the architectural constraints, not a complete operations history. Read this file first, then read the modules and documents relevant to the task, rather than loading the whole project into context every time. The user's current explicit requests take precedence over this file; this file does not change the permission boundaries of the runtime environment.
 
@@ -197,7 +187,7 @@ This file is the task entry point and the architectural constraints, not a compl
 
 - [Anthropic: Redesigning source control at Anthropic](https://www.anthropic.com/engineering/redesigning-source-control): re-read on 2026-10-16; the page is marked as updated on 2026-10-15. Its architectural principles are adopted and applied to this project's database and management-state scenarios.
 - Module refactoring framework (the author's local document, not in this repository): its staged, behavior-preserving, verifiable and reversible refactoring process is adopted.
-- The current implementation and the constraints the user has settled are in [README](README.md), [Version engine design](docs/DESIGN_REVIEW.md), [Cloud state design](docs/CLOUD_STATE_DESIGN.md) and [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md). The specific interface, capacity and transaction requirements below come from this project.
+- The current implementation and the constraints the user has settled are in [README](README.md), [Version engine design](docs/DESIGN_REVIEW.md), [State engine design](docs/CLOUD_STATE_DESIGN.md) (its cloud parts have been removed) and [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md). The specific interface, capacity and transaction requirements below come from this project.
 
 ## Distilled Scion principles
 
@@ -209,10 +199,9 @@ These are design directions. Scion's scale, performance data and internal implem
 
 - The first-phase load is a single table of about 4,000 rows with 10 concurrent Agents. The goal is to test the Agent workflows for branching, pinned versions, joint commits, maintenance and recovery; do not infer that PostgreSQL or Spanner can no longer meet the needs just because the databases were once aimed at human developers.
 - Code and business data versions are managed by the existing Ubuntu WSL PostgreSQL. Use `connection.local.json` and `db.py`; do not replace it with SQLite, a temporary PostgreSQL instance, or the service in the old `.runtime`.
-- The formal persistent state of management tasks is designed to use cloud object storage that satisfies the project protocol; GCS, Alibaba Cloud OSS and S3 are candidate adapters and have not completed real cloud integration; at runtime a bounded in-memory cache is used. Do not switch to a PostgreSQL `ops` schema, local recovery files or an on-disk state store because cloud work is on hold. Source code, configuration and local test reports can still be kept in the project directory.
-- The GCS, OSS and S3 adapter code, the ECS configuration and the HTTP maintenance client have been written. The user reports having created the Hangzhou OSS bucket `<your-oss-bucket>`, but its configuration, permissions or real reads/writes have not been verified, and there is no ECS yet. MemoryStore is for tests only. The deployment document is only a [draft on hold](docs/ALIYUN_ECS_DEPLOYMENT.md), not proof of a completed capability.
+- Management task state lives only in memory (`MemoryStore`) and is lost when the process ends; the durable facts are in PostgreSQL, and snapshot and history checks can be worked out from there again. Until a pre-registered task shows a need, do not build durable management state, and do not substitute a PostgreSQL `ops` schema, local recovery files or an on-disk state store.
 - The current version engine is still single-node PostgreSQL, and branch head publishing uses locks; multi-region caching, data sharding, a virtual file system and a unified version-service RPC are not completed capabilities. Adding these capabilities requires a load-based justification and a clear migration plan.
-- New features are paused since 2026-10-29 (see the README's Status section): the read-set, context archive and task state experiments found Claude Opus 5.5 already doing what each feature added. Add a feature only after a pre-registered task first shows agents failing on plain PostgreSQL; this includes the reference-data plan. Fixes, tests and documentation continue; existing code and experiments are not deleted.
+- New features are paused since 2026-10-29 (see the README's Status section): the read-set, context archive and task state experiments found Claude Opus 5.5 already doing what each feature added. Add a feature only after a pre-registered task first shows agents failing on plain PostgreSQL; this includes the reference-data plan. Fixes, tests and documentation continue; experiment records are not deleted, and other code is removed only when the user decides (as with cloud storage on 2026-10-30).
 
 ## Design constraints that must be kept
 
@@ -229,31 +218,29 @@ Design control requests separately from large-object transfer: state and pointer
 - Sealed changesets, code content and history records cannot be appended to or modified; work transactions are staged first and then sealed by `finish_change()`. The manager Agent's superuser capability does not turn breaking history consistency into a normal way of writing.
 - Branches read a pinned version and do not overlay the live main. State replay follows the first-parent chain; common-ancestor queries use all parent edges; the two must not be mixed.
 - Snapshots, caches and query indexes should state their input version, completion conditions and how they are rebuilt. Derived data must not become the only source of truth. The task head and the command deduplication index it publishes involve protocol semantics and must not be discarded at will like an ordinary cache.
-- In PG, the joint change of code and business records, native constraint checks and version publishing stay in the same transaction; on failure everything rolls back. Cloud state publishing and PG execution do not share a transaction.
-- All backends first write immutable objects and then conditionally publish the task entry point through HeadStore. GCS uses generation, S3 uses ETag conditional writes, and OSS uses conditional appends of fixed records; storage markers are used only as equality conditions, and cache ordering uses the application-level version. A repeated command first looks up the published result; the same command_id with the same request returns the original result, while a reused ID with changed content is rejected. After a conflict, re-evaluate the intent; do not just change expected_version and overwrite.
+- In PG, the joint change of code and business records, native constraint checks and version publishing stay in the same transaction; on failure everything rolls back. Management state publishing and PG execution do not share a transaction.
+- State is first written as immutable objects and then conditionally published through the task entry point in HeadStore; storage markers are used only as equality conditions, and cache ordering uses the application-level version. A repeated command first looks up the published result; the same command_id with the same request returns the original result, while a reused ID with changed content is rejected. After a conflict, re-evaluate the intent; do not just change expected_version and overwrite.
 - Content hashes depend on stable encoding rules. Changes to compression, chunking or serialization affect object-format compatibility; they must specify which bytes the hash covers, how versions are identified, and how old objects are read; they must not be treated as a file-move style refactoring.
 
 ### Growth cost and context budget
 
 New write paths should state whether their cost depends on the amount changed, the number of table rows or the length of history; first measure write amplification, lock contention, read volume and recovery cost, then decide whether to change the storage engine or shard. Avoid introducing global write locks across tasks; the existing branch locks and snapshot coordination may only be adjusted once correctness is guaranteed by a replacement.
 
-Management state is currently capped at 32 KiB, and each publish saves a complete bounded checkpoint. A routine cold recovery reads two logical objects, the task entry point and the current state; it does not scan the bucket or replay the whole event chain; OSS reads only the fixed record at the tail of the append file each time; this is a constraint on the management context, not a performance promise for all SQL history queries. Logical reads, SDK calls and actual HTTP requests are counted separately.
+Management state is currently capped at 32 KiB, and each publish saves a complete bounded checkpoint. A routine cold recovery reads two logical objects, the task entry point and the current state, and does not replay the whole event chain; this is a constraint on the management context, not a performance promise for all SQL history queries.
 
 The default context limit is 8,192 UTF-8 bytes. Required fields are kept; when optional content exceeds the limit, an omission marker and a reference are returned; silently dropping open items or replacing evidence with summaries is forbidden. An exact token budget must specify the tokenizer. Caches limit both the number of entries and bytes; read fresh state before important operations. Being continuously online does not mean the context exists permanently, nor that the network and processes never fail.
 
-In the first version of OSS each task can publish at most 524,288 times, and writes are refused once the 4 GiB append-file limit is reached; when more publishes are needed, explicitly create a successor task; transparent rotation is not implemented. Do not delete/overwrite an active append file, reuse a task_id, or turn on bucket versioning/retention policies while running. History and orphan objects still take up space. Before introducing GC, retention periods or compaction in the future, first define reachability, concurrent publishing and recovery rules; object storage must not be described as needing no capacity management.
-
 ### Superuser Agent and hand-off
 
-The manager Agent may change system rules and database structure within the scope the user has authorized, and connected Agents use the same state-service capabilities. No extra human approval role is set up just because the operator is an Agent. Database identities and cloud IAM provide the actual permissions; AGENTS.md / CLAUDE.md describe usage conventions and do not by themselves grant superuser or cloud resource permissions.
+The manager Agent may change system rules and database structure within the scope the user has authorized, and connected Agents use the same state capabilities. No extra human approval role is set up just because the operator is an Agent. Database identities provide the actual permissions; AGENTS.md / CLAUDE.md describe usage conventions and do not by themselves grant superuser permissions.
 
 In this local review the user additionally required a restricted management role: ordinary snapshot maintenance uses `agentdb_manager`'s `vc.snapshot_status` / `vc.materialize`; this does not replace the administrator who changes rules. New installations include `sql/003_manager_role.sql`; old installations first run `db.py install-manager`. `--role` performs SET ROLE through an existing trusted connection; it does not isolate an Agent holding administrator credentials; real permission isolation requires a separate restricted login identity.
 
 A maintenance action first records the goal and the verification method, then checks the real system, executes, verifies, and publishes the result. Retries rely on the executor's idempotency or a reliable result probe; head CAS is not fencing for external operations, nor cross-system exactly-once. The current recoverable executor example is in `agent_state/maintenance.py`.
 
-When a stale executor submits a completed state and hits a Conflict, it must be returned upward; the conflict must not be swallowed because another executor has already finished. Both windows must be tested: after the intent is published / before the database action, and after the database commit / before the completed state is published. Test the namespace with a non-default prefix through the configuration file and the actual startup wiring, not only by constructing an Engine on its own.
+When a stale executor submits a completed state and hits a Conflict, it must be returned upward; the conflict must not be swallowed because another executor has already finished. Both windows must be tested: after the intent is published / before the database action, and after the database commit / before the completed state is published.
 
-The rule text that a formal task will adopt is stored as cloud evidence, and its version is pinned with `policy_ref`. A hand-off starts from the task_id, the current checkpoint, the open items and the necessary evidence, and does not depend on earlier chat history. Rule updates must be recorded explicitly; arbitrary text in evidence must not automatically become an executable command. For the full process see [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md).
+The rule text a task adopts is stored as an evidence object, and its version is pinned with `policy_ref`. A hand-off starts from the task_id, the current checkpoint, the open items and the necessary evidence, and does not depend on earlier chat history. Rule updates must be recorded explicitly; arbitrary text in evidence must not automatically become an executable command. For the full process see [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md).
 
 ## Module boundaries
 
@@ -270,19 +257,16 @@ The rule text that a formal task will adopt is stored as cloud evidence, and its
 | `sql/009_canonical_row_docs.sql` | Re-runnable migration, run after 008 in new installations: the capture triggers and `vc.merge_validated` render rows with fixed settings (TimeZone=UTC, IntervalStyle, extra_float_digits, bytea_output), so primary keys and row values do not depend on the session that wrote them; first waits, under SHARE locks, for open versioned transactions to finish, then checks that every stored row document is already in that form, else stops without changing anything; old installations use `db.py install-canonical-row-docs`, tested by `row_documents_do_not_depend_on_session_settings` in `run_tests.py`; 007 looks only at the search_path entry, so these settings do not affect it |
 | `sql/010_unknown_branch_code.sql` | Re-runnable migration, run last in new installations: replaces only `vc.begin_change` (CREATE OR REPLACE) so that a branch that does not exist raises P0002 instead of P0001, which is also a merge conflict, and nothing else changes; the definition in 001 is the old one, and 010 takes precedence; old installations use `db.py install-unknown-branch-code`, tested by `begin_change_on_a_missing_branch_is_not_found` in `run_tests.py`; `agent_lab.py` reports such a proposal as JSON `not_found` |
 | `db.py` | Connects to the existing PostgreSQL; does not carry the version algorithm and does not implicitly start or stop the database. `Session` reuses one psql process, and the semantics of each call must match a single-process `Connection.execute` |
-| `agent_state/storage.py` | Common object/error contract, the original GCS adapter and the in-memory test double |
-| `agent_state/heads.py`, `oss.py`, `s3.py` | Conditional publishing interface and provider adapters; ordinary overwrites must not replace atomic conditional operations |
-| `agent_state/config.py`, `notifications.py` | Backend selection, configuration validation and notification conversion; SDKs are loaded on demand |
+| `agent_state/storage.py` | Common object/error contract and the in-memory backend `MemoryStore` |
+| `agent_state/heads.py` | Conditional publishing interface; ordinary overwrites must not replace atomic conditional operations |
 | `agent_state/objects.py` | Stable encoding, content addressing, immutable objects and the command index |
 | `agent_state/engine.py` | State publishing, version races, idempotency and history semantics |
-| `agent_state/runtime.py` | Bounded cache, notification invalidation and context budget |
-| `agent_state/server.py` | HTTP, authentication, startup wiring and notification intake; does not duplicate domain rules |
-| `agent_state/client.py` | Local maintenance executor's access to the remote state API; no persistent cache, no implicit retries or rewriting of commands |
+| `agent_state/runtime.py` | Bounded cache, invalidation and context budget |
 | `agent_state/maintenance.py` | Performs probeable, recoverable maintenance through the state interface and the database connection; `run_due` calls `run` for each target according to the snapshot policy `vc.snapshot_due`; `check_history` reads `vc.history_health` and publishes facts according to the thresholds in the task's policy_ref (default 20,000 reachable changesets, median merge 500 ms), and when a threshold is crossed reports through uncertainty and next_action that a generation-number index is needed (see [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md#history-growth-check)) |
-| `deploy/` | ECS packaging, first installation and systemd; explicit file list, excluding local connection and credential configuration |
+| `deploy/docker/` | The image for the Docker demo (`compose.yaml`) |
 | `deploy/staging/` | Staging VM scripts: `make_certs.sh` makes a private CA and the server certificate on the client side; `configure_postgres.sh` configures TLS-only remote access and the vanished-client timeouts on the VM, as root (see [Staging VM](docs/STAGING_VM.md)); `create_staging_role.sql` creates the dedicated login role (not a superuser, only CREATEDB, with only SET privilege on the two NOLOGIN roles), run by the server administrator, password set interactively and not written to files (see [Staging connection](docs/STAGING.md)) |
 | `review_local.py`, `agent_lab.py` | Only for dedicated test databases on the existing local PostgreSQL; record scripted concurrency and real model (GPT and Claude) behavior respectively |
-| `agent_lab_gateway.py` | Optional loopback long-running process that reuses `db.Session` for `agent_lab.py`'s work actions; off by default, and when it is not running `agent_lab.py` behaves unchanged; no retries, not merged into `agent_state/server.py` (see [design](docs/AGENT_LAB_GATEWAY.md)) |
+| `agent_lab_gateway.py` | Optional loopback long-running process that reuses `db.Session` for `agent_lab.py`'s work actions; off by default, and when it is not running `agent_lab.py` behaves unchanged; no retries (see [design](docs/AGENT_LAB_GATEWAY.md)) |
 | `experiments/gpt_repeat/` | Real GPT repeat experiment, raw RPC JSONL, independent SQL verification and offline statistics; does not modify the production version algorithm, and does not hide expected conflicts or service interruptions as successes |
 | `experiments/readset/` | Read-set validation experiment: the `xr` prototype goes only into test databases and does not modify `vc.*`; see the [design and results](docs/READSET_EXPERIMENT.md) |
 | `experiments/context_archive/` | Context archive experiment: the `xc` prototype goes only into test databases and does not modify `vc.*`; `replay.py`, `long_task.py` and the stand-in `fake_claude.py` call no model, and real rounds need the user's approval; see the [design](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
@@ -291,11 +275,11 @@ The rule text that a formal task will adopt is stored as cloud evidence, and its
 | `scripts/` | Benchmarks, migration checks and staging drills; run from the project root as `python scripts/<name>.py`, each script adds the root to `sys.path` itself; committed results go to `results/` by default |
 | `results/`, `examples/` | Raw results behind the numbers in the docs (`results/staging/` is the staging VM); SQL examples that run directly with psql |
 
-These files stay in the project root; do not move them into `scripts/`: `db.py` and `run_tests.py` are the main entry points; `experiments/gpt_repeat/run_gpt_repeats.py` calls `agent_lab.py` and hashes it and `review_local.py` by their root paths; `agent_lab.py` imports `agent_lab_gateway` by module name; the ECS bundle and `install.sh` use `smoke_cloud.py` and `requirements-*.txt` at the root.
+These files stay in the project root; do not move them into `scripts/`: `db.py` and `run_tests.py` are the main entry points; `experiments/gpt_repeat/run_gpt_repeats.py` calls `agent_lab.py` and hashes it and `review_local.py` by their root paths; `agent_lab.py` imports `agent_lab_gateway` by module name.
 
-The core dependency direction is `runtime → engine → objects / HeadStore → storage adapters`. Network, clock, database and storage are connected through explicit boundaries, which makes replacement and fault injection easy. SDK integration stays in the adapter or startup-wiring layer; a new thin layer must solve an actual coupling, not create an interface for every function.
+The core dependency direction is `runtime → engine → objects / HeadStore → MemoryStore`. Clock, database and storage are connected through explicit boundaries, which makes replacement and fault injection easy. A new thin layer must solve an actual coupling, not create an interface for every function.
 
-Public contracts include SQL functions, HTTP requests/responses and errors, configuration items, object encoding/hashing, the head protocol, cursors, command retry semantics and cache freshness. Changes to these are behavioral or compatibility changes, even if a function signature does not change.
+Public contracts include SQL functions, error codes, configuration items, object encoding/hashing, the head protocol, cursors, command retry semantics and cache freshness. Changes to these are behavioral or compatibility changes, even if a function signature does not change.
 
 ## Module refactoring process
 
@@ -333,35 +317,31 @@ Every time a project file is added, changed or deleted, update the associated do
 
 ## Verification entry points and delivery requirements
 
-The protocol and limitations are as defined in [Multi-backend design](docs/STORAGE_BACKENDS.md). The full local adapter test suite requires installing `requirements-storage-tests.txt`; running a single backend needs only its dependencies. Local records are in [Multi-backend local tests](docs/STORAGE_BACKENDS_VALIDATION.md), which contain no real cloud results.
-
 From the project root, choose checks according to the scope of the change; after the relevant checks are done, extend/repeat tests only for new changes, failures or unresolved risks.
 
 | Scope | Command and conditions |
 |---|---|
 | PostgreSQL version engine | `python run_tests.py`: connects to the existing service and creates a dedicated test database; does not import test data into the project business database |
 | Docker demo | `docker compose up --build --exit-code-from demo`: installs with `db.py` on an in-memory PostgreSQL 16, then runs `examples/two_agents.sql`; a wrong result gives a non-zero exit code. This is a demo for visitors and does not replace development and testing on the existing WSL PostgreSQL above; Docker Desktop must be running |
-| Management state and HTTP | `.\.venv-cloud\Scripts\python.exe -m unittest discover -s tests -v` |
+| Management state | `python -m unittest discover -s tests -v` |
 | agent_lab gateway | Unit tests are included in the previous line (based on golden samples, no database connection); `python scripts/compare_agent_lab_gateway.py` creates two `agentdb_test_gpt_*` databases and compares the output and timing of the spawn-a-process-per-call path and the gateway path |
-| Recovery read structure | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_cloud_state.py`: in-memory backend, checks read volume as history grows |
-| Maintenance and PG hand-off | `.\.venv-cloud\Scripts\python.exe scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING`: replace with a test database that has the demo installed |
-| OSS read structure | `.\.venv-cloud\Scripts\python.exe scripts/benchmark_oss_protocol.py`: uses the in-memory OSS service model, does not represent cloud performance |
-| Local review and merging everything | `.\.venv-cloud\Scripts\python.exe review_local.py`: creates a dedicated test database; the 18 original assertions, the restricted role, the two interruption windows and the final merging of all ten branches, plus a merge reporting `lock_timeout` while the main lock is held; timings include COMMIT; by default each writer reuses one long-lived connection, and `--client spawn` restores starting a process per call |
-| History growth migration | `.\.venv-cloud\Scripts\python.exe scripts/check_history_migration.py`: creates an old-version (0bf7309) test database, migrates twice, then compares read and merge results, grants and the new-installation definitions item by item, and runs the snapshot policy through `SnapshotMaintenance.run_due` (MemoryStore) |
-| History health check | `.\.venv-cloud\Scripts\python.exe scripts/check_history_health.py`: creates a pre-006 (d5c68b0) test database and writes branch, merge and snapshot history, migrates twice, then checks that data, read and merge results and existing functions are unchanged, that `vc.history_health` is STABLE, executable only by `agentdb_manager` and identical to a new installation, and that each branch's values match independent queries and `vc.snapshot_due`; then publishes once through `SnapshotMaintenance.check_history` (MemoryStore), and a rerun does not publish; unit tests are `HistoryHealthTests` in `tests/test_cloud_state.py` |
-| search_path hardening migration | `.\.venv-cloud\Scripts\python.exe scripts/check_search_path_migration.py`: creates a pre-007 (a7e60d9) test database, migrates twice, then checks that data and history are unchanged, that every function in vc keeps all attributes except the search_path of the functions that set one, and that the functions, once 008, 009 and 010 are applied too, equal a new installation's |
-| Agent boundary adversarial check | `.\.venv-cloud\Scripts\python.exe scripts/check_agent_boundaries.py`: creates `agentdb_test_gpt_*` through `agent_lab.py init`, audits the functions `agentdb_client` can execute, the tables it can reach, the schemas it can create in and the search_path of every function that sets one (all SECURITY DEFINER functions included); tries with `agentdb_client`'s own SQL what the catalog cannot show (disabling the capture trigger, turning off triggers for the session, writing a branch view with no open change), tries to break version history through the granted functions, and passes `agent_lab.py` arguments it must reject (each by the check under test, as an argument error or an engine refusal agent_lab reports as JSON: exit code 2, no Python traceback); finally checks that main is unchanged. A crossed boundary is a GAP and exits 1; takes only `--config` for the connection |
-| Staging VM S4/S5 | `.\.venv-cloud\Scripts\python.exe scripts/staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`: run only against the [staging VM](docs/STAGING_VM.md); restart/crash/netcut power off, restart or disconnect the network through VBoxManage, so never point it at an important database; results are in [S4/S5](docs/STAGING_S4_S5.md) |
+| Recovery read structure | `python scripts/benchmark_cloud_state.py`: in-memory backend, checks read volume as history grows |
+| Maintenance and PG hand-off | `python scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING`: replace with a test database that has the demo installed |
+| Local review and merging everything | `python review_local.py`: creates a dedicated test database; the 18 original assertions, the restricted role, the two interruption windows and the final merging of all ten branches, plus a merge reporting `lock_timeout` while the main lock is held; timings include COMMIT; by default each writer reuses one long-lived connection, and `--client spawn` restores starting a process per call |
+| History growth migration | `python scripts/check_history_migration.py`: creates an old-version (0bf7309) test database, migrates twice, then compares read and merge results, grants and the new-installation definitions item by item, and runs the snapshot policy through `SnapshotMaintenance.run_due` (MemoryStore) |
+| History health check | `python scripts/check_history_health.py`: creates a pre-006 (d5c68b0) test database and writes branch, merge and snapshot history, migrates twice, then checks that data, read and merge results and existing functions are unchanged, that `vc.history_health` is STABLE, executable only by `agentdb_manager` and identical to a new installation, and that each branch's values match independent queries and `vc.snapshot_due`; then publishes once through `SnapshotMaintenance.check_history` (MemoryStore), and a rerun does not publish; unit tests are `HistoryHealthTests` in `tests/test_cloud_state.py` |
+| search_path hardening migration | `python scripts/check_search_path_migration.py`: creates a pre-007 (a7e60d9) test database, migrates twice, then checks that data and history are unchanged, that every function in vc keeps all attributes except the search_path of the functions that set one, and that the functions, once 008, 009 and 010 are applied too, equal a new installation's |
+| Agent boundary adversarial check | `python scripts/check_agent_boundaries.py`: creates `agentdb_test_gpt_*` through `agent_lab.py init`, audits the functions `agentdb_client` can execute, the tables it can reach, the schemas it can create in and the search_path of every function that sets one (all SECURITY DEFINER functions included); tries with `agentdb_client`'s own SQL what the catalog cannot show (disabling the capture trigger, turning off triggers for the session, writing a branch view with no open change), tries to break version history through the granted functions, and passes `agent_lab.py` arguments it must reject (each by the check under test, as an argument error or an engine refusal agent_lab reports as JSON: exit code 2, no Python traceback); finally checks that main is unchanged. A crossed boundary is a GAP and exits 1; takes only `--config` for the connection |
+| Staging VM S4/S5 | `python scripts/staging_drills.py growth|backup|restart|crash|netcut|kill --config connection.staging.local.json`: run only against the [staging VM](docs/STAGING_VM.md); restart/crash/netcut power off, restart or disconnect the network through VBoxManage, so never point it at an important database; results are in [S4/S5](docs/STAGING_S4_S5.md) |
 | Read-set experiment | Commands for the unit and contract tests, the mutation check, the experiment and the two audits are in "Files and running" in the [design](docs/READSET_EXPERIMENT.md) |
 | Context archive experiment | Commands for the tests, the replay gate, the long-task check, the stand-in dry run and real rounds are in "Files and running" in the [design](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | Checkable task state experiment | Commands for the tests, the stand-in dry run and real rounds are in "Files and running" in the [design](docs/TASK_STATE_EXPERIMENT.md) |
 | Read sets with real agents vs. plain PostgreSQL | Commands for the tests, the stand-in dry run and real rounds are in "Files and running" in the [design](docs/READSET_AGENTS_EXPERIMENT.md) |
-| Real cloud (not run, currently on hold) | `smoke_cloud.py` is kept only as a future integration entry point; it is not run now, and no provider is claimed to have passed verification on its basis |
 
-Real-model experiments follow a pre-registered protocol: record the exact model ID returned by the interface, reasoning effort, runner version, and hashes of the prompts and source files; do not guess an unexposed weight snapshot as a definite version. Fix the sample size and keep failures; do not replace failed rounds with new ones. Save tool request/response JSONL without summarizing or truncating, and save the last value of each Agent's cumulative usage; cached input and reasoning output are sub-items, and missing usage stays unknown. After each actual write, independently check the published content and the other party's branch; an overwrite that is later restored still counts as a failure. Distinguish controlled recovery prompts, scripted stress tests and autonomous model behavior; cloud state is still not verified against real cloud services.
+Real-model experiments follow a pre-registered protocol: record the exact model ID returned by the interface, reasoning effort, runner version, and hashes of the prompts and source files; do not guess an unexposed weight snapshot as a definite version. Fix the sample size and keep failures; do not replace failed rounds with new ones. Save tool request/response JSONL without summarizing or truncating, and save the last value of each Agent's cumulative usage; cached input and reasoning output are sub-items, and missing usage stays unknown. After each actual write, independently check the published content and the other party's branch; an overwrite that is later restored still counts as a failure. Distinguish controlled recovery prompts, scripted stress tests and autonomous model behavior.
 
 Existing records are in [Real GPT repeat experiment](docs/GPT_REPEAT_EXPERIMENT.md). From the project root, use `python -m unittest discover -s experiments/gpt_repeat -p test_repeat_scoring.py -v` to check counting and overwrite judgments; use `python experiments/gpt_repeat/analyze_repeat_logs.py experiments/gpt_repeat/results/2026-10-17` and `python experiments/gpt_repeat/audit_repeat_logs.py experiments/gpt_repeat/results/2026-10-17` to re-analyze the local evidence. These offline commands do not call models and do not write to the database; the commands to rerun the models and their quota impact are in the experiment report, and they must not be rerun automatically for documentation changes.
 
 Changes involving concurrency/recovery must at least verify: stale-version races, retries of old commands, interruptions before and after publishing, cache invalidation races, pinned-version consistency and context omission markers. When a new format is involved, add a compatibility check against old data; do not substitute running successfully on a newly created empty database for migration verification.
 
-Delivery notes state what was changed, why, the local check results and the remaining limitations. Distinguish in-memory simulation, SDK contracts and the real local PostgreSQL; each cloud provider must be noted as not verified against real cloud services, and any wording that packages local results as cloud success must be removed. Capacity and latency conclusions must state the load and environment. Local records are in [Version engine validation](docs/VALIDATION.md) and [State module local tests](docs/CLOUD_STATE_VALIDATION.md); they cannot be taken as proof that later changes have automatically passed.
+Delivery notes state what was changed, why, the local check results and the remaining limitations. Distinguish in-memory simulation from the real local PostgreSQL. Capacity and latency conclusions must state the load and environment. Local records are in [Version engine validation](docs/VALIDATION.md) and [State module local tests](docs/CLOUD_STATE_VALIDATION.md); they cannot be taken as proof that later changes have automatically passed.

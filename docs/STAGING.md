@@ -59,7 +59,7 @@
 ```console
 python db.py check --config connection.staging.local.json
 python run_tests.py --config connection.staging.local.json
-.\.venv-cloud\Scripts\python.exe review_local.py --config connection.staging.local.json
+python review_local.py --config connection.staging.local.json
 python scripts/check_merge_migration.py --config connection.staging.local.json
 ```
 
@@ -143,7 +143,7 @@ On the client side: the ten-writer merge in `review_local.py` and `agent_lab.py 
 ```console
 python db.py check --config connection.staging.local.json
 python run_tests.py --config connection.staging.local.json
-.\.venv-cloud\Scripts\python.exe review_local.py --config connection.staging.local.json
+python review_local.py --config connection.staging.local.json
 python scripts/check_merge_migration.py --config connection.staging.local.json
 ```
 

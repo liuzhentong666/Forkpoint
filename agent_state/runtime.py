@@ -34,11 +34,11 @@ class Runtime:
         data = encode(result)
         with self._lock:
             existing = self._cache.get(task_id)
-            # Sort application versions, never provider tokens (e.g. ETags).
+            # Sort application versions, never storage tokens.
             if existing and json.loads(existing[1])["version"] > result["version"]:
                 return json.loads(existing[1])
             if epoch != self._epoch:
-                # A notification arrived while this read was in flight. Return
+                # An invalidation arrived while this read was in flight. Return
                 # its snapshot, but do not cache it as current for another TTL.
                 return copy.deepcopy(result)
             old = self._cache.pop(task_id, None)
@@ -64,37 +64,6 @@ class Runtime:
                 self._size -= len(item[1])
                 return True
             return False
-
-    def cached_token(self, task_id):
-        with self._lock:
-            item = self._cache.get(task_id)
-            return json.loads(item[1])["generation"] if item else None
-
-    def notify(self, attributes, bucket=None):
-        """Compatibility entry point for existing GCS Pub/Sub callers."""
-        from .notifications import gcs_notification
-        return gcs_notification(self, attributes, bucket)
-
-    def notify_event(self, event, bucket=None):
-        from .engine import identifier
-        if not isinstance(event, dict) or event.get("kind") not in {"changed", "deleted"}:
-            raise Invalid("Notification event requires kind changed/deleted")
-        if event.get("prefix") != self.engine.objects.prefix or (bucket and event.get("bucket") != bucket):
-            return False
-        return self.invalidate(identifier(event.get("task_id"), "task_id"))
-
-    def refresh_active(self):
-        with self._lock:
-            tasks = list(self._cache)
-        errors = 0
-        for task_id in tasks:
-            try:
-                self.read(task_id, fresh=True)
-            except Exception:
-                # A failed refresh must not extend the freshness of cached data.
-                self.invalidate(task_id)
-                errors += 1
-        return dict(checked=len(tasks), errors=errors)
 
     def publish(self, task_id, **command):
         try:
@@ -161,4 +130,4 @@ class Runtime:
                          max_tasks=self.max_tasks, max_bytes=self.max_bytes, ttl_seconds=self.ttl)
         return dict(cache=cache, object_cache=self.engine.objects.cache_metrics(),
                     storage=self.engine.store.metrics.snapshot(),
-                    note="Storage counters are logical operations/payload bytes; SDK retries and HTTP overhead are excluded.")
+                    note="Storage counters are logical operations and payload bytes.")

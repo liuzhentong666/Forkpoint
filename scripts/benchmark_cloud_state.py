@@ -1,4 +1,4 @@
-"""Structural read-bound experiment; not a cloud latency or pricing benchmark."""
+"""Structural read-bound experiment on the in-memory store; not a latency benchmark."""
 import json
 from pathlib import Path
 import sys
@@ -37,7 +37,7 @@ def main():
                                 hot_logical_reads=hot_reads, context_bytes=len(encode(packet))))
     result = dict(backend="memory-test-only", samples=samples,
                   elapsed_seconds=round(time.perf_counter()-start, 3),
-                  note="Counts demonstrate structural bounds only. Real GCS may use two SDK calls per read; cloud latency, billing and IAM are untested.")
+                  note="Counts demonstrate structural bounds only.")
     Path("cloud-read-benchmark.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))
 
