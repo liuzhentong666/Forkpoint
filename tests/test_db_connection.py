@@ -91,6 +91,16 @@ class ConnectionSettingsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "sslmode must be one of"):
             self.connect(config={"sslmode": "verify_full"})
 
+    def test_a_password_value_reaches_psql_by_environment_only(self):
+        options = dict(config=self.config, password=False, password_value="not-in-argv")
+        if os.name == "nt":
+            options["wsl_distribution"] = "Ubuntu"
+        connection = db.Connection(argparse.Namespace(**options))
+        self.assertEqual(connection.env["PGPASSWORD"], "not-in-argv")
+        self.assertFalse(any("not-in-argv" in argument for argument in connection.client_args("agentdb")))
+        if os.name == "nt":
+            self.assertIn("PGPASSWORD", connection.env["WSLENV"].split(":"))
+
     @unittest.skipUnless(os.name == "nt", "the WSL transport is Windows-only")
     def test_wsl_transport_passes_tls_inside_the_distribution(self):
         connection = self.connect("--wsl-distribution", "Ubuntu", "--host", "db.staging.example",

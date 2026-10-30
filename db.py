@@ -143,6 +143,8 @@ class Connection:
         self.env.update(tls)
         if args.password:
             self.env["PGPASSWORD"] = getpass.getpass("PostgreSQL password (not saved): ")
+        elif getattr(args, "password_value", None):  # Set by a caller that made the login itself.
+            self.env["PGPASSWORD"] = args.password_value
         if settings["wsl_distribution"]:
             if os.name != "nt":
                 raise ValueError("WSL transport is for Windows; use the native psql client on Linux")

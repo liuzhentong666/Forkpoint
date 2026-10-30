@@ -210,8 +210,9 @@ def split_sql(sql):
 
 
 def refusal(tokens, group):
-    """Why the tool refuses this statement, or None. The runner logs in as a superuser and sets the role,
-    so a role change would leave agentdb_client."""
+    """Why the tool refuses this statement, or None. This is a rule of the task, not a security boundary:
+    it reads the text, so a DO block or a built-up name gets past it. The boundary is the login agents'
+    SQL runs under (create_agent_login), which has no rights of its own."""
     lead = [value for kind, value in tokens[:2] if kind == "word"]
     if tokens[0] in {("word", w) for w in TRANSACTION_WORDS} or lead == ["prepare", "transaction"]:
         return "BEGIN, COMMIT and ROLLBACK are refused: the harness opens and ends each transaction"
@@ -318,16 +319,35 @@ def clip(text):
     return data[:OUTPUT_BYTES].decode("utf-8", "ignore") + f"\n[{len(data) - OUTPUT_BYTES} more bytes not shown]\n"
 
 
-class Transaction:
-    """One call's transaction in its own psql process, as agentdb_client: begin() sends its statements,
-    end() its end (COMMIT, or ROLLBACK after a query) once the runner says. psql stops at the first error
-    (ON_ERROR_STOP, as in every agent_lab call), which ends the process and so rolls the transaction
-    back. The process starts, and reports its backend's pid, before the call is held."""
+def create_agent_login(owner, config, database):
+    """(name, Connection) of a new login for one round's agent SQL. SET ROLE on a superuser's login is no
+    boundary, because RESET ROLE undoes it; this login is not a superuser, so resetting its role leaves
+    nothing: NOINHERIT gives it agentdb_client's rights only while SET ROLE is on, and it holds none of its
+    own. The password is random and kept in memory; it reaches psql as PGPASSWORD, so the server must accept
+    passwords on this host (a local socket's peer rule cannot serve it, so a socket means 127.0.0.1)."""
+    name, password = "agentdb_agent_" + secrets.token_hex(5), secrets.token_urlsafe(32)
+    owner.sql(f"""BEGIN;
+SET LOCAL log_statement = 'none';
+CREATE ROLE {name} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT PASSWORD '{password}';
+GRANT agentdb_client TO {name} WITH INHERIT FALSE, SET TRUE;
+COMMIT;""")
+    host = owner.settings["host"]
+    return name, db.Connection(argparse.Namespace(
+        config=config, database=database, role=None, password=False, password_value=password, user=name,
+        host="127.0.0.1" if host.startswith("/") else host))
 
-    def __init__(self, owner, database, statements, end):
+
+class Transaction:
+    """One call's transaction in its own psql process, on the round's agent login as agentdb_client:
+    begin() sends its statements, end() its end (COMMIT, or ROLLBACK after a query) once the runner says.
+    psql stops at the first error (ON_ERROR_STOP, as in every agent_lab call), which ends the process and so
+    rolls the transaction back. The process starts, and reports its backend's pid, before the call is held.
+    owner, the runner's own login, ends a backend that ran too long."""
+
+    def __init__(self, login, owner, database, statements, end):
         self.owner, self.statements, self.end_script = owner, statements, end
-        self.process = subprocess.Popen(owner.client_args(database), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE, env=owner.env, creationflags=db.FLAGS)
+        self.process = subprocess.Popen(login.client_args(database), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE, env=login.env, creationflags=db.FLAGS)
         self.lines = {name: queue.Queue() for name in ("stdout", "stderr")}
         self.drains = [threading.Thread(target=self._drain, args=(name,), daemon=True) for name in self.lines]
         for thread in self.drains:
@@ -557,7 +577,7 @@ class Merging:
 
     def execute(self, statement):
         before, after = re.split(r"(?m)^[ \t]*COMMIT;[ \t]*$", statement, maxsplit=1)
-        transaction = Transaction(self.trial.owner, self.trial.database, before, "COMMIT;" + after)
+        transaction = Transaction(self.trial.login, self.trial.owner, self.trial.database, before, "COMMIT;" + after)
         if not self.trial.run_transaction(self.actor, transaction, self.note, self.first):
             raise Abandoned()
         parts = [part for part in (transaction.result, transaction.ended) if part is not None]
@@ -632,7 +652,7 @@ class ReadsetTrial(Trial):
         super().__init__(args, folder, summary)
         self.group = group
         self.collision = Collision(self.waiting)
-        self.worker = self.monitor = self.auditor = None
+        self.login = self.worker = self.monitor = self.auditor = None
         self.branches = {actor: [] for actor in ACTORS}  # F: each agent's branches, oldest first
         self.first_writes, self.running = set(), 0
 
@@ -735,7 +755,7 @@ class ReadsetTrial(Trial):
         if self.group == "F" and not read_only:
             statements += "SELECT vc.finish_change() AS revision \\gset\n"
             end = "COMMIT;\nSELECT :'revision';"
-        transaction = Transaction(self.owner, self.database, statements, end)
+        transaction = Transaction(self.login, self.owner, self.database, statements, end)
         if not self.run_transaction(actor, transaction, note, first):
             return TURN_ENDED
         reply = sql_reply(transaction, action)
@@ -903,6 +923,7 @@ def run_trial(args, number, group):
     try:
         trial.database = summary["database"] = create_database(args, group, folder)
         trial.owner = connect_owner(args, trial.database)
+        summary["agent_login"], trial.login = create_agent_login(trial.owner, args.config, trial.database)
         trial.worker = agent_lab.connect(argparse.Namespace(config=args.config, password=False), trial.database,
                                          "agentdb_client")
         trial.monitor, trial.auditor = trial.owner.session(trial.database), trial.owner.session(trial.database)
@@ -958,6 +979,11 @@ def run_trial(args, number, group):
         for session in (trial.monitor, trial.auditor):
             if session:
                 session.close()
+        if summary.get("agent_login"):
+            try:
+                trial.owner.sql(f"DROP ROLE {summary['agent_login']};")
+            except RuntimeError as drop_error:
+                summary["agent_login_not_dropped"] = str(drop_error)
         with trial.lock:
             if trial.audit_log:
                 trial.audit_log.close()
@@ -1019,6 +1045,7 @@ def register(args):
         "databases": {"P": "a new agentdb_test_plain_<10 hex> with plain_setup_sql",
                       "F": "agent_lab.py init (agentdb_test_gpt_<10 hex>)"},
         "plain_setup_sql": PLAIN_SETUP,
+        "agent_login": " ".join(create_agent_login.__doc__.split()),
         "sources_sha256": {p: sha256(args.project / p) for p in SOURCES},
         "success_definition": "Both agents' turns complete; exactly one sale landed (one of products 101 and 202 at "
                               "85, the other at 100); the other 3,998 rows, the two rows' other columns and app.orders "

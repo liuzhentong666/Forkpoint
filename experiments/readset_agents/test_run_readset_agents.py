@@ -4,12 +4,13 @@
 
 DryRunTests runs four rounds in this process, through the real MCP servers, coordinator, psql and
 both kinds of database: each group with two guarding stand-ins, which must land exactly one sale,
-and with two that do not guard, which must land both. It takes a few minutes and drops the round
-databases it made.
+and with two that do not guard, which must land both. On those databases it also tries to get from
+the agents' login to a superuser. It takes a few minutes and drops the round databases it made.
 """
 import argparse
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -313,6 +314,12 @@ class ToolTests(unittest.TestCase):
 
 
 class DryRunTests(unittest.TestCase):
+    # Each gets past the tool's text filter; on a superuser's login each one reached the superuser.
+    ROLE_RESETS = ("DO $$ BEGIN RESET ROLE; END $$;",
+                   "DO $x$ BEGIN EXECUTE 'RESET ' || 'ROLE'; END $x$;",
+                   "SELECT set_config('ro' || 'le', 'none', true);")
+    PROBE = "SELECT 'probe:' || session_user || ':' || current_user || ':' || current_setting('is_superuser');"
+
     @classmethod
     def setUpClass(cls):
         directory = tempfile.TemporaryDirectory()
@@ -325,7 +332,8 @@ class DryRunTests(unittest.TestCase):
                                   turn_timeout=300)
         args.output.mkdir()
         args.workdir.mkdir()
-        cls.maintenance = Connection(argparse.Namespace(config=None, password=False, role=None, database=None))
+        cls.args, cls.temp = args, temp
+        cls.maintenance =Connection(argparse.Namespace(config=None, password=False, role=None, database=None))
         cls.rounds = {}
         for number, (group, guards) in enumerate([(g, x) for g in runner.GROUPS for x in (True, False)], 1):
             round_args = argparse.Namespace(**vars(args), child_env={"READSET_STAND_IN_GUARDS": "1" if guards else "0"})
@@ -357,6 +365,53 @@ class DryRunTests(unittest.TestCase):
                                  (guards, "read committed", None))
             else:
                 self.assertEqual((guard["named_other"], guard["error"]), (guards, "read_conflict" if guards else None))
+
+    def agent_trial(self, group):
+        """A trial on this group's round database with a new agent login, and the login's name."""
+        database = self.rounds[group, True]["database"]
+        owner = runner.connect_owner(self.args, database)
+        name, login = runner.create_agent_login(owner, self.args.config, database)
+        self.addCleanup(owner.sql, f"DROP ROLE {name};")
+        trial = runner.ReadsetTrial(None, self.temp, {"calls": []}, group)
+        trial.owner, trial.login, trial.database = owner, login, database
+        return trial, name
+
+    def identity(self, trial, action, sql):
+        """(session user, current user, is_superuser) after sql, as the agent's call reports them."""
+        reply = trial.sql_call("gpt-a", action, {"sql": sql + self.PROBE}, {}, False)
+        self.assertNotIn("error", reply, sql)
+        return re.search(r"probe:([^:\s]+):([^:\s]+):(on|off)", reply["output"]).groups()
+
+    def test_a_role_reset_leaves_the_agent_login_and_never_reaches_a_superuser(self):
+        for group in runner.GROUPS:
+            trial, name = self.agent_trial(group)
+            self.assertEqual(self.identity(trial, "query", ""), (name, "agentdb_client", "off"), group)
+            for reset in self.ROLE_RESETS:
+                self.assertIsInstance(plan_sql(reset, group), tuple, reset)  # the filter does not stop it
+                self.assertEqual(self.identity(trial, "query", reset), (name, name, "off"), (group, reset))
+                if group == "P":
+                    self.assertEqual(self.identity(trial, "execute", reset), (name, name, "off"), reset)
+
+    def test_after_a_role_reset_what_only_a_superuser_may_do_is_refused(self):
+        trial, name = self.agent_trial("P")
+        self.addCleanup(trial.owner.sql, "DROP ROLE IF EXISTS agentdb_escape_test;")
+        for statement in ("SET ROLE postgres", "SET SESSION AUTHORIZATION postgres",
+                          "PERFORM pg_read_file('PG_VERSION')", "COPY (SELECT 1) TO PROGRAM 'true'",
+                          "CREATE ROLE agentdb_escape_test", f"ALTER ROLE {name} SUPERUSER",
+                          "SET session_replication_role = replica"):
+            sql = f"DO $$ BEGIN RESET ROLE; {statement}; END $$;"
+            reply = trial.sql_call("gpt-a", "execute", {"sql": sql}, {}, False)
+            self.assertEqual((reply.get("error"), reply.get("sqlstate")), ("database_error", "42501"), statement)
+
+    def test_each_round_had_its_own_login_and_dropped_it(self):
+        names = [result["agent_login"] for result in self.rounds.values()]
+        self.assertEqual(len(set(names)), len(names))
+        self.assertTrue(all(name.startswith("agentdb_agent_") for name in names))
+        self.assertFalse([result["agent_login_not_dropped"] for result in self.rounds.values()
+                          if "agent_login_not_dropped" in result])
+        listed = ",".join(f"'{name}'" for name in names)
+        self.assertEqual(self.maintenance.sql(f"SELECT count(*) FROM pg_roles WHERE rolname IN ({listed});",
+                                              self.maintenance.settings["maintenance_database"]), "0")
 
     def test_the_plain_database_has_the_app_tables_rows_and_privileges_of_an_enrolled_one(self):
         catalog = """SELECT json_build_object(

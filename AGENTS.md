@@ -2,7 +2,7 @@
 
 # Forkpoint：Agent 开发与维护约定
 
-适用范围：本目录及子目录。更新日期：2026-10-29。
+适用范围：本目录及子目录。更新日期：2026-10-30。
 
 **当前云服务状态：未经真实验证，云端部署暂缓。** OSS、GCS、S3 均无真实联调结果，ECS 尚未部署。用户当前不安排云资源采购或部署；只继续本地开发与模拟测试，不自动采购、部署或运行会访问真实云服务的测试。不得将 SDK 测试替身、内存服务模型、本机 HTTP 或本机 PostgreSQL 的结果表述为云存储已验证。
 
@@ -102,7 +102,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 | `experiments/readset/` | 读集校验实验：`xr` 原型只装入测试库，不修改 `vc.*`；见 [设计与结果](docs/READSET_EXPERIMENT.md) |
 | `experiments/context_archive/` | 上下文存档实验：`xc` 原型只装入测试库，不修改 `vc.*`；`replay.py`、`long_task.py` 与替身 `fake_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | `experiments/task_state/` | 可核查任务状态实验：事实标明读取的版本与行，恢复时标出新鲜度；任务状态在运行器的 MemoryStore 中，不修改 `vc.*` 与 `agent_state`；替身 `fake_state_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/TASK_STATE_EXPERIMENT.md) |
-| `experiments/readset_agents/` | 真实 Agent 的读集校验与普通 PostgreSQL 对比实验：每轮两个 Agent 同时运行，P 组在不纳管的 `agentdb_test_plain_*` 上执行 SQL，F 组在 `agent_lab.py init` 建的库中修改分支、以读集合入；每个 Agent 的第一次写入被暂扣，使两者冲突；不修改 `vc.*` 与 `agent_lab.py`；替身 `fake_readset_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/READSET_AGENTS_EXPERIMENT.md) |
+| `experiments/readset_agents/` | 真实 Agent 的读集校验与普通 PostgreSQL 对比实验：每轮两个 Agent 同时运行，P 组在不纳管的 `agentdb_test_plain_*` 上执行 SQL，F 组在 `agent_lab.py init` 建的库中修改分支、以读集合入；每个 Agent 的第一次写入被暂扣，使两者冲突；Agent 的 SQL 运行在每轮新建的非超级用户登录角色上，经回环以随机口令连接（服务器须接受 127.0.0.1 上的口令登录），工具对 SQL 文本的拒绝不是安全边界；不修改 `vc.*` 与 `agent_lab.py`；替身 `fake_readset_claude.py` 不调用模型，真实轮次须经用户同意；见 [实验设计](docs/READSET_AGENTS_EXPERIMENT.md) |
 | `scripts/` | 基准、迁移核验与预发布演练；在项目根目录以 `python scripts/<name>.py` 运行，脚本自行把根目录加入 `sys.path`；纳入版本库的结果默认写入 `results/` |
 | `results/`、`examples/` | 文档中数字对应的原始结果（`results/staging/` 为预发布虚拟机）；可直接用 psql 运行的 SQL 示例 |
 
@@ -187,7 +187,7 @@ OSS 第一版每个任务最多发布 524,288 次，达到 4 GiB 追加文件上
 
 # Forkpoint: Conventions for Agent Development and Maintenance
 
-Scope: this directory and its subdirectories. Last updated: 2026-10-29.
+Scope: this directory and its subdirectories. Last updated: 2026-10-30.
 
 **Current cloud service status: not verified against real cloud services; cloud deployment is on hold.** OSS, GCS and S3 have no real integration results, and ECS has not been deployed. The user is not currently scheduling cloud resource purchases or deployment; only continue local development and simulated testing, and do not automatically purchase, deploy, or run tests that access real cloud services. Results from SDK test doubles, the in-memory service model, local HTTP or the local PostgreSQL must not be described as cloud storage having been verified.
 
@@ -287,7 +287,7 @@ The rule text that a formal task will adopt is stored as cloud evidence, and its
 | `experiments/readset/` | Read-set validation experiment: the `xr` prototype goes only into test databases and does not modify `vc.*`; see the [design and results](docs/READSET_EXPERIMENT.md) |
 | `experiments/context_archive/` | Context archive experiment: the `xc` prototype goes only into test databases and does not modify `vc.*`; `replay.py`, `long_task.py` and the stand-in `fake_claude.py` call no model, and real rounds need the user's approval; see the [design](docs/CONTEXT_ARCHIVE_EXPERIMENT.md) |
 | `experiments/task_state/` | Checkable task state experiment: facts record the revision and rows they were read from, and resuming marks their freshness; task state lives in the runner's MemoryStore, and `vc.*` and `agent_state` are not modified; the stand-in `fake_state_claude.py` calls no model, and real rounds need the user's approval; see the [design](docs/TASK_STATE_EXPERIMENT.md) |
-| `experiments/readset_agents/` | Read sets with real agents vs. plain PostgreSQL: each round runs two agents at once, P running SQL on an unenrolled `agentdb_test_plain_*`, F changing a branch of an `agent_lab.py init` database and merging with a read set; each agent's first write is held so that the two collide; `vc.*` and `agent_lab.py` are not modified; the stand-in `fake_readset_claude.py` calls no model, and real rounds need the user's approval; see the [design](docs/READSET_AGENTS_EXPERIMENT.md) |
+| `experiments/readset_agents/` | Read sets with real agents vs. plain PostgreSQL: each round runs two agents at once, P running SQL on an unenrolled `agentdb_test_plain_*`, F changing a branch of an `agent_lab.py init` database and merging with a read set; each agent's first write is held so that the two collide; agents' SQL runs on a non-superuser login made for each round, over loopback with a random password (the server must accept passwords on 127.0.0.1), and the tool's refusals of SQL text are not a security boundary; `vc.*` and `agent_lab.py` are not modified; the stand-in `fake_readset_claude.py` calls no model, and real rounds need the user's approval; see the [design](docs/READSET_AGENTS_EXPERIMENT.md) |
 | `scripts/` | Benchmarks, migration checks and staging drills; run from the project root as `python scripts/<name>.py`, each script adds the root to `sys.path` itself; committed results go to `results/` by default |
 | `results/`, `examples/` | Raw results behind the numbers in the docs (`results/staging/` is the staging VM); SQL examples that run directly with psql |
 
