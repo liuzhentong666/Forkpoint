@@ -38,6 +38,12 @@ def transaction(body, role=False):
 
 
 def test_suite():
+    """The 18 original assertions.
+
+    scripts/check_merge_migration.py and scripts/check_history_migration.py run them
+    before and after a migration on old installs, so a test that needs a later
+    migration goes in its own function, like unknown_branch_code() and read_set_merge().
+    """
     results = []
 
     def test(name, action):
@@ -176,10 +182,6 @@ def test_suite():
       SELECT vc.merge('main',vc.head('conflict-b'),vc.head());
     """, fail="P0001"))
 
-    # P0002, not P0001: P0001 is also a merge conflict (sql/010_unknown_branch_code.sql).
-    test("begin_change_on_a_missing_branch_is_not_found", lambda: sql(
-        "BEGIN; SELECT vc.begin_change('no-such-branch',vc.head()); ROLLBACK;", fail="P0002: Unknown branch"))
-
     test("file_conflict_rolls_back_rows_applied_before_it", lambda: transaction("""
       b:=vc.head(); PERFORM vc.fork('file-a',b); PERFORM vc.fork('file-b',b);
       PERFORM vc.begin_change('file-a',b);
@@ -222,6 +224,19 @@ def test_suite():
       ASSERT vc.head()=r;
     """))
     return results
+
+
+def unknown_branch_code():
+    """vc.begin_change on a missing branch (sql/010_unknown_branch_code.sql).
+
+    P0002, not P0001: P0001 is also a merge conflict. Kept apart from test_suite(),
+    which the migration checks also run on installs that predate 010.
+    """
+    name = "begin_change_on_a_missing_branch_is_not_found"
+    start = time.perf_counter()
+    sql("BEGIN; SELECT vc.begin_change('no-such-branch',vc.head()); ROLLBACK;", fail="P0002: Unknown branch")
+    print("PASS " + name, flush=True)
+    return {"name": name, "passed": True, "ms": round((time.perf_counter()-start)*1000, 2)}
 
 
 def concurrency():
@@ -781,7 +796,7 @@ def main():
           SELECT vc.finish_change(); COMMIT;
           SELECT vc.materialize(vc.head(),vc.table_id('app.products'));
         """)
-        tests = test_suite()
+        tests = test_suite() + [unknown_branch_code()]
         result = dict(postgresql=sql("SHOW server_version;"), database=DBNAME, connection=details,
                       tests=tests, concurrency=concurrency(), session=session(),
                       merge_semantics=merge_semantics(), read_set_merge=read_set_merge(),
