@@ -23,6 +23,8 @@
 
 云存储已于 2026-10-30 移除：GCS、OSS、S3 适配器、HTTP 状态服务与 ECS 部署从未在真实云上运行过，也没有任务显示需要它们。管理 Agent 的任务状态现在只保存在内存中。代码留在 git 历史中（最后存在于 `d342ccf`）。
 
+有一个例外，2026-10-31 决定：[Agent 边界](docs/AGENT_BOUNDARY.md)算作修复。它是给出错或被劫持的 Agent 准备的，表现良好的 Agent 跑多少轮都说明不了是否需要它；它的证据是攻击。
+
 本 README 其余部分描述 Forkpoint 的现有功能。对于“为什么需要它”中读到已变化数据的问题，读集实验发现普通 PostgreSQL 上得到指导的 Agent 同样安全。
 
 ## 为什么需要它
@@ -120,6 +122,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 | **由真实约束把关 `main`** | 合入以普通 SQL 作用在真实表上，UNIQUE、外键和 CHECK 约束照常生效 | [run_tests.py](run_tests.py) 中的三项约束违规用例 |
 | **历史变长后依然快** | `main` 上有 2,000 个提交时：一次 10 行合入 181 ms，一次提交约 20 ms（修复前为 50.7 s 和 499 ms） | [S4/S5 报告第 7 节](docs/STAGING_S4_S5.md) |
 | **经过故障演练** | 断电后 201 个已确认的提交全部保留，没有半个提交；备份恢复 13 项指纹一致；失联客户端持有的锁约 60 s 内释放 | [S4/S5 报告](docs/STAGING_S4_S5.md) |
+| **可以放手，但有限度** | 每个 Agent 有自己会过期的登录和预付预算；只写自己的分支，只经一道门到 `main`，历史里记的是真实登录；它的提交不用判断好坏就能撤销，目录自检发现问题就冻结写入 | 以真实登录和自写 SQL 的 267 项攻击与检查全部成立，没有缺口，包括对真实事故的重放，见 [Agent 边界](docs/AGENT_BOUNDARY.md) |
 | **证据可以重跑** | 每个数字都链接到 [results/](results/) 中的原始结果文件和产生它的脚本 | [scripts/](scripts/) |
 
 这些数字来自一台笔记本和本机虚拟机上的合成负载，说明设计在第一阶段目标（单表约 4,000 行、10 个并发 Agent）下可行，不是生产容量承诺。
@@ -150,7 +153,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 - 忘记调用 `finish_change()` 时，`COMMIT` 失败，表的修改一并回滚。
 - 同一次修改中对一行的多次更新只保留最初的 before 和最终的 after；插入后再删除会相互抵消。
 
-主要 SQL 函数：`vc.head`、`vc.fork`、`vc.pin`、`vc.checkout`、`vc.begin_change`、`vc.finish_change`、`vc.write_file`、`vc.read_file`、`vc.diff_rows`、`vc.diff_files`、`vc.history`、`vc.merge`、`vc.merge_validated`、`vc.register_table`。完整设计与取舍见 [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md)。
+主要 SQL 函数：`vc.head`、`vc.fork`、`vc.pin`、`vc.checkout`、`vc.begin_change`、`vc.finish_change`、`vc.write_file`、`vc.read_file`、`vc.diff_rows`、`vc.diff_files`、`vc.history`、`vc.merge`、`vc.merge_validated`、`vc.register_table`。给无人看管的 Agent：`vc.agent_fork`、`vc.agent_begin`、`vc.agent_merge`、`vc.agent_status`。完整设计与取舍见 [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md)。
 
 ## 与其他方案的比较
 
@@ -172,8 +175,11 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 - **分支可以暂时无效。** UNIQUE 和外键只在合入 `main` 时检查。
 - **读取需要回放历史。** 分支视图由历史加快照解析，用不到表自身的索引，因此需要维护任务按 `vc.snapshot_due` 生成快照。快照与历史目前都不回收。
 - **单节点、单租户。** 没有复制、配额或租户隔离；同一分支的写入串行执行，所有合入 `main` 的操作都要取得 `main` 的锁。
-- **Agent 之间没有隔离。** 所有 Agent 共用一个数据库角色 `agentdb_client`，引擎不检查调用者：任何 Agent 都能直接提交到 `main`，读取、修改或合入其他 Agent 的分支，并填写任意作者名。这个角色能挡住的是直接访问版本表，以及 `COPY ... TO PROGRAM` 这类服务器级操作。
-- **`SET ROLE` 不是沙箱。** 在用 `--role` 切换过角色的连接上，`RESET ROLE` 会回到登录用户，所以这个角色只能限制无法在该连接上自行执行 SQL 的 Agent。独立的受限登录角色可以堵住这条路（[真实 Agent 的读集校验实验](docs/READSET_AGENTS_EXPERIMENT.md)就这样做），但 Agent 之间仍然没有隔离。Forkpoint 适用于受信任的 Agent 和你可控的服务器，不适用于不受信任的 Agent 或多租户。
+- **只有用自己登录的 Agent 才相互隔离。** 用 `agent_boundary.py` 发放的登录时，Agent 受 [Agent 边界](docs/AGENT_BOUNDARY.md)的限制。受信任的工具仍然共用角色 `agentdb_client`，它能直接提交到 `main`，修改或合入任何分支，并填写任意作者名。
+- **`SET ROLE` 不是沙箱。** 在用 `--role` 切换过角色的连接上，`RESET ROLE` 会回到登录用户，所以这个角色只能限制无法在该连接上自行执行 SQL 的 Agent。
+- **属主账户下带 shell 的 Agent 能成为超级用户。** 任何数据库规则都挡不住。这样的 Agent 要运行在容器或另一个操作系统账户里；`scripts/check_agent_sandbox.py` 用来验收。
+- **Agent 能读取所有跟踪的内容。** 每个 Agent 都能读全部跟踪数据和历史，历史也不能清除，所以机密不要放进跟踪的表。Agent 还能持有 `main` 的锁拖慢别人，直到看守程序结束它的会话。Forkpoint 不适用于多租户。
+- **限额以内的错误改动仍会落地。** 登录的预算和每张表的份额限制了损害，`undo` 能撤销，但限额以内的错误价格会落地，也没有东西替你发现它。历史和数据在同一个库里，不算备份；请定时运行 `agent_boundary.py backup`。
 - **表类型有限。** 表必须有主键，并且要在空表时注册；不支持 generated 和 identity 列。
 
 ## 目录结构
@@ -208,6 +214,7 @@ tests/                单元测试
 - [上下文存档实验](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)：重置后逐字存档的上下文与模型自写的交接说明对比；按采纳标准没有证据支持存档
 - [可核查的任务状态](docs/TASK_STATE_EXPERIMENT.md)：恢复时把检查点中的事实标为新鲜或过期；只做了试运行，未采纳
 - [真实 Agent 的读集校验](docs/READSET_AGENTS_EXPERIMENT.md)：Forkpoint 的读集合入与普通 PostgreSQL 上被要求加锁并复查的 Agent 对比，每轮两个真实 Agent；两组各 10 轮都没有陈旧轮次，按判定规则没有正确性优势，而 F 用了 3 倍的工具调用
+- [Agent 边界](docs/AGENT_BOUNDARY.md)：人不知道 Agent 在做什么时，数据库怎样保持安全：Agent 自己造成过的真实事故及在这里的结果、限制了什么、一次性设置、不保护什么
 - [agent_lab 网关](docs/AGENT_LAB_GATEWAY.md)：可选的回环常驻进程，为 Agent 的工具复用 psql 会话
 - [历史增长](docs/HISTORY_GROWTH.md) 与 [合入耗时分解](docs/MERGE_BENCHMARK.md)
 - [预发布 S1](docs/STAGING_S1_RESULTS.md) 与 [S4/S5 演练](docs/STAGING_S4_S5.md)：TLS 接入、增长、备份、断电、断网

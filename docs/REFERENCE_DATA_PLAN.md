@@ -49,8 +49,8 @@
 | 纳管已有数据的表 | 新增 | 第 3 节第 1 步 |
 | 迁移前后步骤与重新基线 | 新增 | 含结构版本的只追加表，以及拒绝跨结构变更的旧分支合入 |
 | 内容哈希检查 | 新增 | `agent_state/maintenance.py` 中与 `check_history` 并列的管理 Agent 检查，加一个只授权给 `agentdb_manager` 的 STABLE 函数，做法同 `vc.history_health`（[006_history_health.sql](../sql/006_history_health.sql)）；小表可做全表哈希 |
-| 撤销辅助函数 | 新增 | 第 3 节第 4 步 |
-| 只能写分支的角色 | 视 D2 而定 | 示例安装中的 `agentdb_client` 可以对 main 调用 `vc.begin_change`，也可以直接写 `app` 下的表（[002_demo_app.sql](../sql/002_demo_app.sql)） |
+| 撤销辅助函数 | 2026-10-31 起已有 | `vc.revert`（[Agent 边界](AGENT_BOUNDARY.md)）；第 3 节第 4 步 |
+| 只能写分支的角色 | 2026-10-31 起已有 | `agentdb_worker`（[Agent 边界](AGENT_BOUNDARY.md)）。示例安装中的 `agentdb_client` 仍可以对 main 调用 `vc.begin_change`，也可以直接写 `app` 下的表（[002_demo_app.sql](../sql/002_demo_app.sql)） |
 
 粗略估计新增部分为数周工作，以 G2 的实际结果为准。
 
@@ -144,8 +144,8 @@ Three earlier plans for enrolling whole production databases (low-cost adoption,
 | Enrolling a table that already has rows | New | Section 3, step 1 |
 | Migration steps and re-baseline | New | Includes the append-only schema-version table and refusing old-branch merges across a schema change |
 | Content-hash check | New | A manager-agent check in `agent_state/maintenance.py` beside `check_history`, plus a STABLE function granted only to `agentdb_manager`, as `vc.history_health` is ([006_history_health.sql](../sql/006_history_health.sql)); small tables can be hashed in full |
-| Revert helper | New | Section 3, step 4 |
-| Branch-only role | Depends on D2 | The demo installation's `agentdb_client` can call `vc.begin_change` on main and can write the tables in `app` directly ([002_demo_app.sql](../sql/002_demo_app.sql)) |
+| Revert helper | Exists since 2026-10-31 | `vc.revert` ([agent boundary](AGENT_BOUNDARY.md)); section 3, step 4 |
+| Branch-only role | Exists since 2026-10-31 | `agentdb_worker` ([agent boundary](AGENT_BOUNDARY.md)). The demo installation's `agentdb_client` can still call `vc.begin_change` on main and write the tables in `app` directly ([002_demo_app.sql](../sql/002_demo_app.sql)) |
 
 A rough estimate for the new pieces is a few weeks of work; G2 gives the real answer.
 

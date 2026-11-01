@@ -269,6 +269,8 @@ OSS 的 `PutObject` 不支持 `If-Match` / `If-None-Match` 这组条件参数，
 
 ## Superuser Agent 如何维护系统并交接
 
+> 2026-10-31 注：管理 Agent 持有超级用户的设计已退役，任何 Agent 都不再持有它，见 [Agent 边界](AGENT_BOUNDARY.md)。下面的交接流程仍然适用。
+
 管理 Agent 可以持有 PostgreSQL superuser 能力，负责维护数据库结构、版本规则和派生数据。AGENTS.md、CLAUDE.md 描述操作约定，数据库账户和云身份提供真实权限；规则文本本身不会授予权限。
 
 高权限让 Agent 能够改变系统，也使“维护动作如何被接手”成为必要设计。我们把流程定义为：先发布目标和核验方法，检查真实系统，执行操作，再核验并发布结果。采用的规则文本可以存为证据，通过 `policy_ref` 固定版本。
@@ -599,6 +601,8 @@ Bucket configuration is likewise a protocol precondition. Immutable ordinary obj
 To isolate these differences, Engine depends on a separate `HeadStore`, which only deals with reads and conditional publishing. The generation, ETag or append position returned by storage are all used as opaque markers; the cache's newer/older ordering is based on the application-level `version`, without trying to compare which of two ETags is "larger".
 
 ## How the superuser Agent maintains the system and hands off
+
+> Note added on 2026-10-31: the design where the manager Agent holds superuser is retired, and no agent holds it now; see [Agent boundary](AGENT_BOUNDARY.md). The hand-off flow below still applies.
 
 The manager Agent can hold PostgreSQL superuser capabilities and is responsible for maintaining the database structure, version rules and derived data. AGENTS.md and CLAUDE.md describe the operating conventions, and database accounts and cloud identities provide the actual permissions; the rule text itself grants no permissions.
 

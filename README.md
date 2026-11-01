@@ -23,6 +23,8 @@ New features are therefore paused: one is added only after a pre-registered task
 
 Cloud storage was removed on 2026-10-30: the GCS, OSS and S3 adapters, the HTTP state service and the ECS deployment had never run against a real cloud, and no task showed a need for them. The manager agent's task state now lives only in memory. The code remains in git history (last present in `d342ccf`).
 
+One exception, decided on 2026-10-31: the [agent boundary](docs/AGENT_BOUNDARY.md) counts as a fix. It is for an agent that is wrong or hijacked, so rounds of well-behaved agents can't show whether it's needed; attacks are its evidence.
+
 The rest of this README describes Forkpoint as built. For the stale-read problem under "Why", the read-set experiment found a guided agent on plain PostgreSQL equally safe.
 
 ## Why
@@ -120,6 +122,7 @@ SELECT vc.register_table('app.products');   -- agents write through agent.produc
 | **Real constraints guard `main`** | Merges run as ordinary SQL against the real tables, so UNIQUE, foreign keys and CHECK constraints apply | three constraint-violation cases in [run_tests.py](run_tests.py) |
 | **Stays fast as history grows** | With 2,000 commits on `main`: a 10-row merge takes 181 ms and a commit about 20 ms (50.7 s and 499 ms before the history fix) | [S4/S5 report, section 7](docs/STAGING_S4_S5.md) |
 | **Failure-drilled** | A power cut kept all 201 acknowledged commits and no partial one; backup and restore matched on 13 fingerprints; a vanished client's lock is freed in about 60 s | [S4/S5 report](docs/STAGING_S4_S5.md) |
+| **Safe to leave unwatched, within limits** | Each agent gets its own expiring login with a prepaid budget; it writes only its own branches, reaches `main` through one gate, and is recorded under its real login; its commits can be undone without judging them, and a catalog self-check freezes writes when anything is wrong | 267 attacks and checks on real logins with raw SQL held, 0 gaps, including replays of real incidents in [the agent boundary](docs/AGENT_BOUNDARY.md) |
 | **Evidence you can rerun** | Every number links to a raw result file in [results/](results/) and the script that produced it | [scripts/](scripts/) |
 
 The numbers come from synthetic load on one laptop and a local VM. They show the design works at the first-phase target (one table of about 4,000 rows, 10 concurrent agents); they are not a production capacity promise.
@@ -150,7 +153,7 @@ Guarantees enforced by the database:
 - If you forget `finish_change()`, `COMMIT` fails and the table changes roll back.
 - Repeated updates to a row in one change collapse to one before/after pair. An insert followed by a delete cancels out.
 
-Main SQL functions: `vc.head`, `vc.fork`, `vc.pin`, `vc.checkout`, `vc.begin_change`, `vc.finish_change`, `vc.write_file`, `vc.read_file`, `vc.diff_rows`, `vc.diff_files`, `vc.history`, `vc.merge`, `vc.merge_validated`, `vc.register_table`. The full design and the trade-offs are in [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md).
+Main SQL functions: `vc.head`, `vc.fork`, `vc.pin`, `vc.checkout`, `vc.begin_change`, `vc.finish_change`, `vc.write_file`, `vc.read_file`, `vc.diff_rows`, `vc.diff_files`, `vc.history`, `vc.merge`, `vc.merge_validated`, `vc.register_table`. For agents nobody is watching: `vc.agent_fork`, `vc.agent_begin`, `vc.agent_merge`, `vc.agent_status`. The full design and the trade-offs are in [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md).
 
 ## How it compares
 
@@ -172,8 +175,11 @@ If you need a mature, general-purpose versioned database, use Dolt. Forkpoint is
 - **Branches may be temporarily invalid.** UNIQUE and foreign keys are checked only when merging into `main`.
 - **Reads replay history.** Branch views resolve from history plus snapshots, not the table's own indexes, so a maintenance job should create snapshots (`vc.snapshot_due` says when). Snapshots and history are not reclaimed yet.
 - **Single node and single tenant.** There is no replication, quota or tenant isolation. Writes to one branch are serialized, and every merge into `main` takes `main`'s lock.
-- **No separation between agents.** All agents share one database role, `agentdb_client`, and the engine doesn't check who is calling. Any agent can commit directly to `main`, read, change or merge another agent's branch, and record any author name. The role does keep agents away from the version tables and from server-level operations such as `COPY ... TO PROGRAM`.
-- **`SET ROLE` is not a sandbox.** On a connection that switched roles with `--role`, `RESET ROLE` returns to the login user, so the role only limits an agent that can't run its own SQL on that connection. A separate restricted login closes this route (the [read-set agents experiment](docs/READSET_AGENTS_EXPERIMENT.md) uses one), but agents still aren't separated from each other. Forkpoint is for trusted agents on a server you control, not for untrusted agents or multiple tenants.
+- **Agents are separated only on their own logins.** With a login from `agent_boundary.py`, an agent has the limits in [the agent boundary](docs/AGENT_BOUNDARY.md). Trusted tools still share the role `agentdb_client`, which can commit directly to `main`, change or merge any branch, and record any author name.
+- **`SET ROLE` is not a sandbox.** On a connection that switched roles with `--role`, `RESET ROLE` returns to the login user, so the role only limits an agent that can't run its own SQL on that connection.
+- **An agent with a shell on the owner's account can become superuser.** No database rule stops that. Run such an agent in a container or under another OS account; `scripts/check_agent_sandbox.py` checks the setup.
+- **Agents can read everything tracked.** Every agent can read all tracked data and its history, which can't be purged, so keep secrets out of tracked tables. An agent can also slow others down by holding `main`'s lock until the keeper ends its session. Forkpoint is not for multiple tenants.
+- **Wrong changes under the limits still land.** A login's budget and its share of each table bound the damage, and `undo` reverses it, but a bad price within the limits lands, and nothing notices it for you. History lives in the same database, so it isn't a backup; schedule `agent_boundary.py backup`.
 - **Limited table types.** Tables need a primary key and must be registered while empty. Generated and identity columns aren't supported.
 
 ## Project layout
@@ -208,6 +214,7 @@ tests/                unit tests
 - [Context archive experiment](docs/CONTEXT_ARCHIVE_EXPERIMENT.md): a word-for-word archive of the context vs. the model's own handoff note after a reset; by its adoption rule, no evidence for the archive
 - [Checkable task state](docs/TASK_STATE_EXPERIMENT.md): checkpointed facts marked fresh or stale on resume; pilot only, not adopted
 - [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): Forkpoint's read-set merge vs. agents on plain PostgreSQL told to lock and re-check, two real agents per round; 0 stale rounds of 10 in each group, so by its decision rule no correctness advantage, while F took 3 times the tool calls
+- [The agent boundary](docs/AGENT_BOUNDARY.md): how the database stays safe when nobody knows what the agents do: real incidents agents caused on their own and what happens here, what it limits, the one-time setup, and what it doesn't protect
 - [agent_lab gateway](docs/AGENT_LAB_GATEWAY.md): an optional loopback process that keeps psql sessions warm for the agents' tool
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut

@@ -14,7 +14,7 @@
 
 全天在线指服务持续运行；模型上下文仍有限。存储量可以增长，但普通恢复不扫描存储桶、不回放全历史。内存缓存可以丢弃，由云端状态恢复。源码、连接配置和测试报告不属于管理任务的持久状态。
 
-第一版实现对象存储协议、GCS 适配器、条件发布、幂等命令、内存缓存、上下文服务、HTTP 接口、通知接入和可恢复的 PostgreSQL 快照维护示例。它不自动执行任意 DDL、数据库重启或模型推理；这些执行器以后通过同一状态协议接入。superuser Agent 的数据库能力不因本服务被缩减。
+第一版实现对象存储协议、GCS 适配器、条件发布、幂等命令、内存缓存、上下文服务、HTTP 接口、通知接入和可恢复的 PostgreSQL 快照维护示例。它不自动执行任意 DDL、数据库重启或模型推理；这些执行器以后通过同一状态协议接入。superuser Agent 的数据库能力不因本服务被缩减。（2026-10-31 注：superuser Agent 已退役，见 [Agent 边界](AGENT_BOUNDARY.md)。）
 
 ## 状态和对象布局
 
@@ -101,7 +101,7 @@ Business versions are still managed by Forkpoint on the existing Ubuntu WSL Post
 
 Being online all day means the service runs continuously; the model's context is still limited. Storage volume can grow, but ordinary recovery does not scan the storage bucket or replay the full history. The in-memory cache can be discarded and recovered from cloud state. Source code, connection configuration and test reports are not part of the management task's persistent state.
 
-The first version implements the object storage protocol, the GCS adapter, conditional publishing, idempotent commands, the in-memory cache, the context service, the HTTP interface, notification intake, and a recoverable PostgreSQL snapshot maintenance example. It does not automatically execute arbitrary DDL, database restarts or model inference; these executors will be connected later through the same state protocol. The superuser Agent's database capabilities are not reduced by this service.
+The first version implements the object storage protocol, the GCS adapter, conditional publishing, idempotent commands, the in-memory cache, the context service, the HTTP interface, notification intake, and a recoverable PostgreSQL snapshot maintenance example. It does not automatically execute arbitrary DDL, database restarts or model inference; these executors will be connected later through the same state protocol. The superuser Agent's database capabilities are not reduced by this service. (Note added on 2026-10-31: the superuser Agent is retired; see [Agent boundary](AGENT_BOUNDARY.md).)
 
 ## State and object layout
 

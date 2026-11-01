@@ -1,6 +1,6 @@
 中文 | [English](#english-version)
 
-# Superuser Agent 的运行协议
+# 管理 Agent 的运行协议
 
 > 当前状态（2026-10-30）：云存储已移除，任务状态只保存在内存中（`MemoryStore`），进程结束即丢失。下述接手流程只在同一进程内的存储上成立。
 
@@ -8,7 +8,7 @@
 
 ## 身份与职责
 
-管理身份按执行器选择：常规快照维护使用 `agentdb_manager`，只有 `vc.snapshot_status`、`vc.materialize`、只读的 `vc.snapshot_due` 与 `vc.history_health` 的执行权限；修改版本引擎与系统规则使用已授权的管理员身份。受限角色由本次本机审查新增，不要求为所有 Agent 设置人类审批。数据库能力由账户提供，本文件定义使用方式。
+管理身份按执行器选择：常规快照维护使用 `agentdb_manager`，只有 `vc.snapshot_status`、`vc.materialize`、只读的 `vc.snapshot_due` 与 `vc.history_health` 的执行权限；收紧限制使用 `agentdb_keeper`。2026-10-31 起管理 Agent 不持有超级用户或表的所有权（见 [Agent 边界](AGENT_BOUNDARY.md)）：修改版本引擎与系统规则由 Agent 写成迁移文件和测试提出，由数据库属主执行。受限角色不要求为所有 Agent 设置人类审批。数据库能力由账户提供，本文件定义使用方式。
 
 新版维护器依赖 `sql/003_manager_role.sql`。旧安装先由数据库所有者执行 `python db.py install-manager`；通过 `--role agentdb_manager` 可在本机可信连接上检查角色权限。SET ROLE 不会从持有管理员连接的执行环境中移除管理员能力，不能用它声称已建立进程或身份隔离。
 
@@ -49,6 +49,8 @@ Agent 能关掉自己的超时，而登录、预算和授权由数据库执行�
 - **阈值**：规则对象若是 JSON 对象且含 `agent_boundary`，其中只允许 `max_idle_in_transaction_seconds`（默认 60）与 `max_transaction_seconds`（默认 300），都是整数 1..86400；无效时抛出 Invalid，不执行任何 SQL。其余同历史增长检查。
 - **幂等**：一轮没有变化就不发布。并发检查者先发布时返回 Conflict，下一轮再比较。数据库的动作（冻结、结束会话）不因 Conflict 而撤回，这份状态只是报告；进程结束后状态丢失不影响边界。
 - **撤销**：`undo_login(actor, login)` 或 `python agent_boundary.py undo <login>`：先用 `vc.stop_agent` 花光它的预算并结束它的会话，再从最新的开始用 `vc.revert` 撤销它在 main 上的提交，不判断这些提交做了什么。遇到 AB005（之后又有人改过）就停下并报告，因为跳过它去撤销更早的提交会留下一个没有人见过的状态；撤销更新的提交后重跑即可继续。
+- **报告**：`vc.agent_report(login)` 或 `python agent_boundary.py report <login>` 从历史得出一个登录落到 main 的内容（每张表的增改删、文件数、被撤销的合入数），不依赖它自己的说法，登录收回后也能查。它尝试过但被拒绝的语句在服务器日志里。
+- **备份**：`python agent_boundary.py backup --to <文件夹>` 以属主运行，由系统计划任务按周期触发，因为管理循环以 `agentdb_keeper` 运行，读不了表。只有恢复验证通过才留下 `.dump` 文件。
 - **不做的事**：不解冻，不加预算，不直接写表。这些都要属主。
 
 ## 上下文与事实
@@ -61,7 +63,7 @@ Agent 能关掉自己的超时，而登录、预算和授权由数据库执行�
 
 <a id="english-version"></a>
 
-# Operating Protocol for the Superuser Agent
+# Operating Protocol for the Manager Agent
 
 > Current status (2026-10-30): cloud storage has been removed, and task state lives only in memory (`MemoryStore`) and is lost when the process ends. The hand-off below holds only on a store within the same process.
 
@@ -69,7 +71,7 @@ This file can serve as the task description for the manager Agent, or as the ope
 
 ## Identity and responsibilities
 
-The management identity is chosen per executor: routine snapshot maintenance uses `agentdb_manager`, which has execute permission only on `vc.snapshot_status`, `vc.materialize`, and the read-only `vc.snapshot_due` and `vc.history_health`; changing the version engine and system rules uses an authorized administrator identity. The restricted role was added by this local review; it does not require setting up human approval for all Agents. Database capabilities are provided by accounts; this file defines how they are used.
+The management identity is chosen per executor: routine snapshot maintenance uses `agentdb_manager`, which has execute permission only on `vc.snapshot_status`, `vc.materialize`, and the read-only `vc.snapshot_due` and `vc.history_health`; tightening limits uses `agentdb_keeper`. Since 2026-10-31 the manager Agent holds no superuser or table ownership (see [Agent boundary](AGENT_BOUNDARY.md)): an agent proposes changes to the version engine and system rules as migration files and tests, and the database owner applies them. The restricted roles do not require setting up human approval for all Agents. Database capabilities are provided by accounts; this file defines how they are used.
 
 The new maintainer depends on `sql/003_manager_role.sql`. On old installations the database owner first runs `python db.py install-manager`; with `--role agentdb_manager` the role's permissions can be checked over a trusted local connection. SET ROLE does not remove administrator capabilities from an execution environment that holds an administrator connection, and cannot be used to claim that process or identity isolation has been established.
 
@@ -110,6 +112,8 @@ Agents can turn off their own timeouts, while logins, budgets and grants are enf
 - **Thresholds**: if the rule object is a JSON object and contains `agent_boundary`, only `max_idle_in_transaction_seconds` (default 60) and `max_transaction_seconds` (default 300) are allowed in it, both integers 1..86400; an invalid value raises Invalid before any SQL runs. Otherwise as in the history growth check.
 - **Idempotency**: a round with no change publishes nothing. When a concurrent checker publishes first, Conflict is returned and the next round compares again. A Conflict does not take back what the database did (a freeze, ended sessions): this state is only a report, and losing it when the process ends does not affect the boundary.
 - **Undo**: `undo_login(actor, login)` or `python agent_boundary.py undo <login>` first spends the login's budget with `vc.stop_agent` and ends its sessions, then reverts its commits on main with `vc.revert`, newest first, without judging what they did. It stops at AB005 (someone changed the row since) and reports it, because skipping that commit to undo an older one would leave a state nobody had; rerun after undoing the newer commit.
+- **Report**: `vc.agent_report(login)` or `python agent_boundary.py report <login>` works out from history what a login landed on main (rows inserted, updated and deleted per table, files, merges reverted), without relying on what it says, and works after the login is retired. Statements it tried and was refused are in the server log.
+- **Backup**: `python agent_boundary.py backup --to <folder>` runs as the owner and is triggered on a cycle by the system's scheduler, because the manager's loop runs as `agentdb_keeper`, which can't read tables. It leaves a `.dump` file only once the restore check passes.
 - **What it doesn't do**: unfreeze, add budget or write tables directly. Those are the owner's.
 
 ## Context and facts
