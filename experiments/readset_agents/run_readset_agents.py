@@ -128,7 +128,8 @@ SOURCES = ("experiments/readset_agents/run_readset_agents.py", "experiments/gpt_
            # agent_lab.py init installs the version engine; P's tables come from 002
            "sql/001_core.sql", "sql/002_demo_app.sql", "sql/003_manager_role.sql", "sql/004_merge_batch.sql",
            "sql/005_bounded_history.sql", "sql/006_history_health.sql", "sql/007_search_path_pg_temp.sql",
-           "sql/008_read_set_merge.sql", "sql/009_canonical_row_docs.sql", "sql/010_unknown_branch_code.sql")
+           "sql/008_read_set_merge.sql", "sql/009_canonical_row_docs.sql", "sql/010_unknown_branch_code.sql",
+           "sql/011_agent_boundary.sql")
 
 WORD = re.compile(r"[A-Za-z_\u0080-\uffff][A-Za-z0-9_$\u0080-\uffff]*")
 DOLLAR = re.compile(r"\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$")
@@ -324,17 +325,23 @@ def create_agent_login(owner, config, database):
     boundary, because RESET ROLE undoes it; this login is not a superuser, so resetting its role leaves
     nothing: NOINHERIT gives it agentdb_client's rights only while SET ROLE is on, and it holds none of its
     own. The password is random and kept in memory; it reaches psql as PGPASSWORD, so the server must accept
-    passwords on this host (a local socket's peer rule cannot serve it, so a socket means 127.0.0.1)."""
+    passwords on this host (a local socket's peer rule cannot serve it, so a socket means 127.0.0.1). Since
+    sql/011_agent_boundary.sql a database no longer accepts every role, so the login gets its own CONNECT."""
     name, password = "agentdb_agent_" + secrets.token_hex(5), secrets.token_urlsafe(32)
     owner.sql(f"""BEGIN;
 SET LOCAL log_statement = 'none';
 CREATE ROLE {name} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT PASSWORD '{password}';
 GRANT agentdb_client TO {name} WITH INHERIT FALSE, SET TRUE;
+GRANT CONNECT ON DATABASE "{database}" TO {name};
 COMMIT;""")
     host = owner.settings["host"]
     return name, db.Connection(argparse.Namespace(
         config=config, database=database, role=None, password=False, password_value=password, user=name,
         host="127.0.0.1" if host.startswith("/") else host))
+
+
+def drop_agent_login(owner, database, name):
+    owner.sql(f'REVOKE CONNECT ON DATABASE "{database}" FROM {name}; DROP ROLE {name};')
 
 
 class Transaction:
@@ -981,7 +988,7 @@ def run_trial(args, number, group):
                 session.close()
         if summary.get("agent_login"):
             try:
-                trial.owner.sql(f"DROP ROLE {summary['agent_login']};")
+                drop_agent_login(trial.owner, trial.database, summary["agent_login"])
             except RuntimeError as drop_error:
                 summary["agent_login_not_dropped"] = str(drop_error)
         with trial.lock:

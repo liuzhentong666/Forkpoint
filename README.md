@@ -185,7 +185,7 @@ review_local.py       local review: maintenance recovery, restricted role, ten b
 agent_lab.py          the tool CLI the GPT and Claude agents use in the experiments
 agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
 compose.yaml          the one-command Docker demo
-sql/                  the version engine, installed in order 001–010
+sql/                  the version engine, installed in order 001–011
 examples/             runnable SQL examples
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs

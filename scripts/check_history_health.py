@@ -7,7 +7,7 @@ criss-cross, table snapshots). It records data, history, every read and merge
 outcome of that checker, and the attributes of the existing functions; applies
 `db.py install-history-health` twice; and checks that nothing changed, that
 vc.history_health is STABLE, executable by agentdb_manager only, equal to a
-fresh install's (agentdb_test_hhnew_*) once the later 007 is applied as well,
+fresh install's (agentdb_test_hhnew_*) once the later 007 and 011 are applied as well,
 and that its numbers match independent
 queries on every branch (commits_since_snapshot also against vc.snapshot_due).
 Finally SnapshotMaintenance.check_history (MemoryStore) runs as agentdb_manager
@@ -113,6 +113,7 @@ def main():
 
     # The existing functions came from the old 005 without pg_temp; 007 brings them to a fresh install's form.
     owner.install_search_path_hardening()
+    owner.install_agent_boundary()  # 011 grants agent logins some of these functions
     owner.create_database(names["fresh"])
     owner.install(names["fresh"])
     fresh = function_states(connect(args, names["fresh"]), EXISTING + (ADDED,))

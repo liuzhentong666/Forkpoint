@@ -61,9 +61,9 @@
 python db.py install
 ```
 
-安装命令先创建配置中的项目库（若尚不存在；可用 `--database` 指定其他库名），再在一个事务中按顺序安装 `sql/` 中的十个文件（001–010）：版本引擎、示例业务表、受限维护角色、批量合入、有界历史遍历与快照策略、只读历史健康检查、search_path 加固、读集合入、与会话设置无关的行文档，以及不存在的分支报 P0002。它会拒绝已有项目 schema 或用户表的目标库。项目库初始没有业务数据。
+安装命令先创建配置中的项目库（若尚不存在；可用 `--database` 指定其他库名），再在一个事务中按顺序安装 `sql/` 中的十一个文件（001–011）：版本引擎、示例业务表、受限维护角色、批量合入、有界历史遍历与快照策略、只读历史健康检查、search_path 加固、读集合入、与会话设置无关的行文档、不存在的分支报 P0002，以及 Agent 登录的边界。它会拒绝已有项目 schema 或用户表的目标库。项目库初始没有业务数据。
 
-安装包含示例表 `app.products`、`app.orders`，以及 NOLOGIN 角色 `agentdb_client` 和 `agentdb_manager`。角色是整个 PostgreSQL 实例共享的；已存在时只授予本项目的库内权限，不修改其角色属性。
+安装包含示例表 `app.products`、`app.orders`，以及 NOLOGIN 角色 `agentdb_client`、`agentdb_manager`、`agentdb_worker`、`agentdb_keeper` 和 `agentdb_broker`。角色是整个 PostgreSQL 实例共享的；已存在时只授予本项目的库内权限，不修改其角色属性。安装后本库不再接受所有角色：只有属主、超级用户和被单独授权的角色能连接。
 
 ## 升级已有安装
 
@@ -79,6 +79,7 @@ python db.py install
 | 008 | `python db.py install-read-set-merge` | 新增 `vc.merge_validated`：按决定读过的行校验合入，这些行变过则报 RS001 拒绝（写偏斜），源分支写过的行也按读校验（2026-10-22 起；已安装的库重跑本条即更新）；读键先改写为历史记录的形式（如 `"3204"` 按整数 3204），无法转换的键报 22023，未知的源版本或分支报 P0002；读集代替 head 检查，空读集表示决定没有读任何行；不改动已有函数；回滚方法见该文件开头 | `run_tests.py`（读集合入的一组测试） |
 | 009 | `python db.py install-canonical-row-docs` | 历史中的行文档与主键不再随写入会话的设置变化：捕获触发器与 `vc.merge_validated` 以固定的 TimeZone（UTC）、IntervalStyle、extra_float_digits、bytea_output 生成行文档；已存历史中有按其他设置写下的行时整体中止、不做改动，须先修复那段历史；执行时以 SHARE 锁等待进行中的版本化事务结束，期间新的版本化写入等它完成 | `run_tests.py`（`row_documents_do_not_depend_on_session_settings`）、`scripts/check_search_path_migration.py` |
 | 010 | `python db.py install-unknown-branch-code` | `vc.begin_change` 遇到不存在的分支报 P0002（no_data_found），不再是与合入冲突相同的 P0001，`agent_lab.py` 据此把这种提案报为 JSON `not_found`；其余不变（签名、函数体其余部分、属主、授权、search_path） | `run_tests.py`（`begin_change_on_a_missing_branch_is_not_found`）、`scripts/check_search_path_migration.py` |
+| 011 | `python db.py install-agent-boundary` | Agent 登录的边界：角色 `agentdb_worker`、`agentdb_keeper`、`agentdb_broker`，预算、分支归属与冻结状态三张表，`vc.agent_fork`、`vc.agent_begin`、`vc.agent_merge`、`vc.revert`、`vc.freeze`、`vc.boundary_check` 等函数，`vc.changeset` 与 `vc.blob` 上记作者、扣预算的触发器；不改已有函数与历史。撤销本库 PUBLIC 的 CONNECT 与 TEMPORARY（`agentdb_client` 保留，`agentdb_manager` 保留 CONNECT，其他非属主登录需要单独授权）；由超级用户执行时还撤销建大对象的函数。它记下引擎指纹，所以之后登记新表或运行别的引擎迁移都要重跑本条；回滚方法见该文件开头 | `scripts/check_agent_boundary_migration.py` |
 
 核验脚本都在新建的旧版测试库上执行迁移并逐项比较，不触碰项目库。
 
@@ -170,9 +171,9 @@ Each call behaves the same as a separate process: it stops at the first error (n
 python db.py install
 ```
 
-The install command first creates the configured project database if it doesn't exist yet (use `--database` for another name), then installs the ten files in `sql/` (001–010) in order in one transaction: the version engine, the demo business tables, the restricted maintenance role, batched merge, bounded history traversal with the snapshot policy, the read-only history health check, the search_path hardening, read-set merges, row documents independent of session settings, and P0002 for a missing branch. It refuses a target database that already has project schemas or user tables. The project database starts with no business data.
+The install command first creates the configured project database if it doesn't exist yet (use `--database` for another name), then installs the eleven files in `sql/` (001–011) in order in one transaction: the version engine, the demo business tables, the restricted maintenance role, batched merge, bounded history traversal with the snapshot policy, the read-only history health check, the search_path hardening, read-set merges, row documents independent of session settings, P0002 for a missing branch, and the boundary around agent logins. It refuses a target database that already has project schemas or user tables. The project database starts with no business data.
 
-The install includes the demo tables `app.products` and `app.orders` and the NOLOGIN roles `agentdb_client` and `agentdb_manager`. Roles are shared by the whole PostgreSQL instance; if one already exists, only this project's in-database privileges are granted and its role attributes are left alone.
+The install includes the demo tables `app.products` and `app.orders` and the NOLOGIN roles `agentdb_client`, `agentdb_manager`, `agentdb_worker`, `agentdb_keeper` and `agentdb_broker`. Roles are shared by the whole PostgreSQL instance; if one already exists, only this project's in-database privileges are granted and its role attributes are left alone. After installing, the database no longer accepts every role: only its owner, superusers and roles granted access can connect.
 
 ## Upgrading an existing install
 
@@ -188,6 +189,7 @@ Upgrade an existing install in this order. Each command can be rerun and changes
 | 008 | `python db.py install-read-set-merge` | `vc.merge_validated`: a merge checked against the rows its decision read, refused with RS001 when they changed (write skew), with the rows the source wrote checked as read too (since 2026-10-22; rerun it on an existing install to update); read keys are first rewritten to the form history records (`"3204"` as the integer 3204), a key that cannot be converted raises 22023, and an unknown source revision or branch raises P0002; the read set replaces the head check, and an empty one declares that the decision read nothing; no existing function changes; the rollback is at the top of the file | `run_tests.py` (its read-set merge tests) |
 | 009 | `python db.py install-canonical-row-docs` | row documents and primary keys in history no longer depend on the settings of the session that wrote them: the capture triggers and `vc.merge_validated` render rows with fixed TimeZone (UTC), IntervalStyle, extra_float_digits and bytea_output; stops without changing anything if stored history holds rows written under other settings, which then has to be repaired first; while it runs, SHARE locks make it wait for open versioned transactions to finish, and new versioned writes wait for it | `run_tests.py` (`row_documents_do_not_depend_on_session_settings`), `scripts/check_search_path_migration.py` |
 | 010 | `python db.py install-unknown-branch-code` | `vc.begin_change` reports a branch that does not exist as P0002 (no_data_found) instead of P0001, which is also a merge conflict, so `agent_lab.py` reports such a proposal as JSON `not_found`; nothing else changes (signature, the rest of the body, owner, grants, search_path) | `run_tests.py` (`begin_change_on_a_missing_branch_is_not_found`), `scripts/check_search_path_migration.py` |
+| 011 | `python db.py install-agent-boundary` | The boundary around agent logins: the roles `agentdb_worker`, `agentdb_keeper` and `agentdb_broker`, three tables for budgets, branch owners and the freeze, functions such as `vc.agent_fork`, `vc.agent_begin`, `vc.agent_merge`, `vc.revert`, `vc.freeze` and `vc.boundary_check`, and triggers on `vc.changeset` and `vc.blob` that record the author and charge the budget; no existing function or history changes. Revokes CONNECT and TEMPORARY on this database from PUBLIC (`agentdb_client` keeps both and `agentdb_manager` keeps CONNECT; any other login that isn't the owner needs its own grant); run by a superuser, it also revokes the large-object creation functions. It records a fingerprint of the engine, so rerun it after registering a table or running any other engine migration; the rollback is at the top of the file | `scripts/check_agent_boundary_migration.py` |
 
 Each check script migrates a freshly created old-version test database and compares the results item by item; none of them touches the project database.
 

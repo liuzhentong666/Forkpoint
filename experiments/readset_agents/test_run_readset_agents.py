@@ -371,7 +371,7 @@ class DryRunTests(unittest.TestCase):
         database = self.rounds[group, True]["database"]
         owner = runner.connect_owner(self.args, database)
         name, login = runner.create_agent_login(owner, self.args.config, database)
-        self.addCleanup(owner.sql, f"DROP ROLE {name};")
+        self.addCleanup(runner.drop_agent_login, owner, database, name)
         trial = runner.ReadsetTrial(None, self.temp, {"calls": []}, group)
         trial.owner, trial.login, trial.database = owner, login, database
         return trial, name
