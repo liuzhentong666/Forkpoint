@@ -15,6 +15,11 @@ from .storage import Conflict, Invalid, Missing
 HISTORY_THRESHOLDS = dict(max_reachable_changesets=20000, max_median_merge_ms=500)
 HISTORY_ACTION = "merge history needs generation numbers (see docs/STAGING_S4_S5.md)"
 BRANCH = r"[A-Za-z0-9._/-]{1,128}"
+# Agents can turn off their own timeouts, so the keeper enforces these from outside (sql/011_agent_boundary.sql).
+BOUNDARY_THRESHOLDS = dict(max_idle_in_transaction_seconds=60, max_transaction_seconds=300)
+BOUNDARY_ACTION = "writes are frozen: the database owner fixes the cause, then runs SELECT vc.unfreeze() (see docs/AGENT_BOUNDARY.md)"
+LOGIN = r"[a-z][a-z0-9_]{0,62}"
+REPORTED = 20  # items kept in task state, which is bounded; the rest are counted
 
 
 class SnapshotMaintenance:
@@ -189,3 +194,149 @@ class SnapshotMaintenance:
                                       expected_version=record["version"], state=verified,
                                       event="Verified fixed revision/table snapshot in PostgreSQL")
         return dict(task_id=task_id, verified=True, applied=applied, version=result["version"])
+
+
+class BoundaryKeeper:
+    """The manager agent's loop around agent logins, on a connection running as agentdb_keeper.
+
+    Fixed code decides, not a model: the self-check freezes writes when the catalog is wrong, and
+    stuck sessions end by rule. Nothing here can loosen a limit. PostgreSQL holds the facts, so
+    the published state only reports them; losing it loses nothing.
+    """
+
+    def __init__(self, runtime, connection):
+        self.runtime, self.connection = runtime, connection
+
+    def thresholds(self, policy_ref):
+        """Limits from the policy object's "agent_boundary" section, else the defaults (as history_thresholds)."""
+        if policy_ref is None:
+            return dict(BOUNDARY_THRESHOLDS), "default"
+        engine = getattr(self.runtime, "engine", None)
+        if engine is None:
+            raise Invalid("Policy thresholds need a state interface that can read policy objects")
+        try:
+            policy = json.loads(engine.objects.get_bytes(policy_ref))
+        except (ValueError, UnicodeDecodeError):
+            policy = None
+        if not isinstance(policy, dict) or "agent_boundary" not in policy:
+            return dict(BOUNDARY_THRESHOLDS), "default"
+        section = policy["agent_boundary"]
+        if not isinstance(section, dict) or set(section) - set(BOUNDARY_THRESHOLDS):
+            raise Invalid("Policy agent_boundary must be an object with only " + ", ".join(BOUNDARY_THRESHOLDS))
+        limits = dict(BOUNDARY_THRESHOLDS, **section)
+        for name, value in limits.items():
+            if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 86400:
+                raise Invalid(f"{name} must be an integer 1..86400")
+        return limits, "policy"
+
+    def _read(self, task_id, operation, key, value):
+        try:
+            record = self.runtime.read(task_id, fresh=True)
+        except Missing:
+            return None
+        if record["state"]["facts"].get("operation") != operation or record["state"]["facts"].get(key) != value:
+            raise Conflict("Task ID belongs to a different maintenance target")
+        return record
+
+    def _publish(self, task_id, record, command, actor, state, event):
+        # A concurrent keeper that published first raises Conflict; the next round compares with it.
+        version = record["version"] + 1 if record else 0
+        return self.runtime.publish(task_id, command_id=f"{command}-{version}", actor=actor,
+                                    expected_version=record["version"] if record else None,
+                                    state=state, event=event)["version"]
+
+    def check(self, actor, policy_ref=None, task_id="agent-boundary"):
+        """One round: the self-check (vc.boundary_check freezes on a problem), then stuck sessions.
+
+        The database acts first, so a Conflict while publishing costs only the report. Publishes
+        when something changed; a quiet round publishes nothing.
+        """
+        record = self._read(task_id, "agent_boundary", "operation", "agent_boundary")
+        if record:
+            if policy_ref is not None and record["state"]["policy_ref"] != policy_ref:
+                raise Conflict("Task uses a different fixed policy version")
+            policy_ref = record["state"]["policy_ref"]
+        limits, source = self.thresholds(policy_ref)
+        status = json.loads(self.connection.sql("SELECT vc.boundary_check();"))
+        ended = json.loads(self.connection.sql(
+            f"SELECT vc.end_stuck_agent_sessions({limits['max_idle_in_transaction_seconds']},"
+            f"{limits['max_transaction_seconds']},{'true' if status['frozen'] else 'false'});"))
+        before = record["state"]["facts"] if record else dict(ended_total=0, last_ended=[])
+        problems = status["problems"]
+        facts = dict(operation="agent_boundary", thresholds=limits, thresholds_source=source,
+                     frozen=status["frozen"] and status["frozen"][:2000], problems_total=len(problems),
+                     logins=len(status["logins"]),
+                     open_databases=status["open_databases"][:REPORTED],
+                     ended_total=before["ended_total"] + len(ended),
+                     last_ended=(before["last_ended"] + ended)[-REPORTED:])
+        # The engine allows 16 uncertainties of 1024 characters; problems_total says how many there were.
+        uncertainties = [problem[:1024] for problem in problems[:15]]
+        if status["open_databases"]:
+            uncertainties.append(("Other databases accept any login: " +
+                                  ", ".join(status["open_databases"][:REPORTED]))[:1024])
+        state = dict(goal="Keep agent logins inside the boundary", status="running" if status["frozen"] else "completed",
+                     next_action=BOUNDARY_ACTION if status["frozen"] else "", uncertainties=uncertainties,
+                     facts=facts, policy_ref=policy_ref, evidence_refs=[])
+        result = dict(task_id=task_id, frozen=status["frozen"], problems=problems, ended=ended)
+        keys = ("status", "next_action", "uncertainties", "facts", "policy_ref")
+        if record and all(record["state"].get(key) == state[key] for key in keys):
+            return dict(result, published=False, version=record["version"])
+        event = "Writes frozen" if status["frozen"] else f"Boundary checked; {len(ended)} session(s) ended"
+        return dict(result, published=True, version=self._publish(task_id, record, "boundary", actor, state, event))
+
+    def commits_by(self, login):
+        """(login's commits on main not yet reverted, newest first; its commits already reverted).
+
+        main's first-parent chain, 1000 at a time. Commits an agent lands there are merges, whose
+        message the engine writes, so no agent can name one as already reverted.
+        """
+        own, reverted, cursor = [], set(), self.connection.sql("SELECT vc.head('main');")
+        while cursor:
+            page = json.loads(self.connection.sql(
+                "SELECT coalesce(json_agg(json_build_object('id',h.id,'parents',h.parents,'author',h.author,"
+                f"'message',h.message) ORDER BY h.n),'[]') FROM vc.history('{uuid.UUID(cursor)}',1000) "
+                "WITH ORDINALITY h(id,parents,author,message,created_at,n);"))
+            for commit in page:
+                revert = re.fullmatch(r"revert ([0-9a-f-]{36})", commit["message"])
+                if revert:
+                    reverted.add(revert.group(1))
+                if commit["author"] == login:
+                    own.append(commit["id"])
+            cursor = page[-1]["parents"][0] if page and page[-1]["parents"] else None
+        return [c for c in own if c not in reverted], [c for c in own if c in reverted]
+
+    def undo_login(self, actor, login, task_id=None):
+        """Stop a login, then revert its commits on main, newest first, without judging what they did.
+
+        Stops at the first refusal instead of skipping it: a row changed since belongs to newer work, and
+        undoing older commits around it would leave a state nobody had. A rerun picks up where this left off.
+        """
+        if not isinstance(login, str) or not re.fullmatch(LOGIN, login):
+            raise Invalid("Not a login name")
+        task_id = task_id or f"undo-{login}"
+        record = self._read(task_id, "undo_login", "login", login)
+        # Sessions end first, since an open transaction could hold the budget row vc.stop_agent updates,
+        # and again after, for one that reconnected in between.
+        end_sessions = f"SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE usename='{login}';"
+        self.connection.sql(end_sessions)
+        self.connection.sql(f"SELECT vc.stop_agent('{login}');")
+        self.connection.sql(end_sessions)
+        pending, reverted = self.commits_by(login)
+        refused = None
+        for position, revision in enumerate(pending):
+            outcome = self.connection.execute(f"SELECT vc.revert('{revision}');")
+            if outcome.returncode:
+                refused = dict(revision=revision, error=outcome.stderr.strip()[:1000])
+                pending = pending[position:]
+                break
+            reverted.append(revision)
+        else:
+            pending = []
+        facts = dict(operation="undo_login", login=login, reverted_total=len(reverted), reverted=reverted[:REPORTED],
+                     remaining_total=len(pending), remaining=pending[:REPORTED], refused=refused)
+        state = dict(goal=f"Undo what {login} landed on main", status="running" if refused else "completed",
+                     next_action=f"undo the newer commit that changed these rows, then rerun undo for {login}" if refused else "",
+                     uncertainties=[refused["error"]] if refused else [], facts=facts, policy_ref=None, evidence_refs=[])
+        version = self._publish(task_id, record, "undo", actor, state,
+                                f"Reverted {len(reverted)} commit(s) by {login}, {len(pending)} left")
+        return dict(task_id=task_id, login=login, reverted=reverted, remaining=pending, refused=refused, version=version)

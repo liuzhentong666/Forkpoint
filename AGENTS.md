@@ -90,7 +90,8 @@
 | `agent_state/objects.py` | 稳定编码、内容寻址、不可变对象与命令索引 |
 | `agent_state/engine.py` | 状态发布、版本竞争、幂等与历史语义 |
 | `agent_state/runtime.py` | 有界缓存、失效与上下文预算 |
-| `agent_state/maintenance.py` | 通过状态接口和数据库连接执行可探测、可恢复的维护；`run_due` 按快照策略 `vc.snapshot_due` 逐个目标调用 `run`；`check_history` 读取 `vc.history_health`，按任务 policy_ref 中的阈值（默认 20,000 个可达 changeset、合入中位 500 ms）发布事实，越线时以 uncertainty 与 next_action 报告需要代数索引（见 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md#历史增长检查)） |
+| `agent_state/maintenance.py` | 通过状态接口和数据库连接执行可探测、可恢复的维护；`run_due` 按快照策略 `vc.snapshot_due` 逐个目标调用 `run`；`check_history` 读取 `vc.history_health`，按任务 policy_ref 中的阈值（默认 20,000 个可达 changeset、合入中位 500 ms）发布事实，越线时以 uncertainty 与 next_action 报告需要代数索引（见 [管理 Agent 协议](docs/MANAGER_AGENT_PROTOCOL.md#历史增长检查)）；`BoundaryKeeper` 以 `agentdb_keeper` 运行：`check` 执行自检（发现问题就冻结写入）并按 policy_ref 中的阈值结束卡住的会话，`undo_login` 停掉一个登录并从最新的开始撤销它在 main 上的提交，遇到拒绝就停 |
+| `agent_boundary.py` | 发放程序与看守程序的命令行：`run` 为一条命令新建登录并在结束时收回，`keep` 是看守循环，`status` 只读，`undo` 撤销一个登录的提交。分别以 `agentdb_broker`、`agentdb_keeper` 运行；口令只进命令的环境变量，服务器只见到 SCRAM 校验值；不承担版本算法。必须运行在 Agent 碰不到的地方 |
 | `deploy/docker/` | Docker 演示（`compose.yaml`）的镜像 |
 | `deploy/staging/` | 预发布虚拟机的脚本：`make_certs.sh` 在客户端生成私有 CA 与服务器证书；`configure_postgres.sh` 在虚拟机上以 root 配置只接受 TLS 的远程访问与失联客户端超时（见 [预发布虚拟机](docs/STAGING_VM.md)）；`create_staging_role.sql` 建专用登录角色（非超级用户，仅 CREATEDB，对 NOLOGIN 角色只有 SET 权限）并做 `sql/011_agent_boundary.sql` 跳过的服务器级授权，由服务器管理员执行，口令交互设置，不写入文件（见 [预发布接入](docs/STAGING.md)） |
 | `review_local.py`、`agent_lab.py` | 仅限现有本机 PostgreSQL 的专用测试库；分别记录脚本并发与真实模型（GPT、Claude）行为 |
@@ -151,7 +152,7 @@
 |---|---|
 | PostgreSQL 版本引擎 | `python run_tests.py`：连接现有服务并创建专用测试数据库；不向项目业务库导入测试数据 |
 | Docker 演示 | `docker compose up --build --exit-code-from demo`：在内存中的 PostgreSQL 16 上用 `db.py` 安装，再运行 `examples/two_agents.sql`；结果不符时退出码非零。这是给访客的演示，不取代上面基于现有 WSL PostgreSQL 的开发与测试；需要 Docker Desktop 正在运行 |
-| 管理状态 | `python -m unittest discover -s tests -v` |
+| 管理状态 | `python -m unittest discover -s tests -v`（含 `tests/test_agent_boundary.py`：发放程序与看守程序，不连数据库） |
 | agent_lab 网关 | 单元测试含在上一行中（基于黄金样本，不连数据库）；`python scripts/compare_agent_lab_gateway.py` 新建两个 `agentdb_test_gpt_*` 库，对比逐次起进程与经网关两条路径的输出和耗时 |
 | 恢复读取结构 | `python scripts/benchmark_cloud_state.py`：内存后端，检查历史增长时的读取量 |
 | 维护与 PG 接手 | `python scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING`：替换为已安装示例的测试库 |
@@ -269,7 +270,8 @@ The rule text a task adopts is stored as an evidence object, and its version is 
 | `agent_state/objects.py` | Stable encoding, content addressing, immutable objects and the command index |
 | `agent_state/engine.py` | State publishing, version races, idempotency and history semantics |
 | `agent_state/runtime.py` | Bounded cache, invalidation and context budget |
-| `agent_state/maintenance.py` | Performs probeable, recoverable maintenance through the state interface and the database connection; `run_due` calls `run` for each target according to the snapshot policy `vc.snapshot_due`; `check_history` reads `vc.history_health` and publishes facts according to the thresholds in the task's policy_ref (default 20,000 reachable changesets, median merge 500 ms), and when a threshold is crossed reports through uncertainty and next_action that a generation-number index is needed (see [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md#history-growth-check)) |
+| `agent_state/maintenance.py` | Performs probeable, recoverable maintenance through the state interface and the database connection; `run_due` calls `run` for each target according to the snapshot policy `vc.snapshot_due`; `check_history` reads `vc.history_health` and publishes facts according to the thresholds in the task's policy_ref (default 20,000 reachable changesets, median merge 500 ms), and when a threshold is crossed reports through uncertainty and next_action that a generation-number index is needed (see [Manager Agent protocol](docs/MANAGER_AGENT_PROTOCOL.md#history-growth-check)); `BoundaryKeeper` runs as `agentdb_keeper`: `check` runs the self-check (a problem freezes writes) and ends stuck sessions by the thresholds in the policy_ref, and `undo_login` stops a login and reverts its commits on main, newest first, stopping at a refusal |
+| `agent_boundary.py` | CLI of the broker and the keeper: `run` makes a login for one command and retires it when the command ends, `keep` is the keeper's loop, `status` only reads, and `undo` reverts a login's commits. Runs as `agentdb_broker` and `agentdb_keeper`; the password goes only into the command's environment, and the server only sees a SCRAM verifier; carries no version algorithm. Has to run where agents can't reach it |
 | `deploy/docker/` | The image for the Docker demo (`compose.yaml`) |
 | `deploy/staging/` | Staging VM scripts: `make_certs.sh` makes a private CA and the server certificate on the client side; `configure_postgres.sh` configures TLS-only remote access and the vanished-client timeouts on the VM, as root (see [Staging VM](docs/STAGING_VM.md)); `create_staging_role.sql` creates the dedicated login role (not a superuser, only CREATEDB, with only SET privilege on the NOLOGIN roles) and does the server-wide grants `sql/011_agent_boundary.sql` skips, run by the server administrator, password set interactively and not written to files (see [Staging connection](docs/STAGING.md)) |
 | `review_local.py`, `agent_lab.py` | Only for dedicated test databases on the existing local PostgreSQL; record scripted concurrency and real model (GPT and Claude) behavior respectively |
@@ -330,7 +332,7 @@ From the project root, choose checks according to the scope of the change; after
 |---|---|
 | PostgreSQL version engine | `python run_tests.py`: connects to the existing service and creates a dedicated test database; does not import test data into the project business database |
 | Docker demo | `docker compose up --build --exit-code-from demo`: installs with `db.py` on an in-memory PostgreSQL 16, then runs `examples/two_agents.sql`; a wrong result gives a non-zero exit code. This is a demo for visitors and does not replace development and testing on the existing WSL PostgreSQL above; Docker Desktop must be running |
-| Management state | `python -m unittest discover -s tests -v` |
+| Management state | `python -m unittest discover -s tests -v` (includes `tests/test_agent_boundary.py`: the broker and the keeper, with no database) |
 | agent_lab gateway | Unit tests are included in the previous line (based on golden samples, no database connection); `python scripts/compare_agent_lab_gateway.py` creates two `agentdb_test_gpt_*` databases and compares the output and timing of the spawn-a-process-per-call path and the gateway path |
 | Recovery read structure | `python scripts/benchmark_cloud_state.py`: in-memory backend, checks read volume as history grows |
 | Maintenance and PG hand-off | `python scripts/integration_cloud_postgres.py --database agentdb_test_EXISTING`: replace with a test database that has the demo installed |

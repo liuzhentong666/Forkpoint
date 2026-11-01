@@ -40,6 +40,17 @@
 - **报告**：任一阈值达到或超过时，状态为 `running`，`next_action` 为 `merge history needs generation numbers (see docs/STAGING_S4_S5.md)`，每个越线项写成一条 uncertainty（含实测值与阈值）。未越线时状态为 `completed`，`next_action` 与 uncertainties 为空。接手 Agent 读取该任务即可得知结论；越线后再规划代数改造，作为单独的版本引擎变更。
 - **幂等**：重复检查时若除 `ancestor_walk_ms` 外各项与已发布状态相同，则不发布（返回 `published=false`）；head 或数值变化才发布新检查点（command_id `history-health-<version>`）。并发检查者先发布时返回 Conflict，重新执行即会与其结果比较。按维护周期执行，不要每次合入后都检查。
 
+## 边界检查
+
+Agent 能关掉自己的超时，而登录、预算和授权由数据库执行，所以管理循环要做的是从外面检查这些仍然成立。
+
+- **执行**：以 `agentdb_keeper` 连接构造 `BoundaryKeeper(runtime, connection)`，按周期调用 `check(actor, policy_ref=None, task_id="agent-boundary")`，或运行 `python agent_boundary.py keep`（默认每 5 秒一轮）。它调用 `vc.boundary_check()`（发现问题就冻结写入），再调用 `vc.end_stuck_agent_sessions`。数据库先动手，发布状态在后。
+- **事实**：任务的 facts 记录 `frozen`（原因，至多 2,000 字符）、`problems_total`、`logins`、`ended_total`、`last_ended`（最近 20 个）、`open_databases`，以及所用阈值 `thresholds` 和来源 `thresholds_source`。问题的前 15 条写成 uncertainty。冻结时状态为 `running`，`next_action` 说明由属主修好原因并运行 `SELECT vc.unfreeze()`；否则为 `completed`。
+- **阈值**：规则对象若是 JSON 对象且含 `agent_boundary`，其中只允许 `max_idle_in_transaction_seconds`（默认 60）与 `max_transaction_seconds`（默认 300），都是整数 1..86400；无效时抛出 Invalid，不执行任何 SQL。其余同历史增长检查。
+- **幂等**：一轮没有变化就不发布。并发检查者先发布时返回 Conflict，下一轮再比较。数据库的动作（冻结、结束会话）不因 Conflict 而撤回，这份状态只是报告；进程结束后状态丢失不影响边界。
+- **撤销**：`undo_login(actor, login)` 或 `python agent_boundary.py undo <login>`：先用 `vc.stop_agent` 花光它的预算并结束它的会话，再从最新的开始用 `vc.revert` 撤销它在 main 上的提交，不判断这些提交做了什么。遇到 AB005（之后又有人改过）就停下并报告，因为跳过它去撤销更早的提交会留下一个没有人见过的状态；撤销更新的提交后重跑即可继续。
+- **不做的事**：不解冻，不加预算，不直接写表。这些都要属主。
+
 ## 上下文与事实
 
 将目标、实际版本、已核验结果和未决动作结构化保存。解释性摘要引用原始证据，不能代替证据。完整报告存对象，状态只保留必要字段和引用。状态超 32 KiB 时拆分任务或事实对象；不要丢弃事实来假装满足限制。
@@ -89,6 +100,17 @@ Each `vc.merge` still traverses all changesets reachable from the target head tw
 - **Thresholds**: taken from the task's pinned policy_ref. If the rule object is a JSON object and contains `history_health`, only `max_reachable_changesets` (integer 1..10⁹, default 20,000) and `max_median_merge_ms` (greater than 0, at most 3,600,000, default 500) are allowed in it; an invalid key or value raises Invalid, with no publish and no fallback to defaults. When the rule object is not JSON (for example the original text of this protocol) or has no such section, the defaults are used. The median merge time is evaluated only when the caller passes a measured `merge_ms` (such as the merge time from `scripts/staging_drills.py growth`); the database does not store merge times. When policy_ref is omitted for an existing task, the task's original one is kept; passing a different policy_ref raises Conflict, and changing rules requires a new task.
 - **Reporting**: when any threshold is reached or exceeded, the status is `running`, `next_action` is `merge history needs generation numbers (see docs/STAGING_S4_S5.md)`, and each crossed item is written as one uncertainty (including the measured value and the threshold). When nothing is crossed, the status is `completed`, and `next_action` and uncertainties are empty. An Agent taking over can learn the conclusion by reading this task; after a threshold is crossed, plan the generation-number change as a separate version engine change.
 - **Idempotency**: on a repeated check, if every item except `ancestor_walk_ms` is the same as the published state, nothing is published (returns `published=false`); only a change in head or the values publishes a new checkpoint (command_id `history-health-<version>`). When a concurrent checker publishes first, Conflict is returned, and re-running compares against its result. Run it on the maintenance cycle, not after every merge.
+
+## Boundary check
+
+Agents can turn off their own timeouts, while logins, budgets and grants are enforced by the database, so the manager's loop checks from outside that all of this still holds.
+
+- **Execution**: construct `BoundaryKeeper(runtime, connection)` with an `agentdb_keeper` connection and call `check(actor, policy_ref=None, task_id="agent-boundary")` on a cycle, or run `python agent_boundary.py keep` (a round every 5 seconds by default). It calls `vc.boundary_check()`, which freezes writes on a problem, then `vc.end_stuck_agent_sessions`. The database acts first and publishing comes after.
+- **Facts**: the task's facts record `frozen` (the reason, at most 2,000 characters), `problems_total`, `logins`, `ended_total`, `last_ended` (the latest 20) and `open_databases`, as well as the thresholds used `thresholds` and their source `thresholds_source`. The first 15 problems are written as uncertainties. While frozen, the status is `running` and `next_action` says the owner fixes the cause and runs `SELECT vc.unfreeze()`; otherwise it is `completed`.
+- **Thresholds**: if the rule object is a JSON object and contains `agent_boundary`, only `max_idle_in_transaction_seconds` (default 60) and `max_transaction_seconds` (default 300) are allowed in it, both integers 1..86400; an invalid value raises Invalid before any SQL runs. Otherwise as in the history growth check.
+- **Idempotency**: a round with no change publishes nothing. When a concurrent checker publishes first, Conflict is returned and the next round compares again. A Conflict does not take back what the database did (a freeze, ended sessions): this state is only a report, and losing it when the process ends does not affect the boundary.
+- **Undo**: `undo_login(actor, login)` or `python agent_boundary.py undo <login>` first spends the login's budget with `vc.stop_agent` and ends its sessions, then reverts its commits on main with `vc.revert`, newest first, without judging what they did. It stops at AB005 (someone changed the row since) and reports it, because skipping that commit to undo an older one would leave a state nobody had; rerun after undoing the newer commit.
+- **What it doesn't do**: unfreeze, add budget or write tables directly. Those are the owner's.
 
 ## Context and facts
 

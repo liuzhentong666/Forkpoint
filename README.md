@@ -182,6 +182,7 @@ If you need a mature, general-purpose versioned database, use Dolt. Forkpoint is
 db.py                 CLI: check the connection, install, upgrade an existing install
 run_tests.py          integration tests (creates its own agentdb_test_* database)
 review_local.py       local review: maintenance recovery, restricted role, ten branches merged
+agent_boundary.py     gives each agent its own login; the keeper's loop, status and undo
 agent_lab.py          the tool CLI the GPT and Claude agents use in the experiments
 agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
 compose.yaml          the one-command Docker demo

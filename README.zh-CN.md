@@ -182,6 +182,7 @@ SELECT vc.register_table('app.products');   -- Agent 通过 agent.products 写�
 db.py                 命令行：检查连接、安装、升级已有安装
 run_tests.py          集成测试（自行创建 agentdb_test_* 库）
 review_local.py       本机审查：维护恢复、受限角色、十个分支全部合入
+agent_boundary.py     给每个 Agent 独立的登录；看守循环、状态与撤销
 agent_lab.py          实验中 GPT 与 Claude Agent 使用的工具命令行
 agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
 compose.yaml          一条命令的 Docker 演示
