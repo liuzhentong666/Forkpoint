@@ -1,8 +1,9 @@
 {
-  "database": "agentdb_test_gpt_d38ae0925c",
+  "database": "agentdb_test_gpt_23c958cf2d",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-  "checks": 43,
-  "holds": 43,
+  "checks": 317,
+  "holds": 310,
+  "notes": 7,
   "gaps": [],
   "real_cloud_verified": false,
   "note": "Local dedicated test database on the existing PostgreSQL server; the project database was not touched.",
@@ -35,7 +36,7 @@
       "group": "A",
       "name": "functions_with_search_path_search_pg_temp_last",
       "status": "HOLDS",
-      "detail": "34 functions that are SECURITY DEFINER or set search_path; without pg_temp last: none (sql/007_search_path_pg_temp.sql)"
+      "detail": "57 functions that are SECURITY DEFINER or set search_path; without pg_temp last: none (sql/007_search_path_pg_temp.sql)"
     },
     {
       "group": "B",
@@ -264,6 +265,1650 @@
       "name": "main_unchanged_after_all_attempts",
       "status": "HOLDS",
       "detail": "head unchanged: True; rows unchanged: True; open changes: 0"
+    },
+    {
+      "group": "normal",
+      "name": "self_check_is_clean_after_install",
+      "status": "HOLDS",
+      "detail": "[]"
+    },
+    {
+      "group": "normal",
+      "name": "branch_work_leaves_main_alone",
+      "status": "HOLDS",
+      "detail": "head and rows the same"
+    },
+    {
+      "group": "normal",
+      "name": "fork_write_merge_lands_on_main",
+      "status": "HOLDS",
+      "detail": "c4a7f90f-a0ac-4593-8999-f09a32403363"
+    },
+    {
+      "group": "normal",
+      "name": "the_file_landed_with_the_row",
+      "status": "HOLDS",
+      "detail": "hello"
+    },
+    {
+      "group": "normal",
+      "name": "history_names_the_real_login",
+      "status": "HOLDS",
+      "detail": "agentdb_atk_da061c7d1b8c"
+    },
+    {
+      "group": "normal",
+      "name": "budget_charged_for_the_row_and_the_file",
+      "status": "HOLDS",
+      "detail": "main_rows_left=48, bytes_left=4998515"
+    },
+    {
+      "group": "normal",
+      "name": "the_trusted_path_is_unchanged",
+      "status": "HOLDS",
+      "detail": "author=gpt-a"
+    },
+    {
+      "group": "escalate",
+      "name": "reset_role_leaves_nothing",
+      "status": "HOLDS",
+      "detail": "agentdb_atk_da061c7d1b8c/agentdb_atk_da061c7d1b8c/off"
+    },
+    {
+      "group": "escalate",
+      "name": "set_role_postgres",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "set_role_old_client",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "set_role_worker",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "set_role_manager",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "set_role_keeper",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "set_role_broker",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "set_session_authorization",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "create_role",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "create_database",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "create_schema",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "create_temp_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "create_table_in_public",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "create_function_in_public",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "alter_self_superuser",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "alter_self_createrole",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "alter_self_bypassrls",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "extend_own_expiry",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "raise_own_connection_limit",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "grant_self_the_keeper_role",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "grant_self_set_on_worker",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "session_replication_role",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "own_temp_file_limit",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "own_temp_file_limit_default",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "alter_database",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "alter_system",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "reload_config",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "read_server_file",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "list_server_directory",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "copy_to_program",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "copy_to_server_file",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "copy_from_server_file",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "read_password_hashes",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "change_the_role_catalog",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "create_extension",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "escalate",
+      "name": "reset_all_keeps_its_temp_file_limit",
+      "status": "HOLDS",
+      "detail": "100MB"
+    },
+    {
+      "group": "main",
+      "name": "update_main_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "delete_main_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "truncate_main_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "drop_main_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "alter_main_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "disable_capture_trigger",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "lock_main_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "select_for_update_main",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "old_begin_change",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "old_merge",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "old_merge_validated",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "old_fork",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "inner_apply_main",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "materialize",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "read_changeset_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "insert_changeset",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "rewrite_history",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "delete_history",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "move_main_head",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "raise_own_budget",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "read_the_budgets",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "steal_a_branch",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "open_the_gate",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "issue_own_budget",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "freeze",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "unfreeze",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "stop_another_agent",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "revert",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "run_the_self_check",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "read_the_self_check",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "inner_refuse",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "inner_gate",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "inner_charge",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "inner_stage",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "main",
+      "name": "gate_refuses_main_as_a_branch",
+      "status": "HOLDS",
+      "detail": "refused AB001"
+    },
+    {
+      "group": "main",
+      "name": "gate_refuses_merging_main",
+      "status": "HOLDS",
+      "detail": "refused AB001"
+    },
+    {
+      "group": "main",
+      "name": "gate_refuses_a_null_branch",
+      "status": "HOLDS",
+      "detail": "refused AB001"
+    },
+    {
+      "group": "main",
+      "name": "gate_refuses_merging_a_null_branch",
+      "status": "HOLDS",
+      "detail": "refused AB001"
+    },
+    {
+      "group": "main",
+      "name": "fork_cannot_recreate_main",
+      "status": "HOLDS",
+      "detail": "refused 23505"
+    },
+    {
+      "group": "main",
+      "name": "branch_view_write_needs_a_begin",
+      "status": "HOLDS",
+      "detail": "refused P0001"
+    },
+    {
+      "group": "main",
+      "name": "commit_without_finish_is_refused",
+      "status": "HOLDS",
+      "detail": "refused 23514"
+    },
+    {
+      "group": "main",
+      "name": "finish_cannot_be_skipped_by_setting_constraints",
+      "status": "HOLDS",
+      "detail": "refused 23514"
+    },
+    {
+      "group": "main",
+      "name": "snapshot_isolation_is_refused_at_the_gate",
+      "status": "HOLDS",
+      "detail": "refused AB006"
+    },
+    {
+      "group": "main",
+      "name": "serializable_is_refused_at_the_gate",
+      "status": "HOLDS",
+      "detail": "refused AB006"
+    },
+    {
+      "group": "main",
+      "name": "main_unchanged_after_all_of_this",
+      "status": "HOLDS",
+      "detail": "head and rows the same"
+    },
+    {
+      "group": "agents",
+      "name": "write_another_agents_branch",
+      "status": "HOLDS",
+      "detail": "refused AB001"
+    },
+    {
+      "group": "agents",
+      "name": "merge_another_agents_branch",
+      "status": "HOLDS",
+      "detail": "refused AB001"
+    },
+    {
+      "group": "agents",
+      "name": "fork_over_another_agents_branch",
+      "status": "HOLDS",
+      "detail": "refused 23505"
+    },
+    {
+      "group": "agents",
+      "name": "become_another_agent",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "agents",
+      "name": "share_its_own_login_with_another",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "agents",
+      "name": "reading_other_branches_is_allowed",
+      "status": "NOTE",
+      "detail": "4000 rows visible; agents coordinate by reading"
+    },
+    {
+      "group": "agents",
+      "name": "taking_anothers_work_is_recorded_as_the_taker",
+      "status": "HOLDS",
+      "detail": "recorded as agentdb_atk_da061c7d1b8c and charged to it: it could copy the rows anyway"
+    },
+    {
+      "group": "agents",
+      "name": "end_another_agents_session",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "agents",
+      "name": "cannot_read_another_agents_statements",
+      "status": "HOLDS",
+      "detail": "'<insufficient privilege>'"
+    },
+    {
+      "group": "agents",
+      "name": "status_shows_only_itself",
+      "status": "HOLDS",
+      "detail": "[\"a-1\", \"a-takes-b\", \"a-unfinished\"]"
+    },
+    {
+      "group": "budget",
+      "name": "merge_over_budget",
+      "status": "HOLDS",
+      "detail": "refused AB002"
+    },
+    {
+      "group": "budget",
+      "name": "over_budget_merge_left_main_alone",
+      "status": "HOLDS",
+      "detail": "head and rows the same"
+    },
+    {
+      "group": "budget",
+      "name": "catching_the_refusal_commits_no_merge",
+      "status": "HOLDS",
+      "detail": "the DO block committed, main the same"
+    },
+    {
+      "group": "budget",
+      "name": "failed_merges_cost_nothing",
+      "status": "HOLDS",
+      "detail": "main_rows_left=10"
+    },
+    {
+      "group": "budget",
+      "name": "many_small_merges_stop_at_the_budget",
+      "status": "HOLDS",
+      "detail": "2 of 4 merges of 4 rows; 2 left"
+    },
+    {
+      "group": "budget",
+      "name": "two_sessions_cannot_spend_the_budget_twice",
+      "status": "HOLDS",
+      "detail": "['AB002', 'landed']; 8 left"
+    },
+    {
+      "group": "budget",
+      "name": "huge_file_over_storage_budget",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "budget",
+      "name": "huge_commit_message_over_storage_budget",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "budget",
+      "name": "files_overwritten_before_finish_are_paid_for",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "budget",
+      "name": "a_file_deleted_before_finish_is_paid_for",
+      "status": "HOLDS",
+      "detail": "charged 600321 bytes"
+    },
+    {
+      "group": "budget",
+      "name": "refused_files_left_nothing_stored",
+      "status": "HOLDS",
+      "detail": "large blobs stored: 0"
+    },
+    {
+      "group": "budget",
+      "name": "a_row_that_compresses_well_pays_full_size",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "budget",
+      "name": "empty_commits_are_not_free",
+      "status": "HOLDS",
+      "detail": "3 empty commits, then AB003"
+    },
+    {
+      "group": "budget",
+      "name": "no_budget_row_means_no_writes",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "budget",
+      "name": "no_budget_row_means_no_merges",
+      "status": "HOLDS",
+      "detail": "refused AB001"
+    },
+    {
+      "group": "budget",
+      "name": "broker_cannot_top_up_a_budget",
+      "status": "HOLDS",
+      "detail": "refused 23505"
+    },
+    {
+      "group": "incident",
+      "name": "drop_the_database",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "drop_the_tables_schema",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "drop_the_history_schema",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "drop_a_history_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "drop_a_constraint",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "take_over_ownership",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "create_a_shadow_database",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "create_a_table_beside_the_data",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "deleting_the_whole_table_is_refused_at_the_gate",
+      "status": "HOLDS",
+      "detail": "refused AB007"
+    },
+    {
+      "group": "incident",
+      "name": "an_update_with_no_where_is_refused_at_the_gate",
+      "status": "HOLDS",
+      "detail": "refused AB007"
+    },
+    {
+      "group": "incident",
+      "name": "hundreds_of_fabricated_rows_are_refused_at_the_gate",
+      "status": "HOLDS",
+      "detail": "refused AB007"
+    },
+    {
+      "group": "incident",
+      "name": "none_of_that_reached_main",
+      "status": "HOLDS",
+      "detail": "head and rows the same"
+    },
+    {
+      "group": "incident",
+      "name": "small_merges_cannot_add_up_past_the_share",
+      "status": "HOLDS",
+      "detail": "['landed', 'landed', 'AB007']"
+    },
+    {
+      "group": "incident",
+      "name": "deleting_most_of_the_files_is_refused_at_the_gate",
+      "status": "HOLDS",
+      "detail": "refused AB007"
+    },
+    {
+      "group": "incident",
+      "name": "a_read_only_login_can_read",
+      "status": "HOLDS",
+      "detail": "4000"
+    },
+    {
+      "group": "incident",
+      "name": "a_read_only_login_cannot_fork",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "incident",
+      "name": "the_report_says_what_really_happened",
+      "status": "HOLDS",
+      "detail": "{\"app.products\": {\"deleted\": 4000, \"updated\": 0, \"inserted\": 0}}"
+    },
+    {
+      "group": "incident",
+      "name": "a_wiped_table_comes_back_identical",
+      "status": "HOLDS",
+      "detail": "0 rows after the wipe; identical after undo: True"
+    },
+    {
+      "group": "incident",
+      "name": "the_report_says_it_was_reverted",
+      "status": "HOLDS",
+      "detail": "1 of 1 merges reverted"
+    },
+    {
+      "group": "incident",
+      "name": "an_agent_cannot_read_the_reports",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "turn_off_its_statement_log",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "reset_its_statement_log",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "incident",
+      "name": "a_refused_attempt_leaves_a_trace",
+      "status": "HOLDS",
+      "detail": "2026-11-01 22:12:30.716 CST [890398] agentdb_atk_da061c7d1b8c@agentdb_test_gpt_23c958cf2d LOG:  statement: DELETE FROM app.products WHERE sku='x_marker_2fb457568cd2';"
+    },
+    {
+      "group": "stop",
+      "name": "stopped_login_cannot_fork",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "stop",
+      "name": "stopped_login_cannot_commit",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "stop",
+      "name": "stopped_login_cannot_merge",
+      "status": "HOLDS",
+      "detail": "refused AB002"
+    },
+    {
+      "group": "stop",
+      "name": "stopped_login_never_queues_for_mains_lock",
+      "status": "HOLDS",
+      "detail": "answered in 0.6 s while main's lock was held"
+    },
+    {
+      "group": "reads",
+      "name": "stale_read_refused_through_the_gate",
+      "status": "HOLDS",
+      "detail": "refused RS001"
+    },
+    {
+      "group": "reads",
+      "name": "sql_in_a_read_key_is_only_a_value",
+      "status": "HOLDS",
+      "detail": "refused 22023"
+    },
+    {
+      "group": "reads",
+      "name": "a_null_read_set_is_refused",
+      "status": "HOLDS",
+      "detail": "refused 22023"
+    },
+    {
+      "group": "reads",
+      "name": "refused_merges_left_main_alone",
+      "status": "HOLDS",
+      "detail": "head and rows the same"
+    },
+    {
+      "group": "reads",
+      "name": "a_read_that_did_not_change_merges",
+      "status": "HOLDS",
+      "detail": "landed"
+    },
+    {
+      "group": "hold",
+      "name": "turning_off_timeouts_can_block_main",
+      "status": "NOTE",
+      "detail": "accepted; another agent's merge got 55P03"
+    },
+    {
+      "group": "hold",
+      "name": "keeper_ends_an_idle_holder_and_merges_resume",
+      "status": "HOLDS",
+      "detail": "ended {'agentdb_atk_da061c7d1b8c': 'idle in transaction'}; next merge rc=0"
+    },
+    {
+      "group": "hold",
+      "name": "keeper_ends_a_holder_that_looks_busy",
+      "status": "HOLDS",
+      "detail": "ended {'agentdb_atk_da061c7d1b8c': 'transaction too long'}; next merge rc=0"
+    },
+    {
+      "group": "hold",
+      "name": "keeper_ends_an_idle_session_holding_an_advisory_lock",
+      "status": "HOLDS",
+      "detail": "{'agentdb_atk_da061c7d1b8c': 'idle holding an advisory lock'}"
+    },
+    {
+      "group": "hold",
+      "name": "a_plainly_idle_session_is_left_alone",
+      "status": "HOLDS",
+      "detail": "'still here'; ended {}"
+    },
+    {
+      "group": "hold",
+      "name": "agent_cannot_end_the_keepers_session",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "hold",
+      "name": "keeper_cannot_end_a_superuser_session",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "hold",
+      "name": "prepared_transactions_cannot_outlive_a_session",
+      "status": "HOLDS",
+      "detail": "refused 55000; max_prepared_transactions=0, and the self-check reports any other value"
+    },
+    {
+      "group": "storage",
+      "name": "large_object_from_bytea",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "storage",
+      "name": "large_object_create",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "storage",
+      "name": "large_object_creat",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "storage",
+      "name": "temporary_table",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "storage",
+      "name": "own_role_settings_refuse_invented_names",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "storage",
+      "name": "own_role_settings_hold_some_data_outside_the_budget",
+      "status": "NOTE",
+      "detail": "accepted: 1000000 bytes of one letter, 11544 bytes compressed; one row per login and database, dropped with the login; listed as a limit"
+    },
+    {
+      "group": "storage",
+      "name": "write_ahead_log_messages",
+      "status": "NOTE",
+      "detail": "accepted: not kept, recycled with the log"
+    },
+    {
+      "group": "undo",
+      "name": "bad_changes_landed",
+      "status": "HOLDS",
+      "detail": "rows changed on main"
+    },
+    {
+      "group": "undo",
+      "name": "undo_ends_the_logins_sessions",
+      "status": "HOLDS",
+      "detail": "''"
+    },
+    {
+      "group": "undo",
+      "name": "finds_and_reverts_every_commit_by_login",
+      "status": "HOLDS",
+      "detail": "3 commits, 0 left"
+    },
+    {
+      "group": "undo",
+      "name": "a_commit_message_cannot_hide_a_commit",
+      "status": "HOLDS",
+      "detail": "7d8254a4-2149-4549-8c1b-7664352af6ed"
+    },
+    {
+      "group": "undo",
+      "name": "reverting_returns_main_to_the_same_rows",
+      "status": "HOLDS",
+      "detail": "app.products checksum identical"
+    },
+    {
+      "group": "undo",
+      "name": "reverting_restores_files",
+      "status": "HOLDS",
+      "detail": "original/missing"
+    },
+    {
+      "group": "undo",
+      "name": "history_and_the_live_table_still_agree",
+      "status": "HOLDS",
+      "detail": "t"
+    },
+    {
+      "group": "undo",
+      "name": "nothing_was_rewritten",
+      "status": "HOLDS",
+      "detail": "3 of 3 commits still in history"
+    },
+    {
+      "group": "undo",
+      "name": "rerunning_undo_changes_nothing",
+      "status": "HOLDS",
+      "detail": "head the same"
+    },
+    {
+      "group": "undo",
+      "name": "an_undone_login_stays_stopped",
+      "status": "HOLDS",
+      "detail": "refused AB003"
+    },
+    {
+      "group": "undo",
+      "name": "an_open_transaction_cannot_hold_up_undo",
+      "status": "HOLDS",
+      "detail": "finished in 5.2 s"
+    },
+    {
+      "group": "undo",
+      "name": "revert_refuses_to_overwrite_newer_work",
+      "status": "HOLDS",
+      "detail": "refused AB005"
+    },
+    {
+      "group": "undo",
+      "name": "undo_stops_at_newer_work_and_says_why",
+      "status": "HOLDS",
+      "detail": "remaining 1; price 3.00"
+    },
+    {
+      "group": "undo",
+      "name": "undo_finishes_once_the_newer_work_is_undone",
+      "status": "HOLDS",
+      "detail": "1 reverted"
+    },
+    {
+      "group": "undo",
+      "name": "cannot_revert_genesis",
+      "status": "HOLDS",
+      "detail": "refused AB004"
+    },
+    {
+      "group": "undo",
+      "name": "cannot_revert_a_commit_that_is_not_on_main",
+      "status": "HOLDS",
+      "detail": "refused AB004"
+    },
+    {
+      "group": "undo",
+      "name": "cannot_revert_an_unknown_revision",
+      "status": "HOLDS",
+      "detail": "refused AB004"
+    },
+    {
+      "group": "drift",
+      "name": "trigger_disabled_is_found",
+      "status": "HOLDS",
+      "detail": "disabled trigger vc.row_change.immutable"
+    },
+    {
+      "group": "drift",
+      "name": "capture_trigger_disabled_is_found",
+      "status": "HOLDS",
+      "detail": "disabled trigger app.products.vc_capture"
+    },
+    {
+      "group": "drift",
+      "name": "capture_trigger_dropped_is_found",
+      "status": "HOLDS",
+      "detail": "tracked table without trigger vc_capture: app.products"
+    },
+    {
+      "group": "drift",
+      "name": "budget_trigger_dropped_is_found",
+      "status": "HOLDS",
+      "detail": "engine functions changed"
+    },
+    {
+      "group": "drift",
+      "name": "write_grant_added_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_worker may change app.products"
+    },
+    {
+      "group": "drift",
+      "name": "function_grant_added_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_worker may execute vc.begin_change(text,uuid,text,text)"
+    },
+    {
+      "group": "drift",
+      "name": "history_read_grant_added_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_worker may read vc.agent_budget"
+    },
+    {
+      "group": "drift",
+      "name": "schema_create_granted_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_worker may create in schema agent"
+    },
+    {
+      "group": "drift",
+      "name": "database_open_to_everyone_is_found",
+      "status": "HOLDS",
+      "detail": "any role may connect to this database"
+    },
+    {
+      "group": "drift",
+      "name": "temporary_tables_opened_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_worker may create schemas or temporary tables in this database"
+    },
+    {
+      "group": "drift",
+      "name": "large_objects_opened_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_worker may create large objects"
+    },
+    {
+      "group": "drift",
+      "name": "agent_login_made_superuser_is_found",
+      "status": "HOLDS",
+      "detail": "agent login too strong: agentdb_atk_da061c7d1b8c; superuser logins changed"
+    },
+    {
+      "group": "drift",
+      "name": "agent_login_given_the_old_role_is_found",
+      "status": "HOLDS",
+      "detail": "agent login agentdb_atk_da061c7d1b8c holds agentdb_client; login outside the boundary holds agentdb_client: agentdb_atk_da061c7d1b8c"
+    },
+    {
+      "group": "drift",
+      "name": "worker_role_given_another_role_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_worker holds agentdb_client; agentdb_worker may change app.orders; agentdb_worker may change app.products; agentdb_worker may create schemas or temporary tables in this database; agentdb_worker may execute vc.begin_change(text,uuid,text,text); agentdb_worker may execute vc.fork(text,uuid); agentdb_worker may execute vc.materialize(uuid,uuid); agentdb_worker may execute vc.merge(text,uuid,uuid,text); agentdb_worker may execute vc.merge_validated(text,uuid,jsonb,text); login outside the boundary holds agentdb_client: agentdb_atk_1e9583f1a115; login outside the boundary holds agentdb_client: agentdb_atk_231b87d7315e; login outside the boundary holds agentdb_client: agentdb_atk_236f2afd3fd9; login outside the boundary holds agentdb_client: agentdb_atk_27d9a7b3588c; login outside the boundary holds agentdb_client: agentdb_atk_4f3230d8e95b; login outside the boundary holds agentdb_client: agentdb_atk_5d45b9ccf7b1; login outside the boundary holds agentdb_client: agentdb_atk_682cc375bb8d; login outside the boundary holds agentdb_client: agentdb_atk_6af5f4195122; login outside the boundary holds agentdb_client: agentdb_atk_77d38494fc61; login outside the boundary holds agentdb_client: agentdb_atk_7d658821efc0; login outside the boundary holds agentdb_client: agentdb_atk_878fffab8618; login outside the boundary holds agentdb_client: agentdb_atk_950ad20ff1fd; login outside the boundary holds agentdb_client: agentdb_atk_9ee02937ea57; login outside the boundary holds agentdb_client: agentdb_atk_b9b0995398bb; login outside the boundary holds agentdb_client: agentdb_atk_c52a3cd2bf71; login outside the boundary holds agentdb_client: agentdb_atk_c83e860e6ff2; login outside the boundary holds agentdb_client: agentdb_atk_cc4acd158789; login outside the boundary holds agentdb_client: agentdb_atk_d3243f2f506d; login outside the boundary holds agentdb_client: agentdb_atk_da061c7d1b8c"
+    },
+    {
+      "group": "drift",
+      "name": "worker_role_can_log_in_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_worker has attributes it must not have"
+    },
+    {
+      "group": "drift",
+      "name": "keeper_given_unfreeze_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_keeper may execute vc.unfreeze()"
+    },
+    {
+      "group": "drift",
+      "name": "keeper_given_the_old_role_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_keeper holds agentdb_client; agentdb_keeper may change app.orders; agentdb_keeper may change app.products; agentdb_keeper may create schemas or temporary tables in this database; agentdb_keeper may execute vc.begin_change(text,uuid,text,text); agentdb_keeper may execute vc.checkout(text); agentdb_keeper may execute vc.diff_files(uuid,uuid); agentdb_keeper may execute vc.diff_rows(uuid,uuid,uuid); agentdb_keeper may execute vc.finish_change(); agentdb_keeper may execute vc.fork(text,uuid); agentdb_keeper may execute vc.materialize(uuid,uuid); agentdb_keeper may execute vc.merge(text,uuid,uuid,text); agentdb_keeper may execute vc.merge_base(uuid,uuid); agentdb_keeper may execute vc.merge_validated(text,uuid,jsonb,text); agentdb_keeper may execute vc.pin(uuid); agentdb_keeper may execute vc.read_file(uuid,text); agentdb_keeper may execute vc.rows_at(uuid,uuid); agentdb_keeper may execute vc.table_id(regclass); agentdb_keeper may execute vc.visible_rows(uuid); agentdb_keeper may execute vc.write_file(text,bytea,boolean); login outside the boundary holds agentdb_client: agentdb_atkkeeper_dbddfa40"
+    },
+    {
+      "group": "drift",
+      "name": "broker_given_createdb_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_broker has attributes it must not have"
+    },
+    {
+      "group": "drift",
+      "name": "broker_given_the_old_role_to_hand_out_is_found",
+      "status": "HOLDS",
+      "detail": "agentdb_broker holds agentdb_client"
+    },
+    {
+      "group": "drift",
+      "name": "new_superuser_login_is_found",
+      "status": "HOLDS",
+      "detail": "superuser logins changed"
+    },
+    {
+      "group": "drift",
+      "name": "engine_function_rewritten_is_found",
+      "status": "HOLDS",
+      "detail": "engine functions changed"
+    },
+    {
+      "group": "drift",
+      "name": "agent_login_with_no_expiry_is_found",
+      "status": "HOLDS",
+      "detail": "agent login not built by the broker: agentdb_atk_da061c7d1b8c"
+    },
+    {
+      "group": "drift",
+      "name": "login_outside_the_boundary_holding_the_old_role_is_found",
+      "status": "HOLDS",
+      "detail": "login outside the boundary holds agentdb_client: agentdb_atk_fe677c341aa8"
+    },
+    {
+      "group": "drift",
+      "name": "clean_again_after_every_repair",
+      "status": "HOLDS",
+      "detail": "[]"
+    },
+    {
+      "group": "freeze",
+      "name": "a_change_begun_before_the_freeze_cannot_finish",
+      "status": "HOLDS",
+      "detail": "refused AB000"
+    },
+    {
+      "group": "freeze",
+      "name": "keepers_round_freezes_on_a_problem",
+      "status": "HOLDS",
+      "detail": "agentdb_worker may execute vc.begin_change(text,uuid,text,text)"
+    },
+    {
+      "group": "freeze",
+      "name": "keepers_round_ends_transactions_already_past_the_gate",
+      "status": "HOLDS",
+      "detail": "[{'pid': 892238, 'login': 'agentdb_atk_6af5f4195122', 'reason': 'writing while frozen'}, {'pid': 892243, 'login': 'agentdb_atk_6af5f4195122', 'reason': 'writing while frozen'}]"
+    },
+    {
+      "group": "freeze",
+      "name": "a_merge_past_the_gate_cannot_commit_after_the_freeze",
+      "status": "HOLDS",
+      "detail": "head and rows the same"
+    },
+    {
+      "group": "freeze",
+      "name": "frozen_merge_is_refused",
+      "status": "HOLDS",
+      "detail": "refused AB000"
+    },
+    {
+      "group": "freeze",
+      "name": "frozen_begin_is_refused",
+      "status": "HOLDS",
+      "detail": "refused AB000"
+    },
+    {
+      "group": "freeze",
+      "name": "frozen_fork_is_refused",
+      "status": "HOLDS",
+      "detail": "refused AB000"
+    },
+    {
+      "group": "freeze",
+      "name": "reads_and_the_reason_still_work",
+      "status": "HOLDS",
+      "detail": "agentdb_worker may execute vc.begin_change(text,uuid,text,text)"
+    },
+    {
+      "group": "freeze",
+      "name": "main_can_still_be_read",
+      "status": "HOLDS",
+      "detail": "4000"
+    },
+    {
+      "group": "freeze",
+      "name": "keeper_cannot_unfreeze",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "freeze",
+      "name": "broker_cannot_unfreeze",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "freeze",
+      "name": "agent_cannot_unfreeze",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "freeze",
+      "name": "main_unchanged_while_frozen",
+      "status": "HOLDS",
+      "detail": "head and rows the same"
+    },
+    {
+      "group": "freeze",
+      "name": "fixing_the_cause_does_not_reopen_writes",
+      "status": "HOLDS",
+      "detail": "still frozen; self-check clean"
+    },
+    {
+      "group": "freeze",
+      "name": "undo_works_while_frozen",
+      "status": "HOLDS",
+      "detail": "1 reverted"
+    },
+    {
+      "group": "freeze",
+      "name": "writes_work_again_after_unfreezing",
+      "status": "HOLDS",
+      "detail": "landed"
+    },
+    {
+      "group": "freeze",
+      "name": "rerunning_the_migration_accepts_the_engine_but_opens_nothing",
+      "status": "HOLDS",
+      "detail": "problems []; still frozen: True"
+    },
+    {
+      "group": "broker",
+      "name": "create_superuser",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "create_replication",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "create_bypassrls",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "create_createdb",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "grant_the_old_client_role",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "grant_the_keeper_role",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "grant_server_files_role",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "alter_postgres",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "read_main",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "read_budgets",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "raise_a_budget",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "merge",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "drop_a_login_it_did_not_make",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "revert",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "broker",
+      "name": "use_the_worker_role",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "keeper",
+      "name": "write_main",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "keeper",
+      "name": "read_main",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "keeper",
+      "name": "issue_a_budget",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "keeper",
+      "name": "rewrite_history",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "keeper",
+      "name": "raise_a_budget",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "keeper",
+      "name": "open_the_gate",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "keeper",
+      "name": "create_a_role",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "keeper",
+      "name": "become_an_agent",
+      "status": "HOLDS",
+      "detail": "refused 42501"
+    },
+    {
+      "group": "reach",
+      "name": "login_cannot_connect_to_another_installation",
+      "status": "HOLDS",
+      "detail": "psql: error: connection to server at \"127.0.0.1\", port 5432 failed: FATAL:  permission denied for database \"agentdb_test_gpt_ae6afb9088\""
+    },
+    {
+      "group": "reach",
+      "name": "other_databases_still_open_to_any_login",
+      "status": "NOTE",
+      "detail": "agentdb, <other-database-1>, <other-database-2>, postgres, template1: their owners decide; each needs REVOKE CONNECT ... FROM PUBLIC. vc.boundary_status lists them"
+    },
+    {
+      "group": "expiry",
+      "name": "expired_login_cannot_reconnect",
+      "status": "HOLDS",
+      "detail": "psql: error: connection to server at \"127.0.0.1\", port 5432 failed: FATAL:  password authentication failed for user \"age"
+    },
+    {
+      "group": "expiry",
+      "name": "a_session_opened_before_expiry_survives_it",
+      "status": "HOLDS",
+      "detail": "'still alive': expiry stops only new connections, so the keeper must end it"
+    },
+    {
+      "group": "expiry",
+      "name": "keeper_ends_the_expired_logins_sessions",
+      "status": "HOLDS",
+      "detail": "{'agentdb_atk_dd665e5232f3': 'login expired'}"
+    },
+    {
+      "group": "retire",
+      "name": "retiring_a_login_drops_it",
+      "status": "HOLDS",
+      "detail": "0 left"
+    },
+    {
+      "group": "retire",
+      "name": "a_retired_login_cannot_connect",
+      "status": "HOLDS",
+      "detail": "psql: error: connection to server at \"127.0.0.1\", port 5432 failed: FATAL:  password authentication failed for user \"age"
+    },
+    {
+      "group": "retire",
+      "name": "a_retired_name_cannot_be_issued_again",
+      "status": "HOLDS",
+      "detail": "refused 23505"
+    },
+    {
+      "group": "retire",
+      "name": "self_check_stays_clean",
+      "status": "HOLDS",
+      "detail": "[]"
+    },
+    {
+      "group": "control",
+      "name": "commit_straight_to_main_with_a_forged_author",
+      "status": "HOLDS",
+      "detail": "got through on the old login, rolled back"
+    },
+    {
+      "group": "control",
+      "name": "write_another_agents_branch",
+      "status": "HOLDS",
+      "detail": "got through on the old login, rolled back"
+    },
+    {
+      "group": "control",
+      "name": "merge_another_agents_branch",
+      "status": "HOLDS",
+      "detail": "got through on the old login, rolled back"
+    },
+    {
+      "group": "control",
+      "name": "temporary_table_outside_any_budget",
+      "status": "HOLDS",
+      "detail": "got through on the old login, rolled back"
+    },
+    {
+      "group": "control",
+      "name": "nothing_was_kept",
+      "status": "HOLDS",
+      "detail": "head and rows the same"
+    },
+    {
+      "group": "cli",
+      "name": "status_reports_without_changing_anything",
+      "status": "HOLDS",
+      "detail": "exit 0; 21 logins; open databases: ['agentdb', '<other-database-1>', '<other-database-2>', 'postgres', 'template1']"
+    },
+    {
+      "group": "cli",
+      "name": "one_keeper_round_exits_clean",
+      "status": "HOLDS",
+      "detail": "{\"task_id\": \"agent-boundary\", \"frozen\": null, \"problems\": [], \"ended\": [], \"published\": true, \"version\": 0}"
+    },
+    {
+      "group": "cli",
+      "name": "run_keeps_the_keeper_going_while_the_agent_runs",
+      "status": "HOLDS",
+      "detail": "exit 0: ['ended by the keeper']"
+    },
+    {
+      "group": "cli",
+      "name": "run_retires_the_login_when_the_command_ends",
+      "status": "HOLDS",
+      "detail": "agentdb_atk_f6ab9a357570: 0 left"
+    },
+    {
+      "group": "cli",
+      "name": "undo_reverts_a_login_from_the_command_line",
+      "status": "HOLDS",
+      "detail": "exit 0; ['73656bb1-9370-49c2-9aa0-de855fadbc42']"
+    },
+    {
+      "group": "cli",
+      "name": "report_says_what_a_login_landed",
+      "status": "HOLDS",
+      "detail": "exit 0; {'app.products': {'deleted': 0, 'updated': 1, 'inserted': 0}}"
+    },
+    {
+      "group": "cli",
+      "name": "freeze_stops_agents_at_once",
+      "status": "HOLDS",
+      "detail": "merge refused AB000; reason \"code freeze: it's release day\""
+    },
+    {
+      "group": "cli",
+      "name": "the_owner_can_unfreeze",
+      "status": "HOLDS",
+      "detail": "exit 0"
+    },
+    {
+      "group": "cli",
+      "name": "run_keeps_the_operators_environment_back",
+      "status": "HOLDS",
+      "detail": "absent meant for it"
+    },
+    {
+      "group": "cli",
+      "name": "a_backup_is_kept_only_after_it_restores",
+      "status": "HOLDS",
+      "detail": "exit 0; ['agentdb_test_gpt_23c958cf2d-20261101-221635.dump']; {'app.products': 4000, 'app.orders': 0}"
+    },
+    {
+      "group": "cli",
+      "name": "only_the_newest_backups_are_kept",
+      "status": "HOLDS",
+      "detail": "exit 0; 1 kept"
+    },
+    {
+      "group": "cli",
+      "name": "backup_leaves_no_scratch_database",
+      "status": "HOLDS",
+      "detail": "0 left"
+    },
+    {
+      "group": "timing",
+      "name": "one_row_fork_commit_and_merge",
+      "status": "NOTE",
+      "detail": "median ms over 30 rounds on a 4000-row table: trusted path 192.2, through the gate 194.7, on this machine"
+    },
+    {
+      "group": "timing",
+      "name": "one_self_check",
+      "status": "NOTE",
+      "detail": "median 23.6 ms over 10, on this machine"
+    },
+    {
+      "group": "sandbox",
+      "name": "this_machines_own_route_to_superuser_is_found",
+      "status": "HOLDS",
+      "detail": "exit 1, gaps: ['no_other_credentials_in_the_environment', 'no_credential_files_within_reach', 'cannot_run_wsl', 'cannot_reach_docker_engine']"
+    },
+    {
+      "group": "sandbox",
+      "name": "in_a_container_every_route_is_closed_and_the_login_works",
+      "status": "HOLDS",
+      "detail": "exit 0: [HOLDS] no_other_credentials_in_the_environment: none; [HOLDS] no_credential_files_within_reach: looked in 13 places; [HOLDS] cannot_run_wsl: wsl.exe not found, or it does not run; [HOLDS] cannot_reach_docker_engine: docker client reaches an engine: False; socket mounted: False; [HOLDS] no_passwordless_sudo: sudo -n true; [HOLDS] cannot_log_in_as_postgres_without_a_password: refused on ['/var/run/postgresql', '127.0.0.1', 'host.docker.internal']; [HOLDS] own_login_works_and_is_not_a_superuser: agentdb_atk_4d6818b3abf3 superuser=off {\"login\": \"agentdb_atk_4d6818b3abf3\", \"frozen\": null, \"changed\": {}, \"branches\": [], \"bytes_left\": 100000, \"valid_until\": \"2026-11-01T22:29:14.356684+08:00\", \"main_rows_left\": 5, \"max_table_share\": 0.1}"
+    },
+    {
+      "group": "sandbox",
+      "name": "a_credential_left_in_reach_is_found",
+      "status": "HOLDS",
+      "detail": "exit 1; gaps ['no_other_credentials_in_the_environment']"
+    },
+    {
+      "group": "cleanup",
+      "name": "no_test_login_is_left",
+      "status": "HOLDS",
+      "detail": "none"
     }
   ]
 }

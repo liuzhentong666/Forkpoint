@@ -7,8 +7,10 @@ SECURITY DEFINER functions), tries with agentdb_client's own SQL what the
 catalog cannot show, tries to break version history through the granted
 functions, and feeds agent_lab.py, the tool behind the model agents, arguments
 its validation must reject; each rejection has to come from the check under
-test. Finally main's head and rows must be unchanged. An attempt that gets
-through is a GAP and the exit code is 1. agent_lab.py runs without
+test. Then main's head and rows must be unchanged. After that it attacks the
+boundary around agent logins as a real login with raw SQL (agent_login_attacks.py).
+An attempt that gets through is a GAP and the exit code is 1; a NOTE records
+something allowed that a reader should know. agent_lab.py runs without
 AGENTDB_LAB_GATEWAY, so its own checks are the ones tested.
 Never writes to the project database and never starts or stops the server.
 """
@@ -23,6 +25,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+import agent_login_attacks
 from db import FLAGS, Connection, sqlstate
 
 GENESIS = "00000000-0000-0000-0000-000000000001"
@@ -48,6 +51,8 @@ def main():
     parser.add_argument("--config", type=Path, help="Connection config, also passed to agent_lab.py; "
                                                     "default connection.local.json")
     parser.add_argument("--output", type=Path, default=ROOT / "results" / "agent-boundaries-results.json")
+    parser.add_argument("--sandbox-image", help="Docker image with psql and python3; also runs the sandbox check in a real "
+                                                "container, which must reach the server at host.docker.internal")
     args = parser.parse_args()
     config = ["--config", str(args.config)] if args.config else []
     env = {k: v for k, v in os.environ.items() if k != "AGENTDB_LAB_GATEWAY"}
@@ -70,7 +75,7 @@ def main():
     results = []
 
     def record(group, name, ok, detail):
-        status = "HOLDS" if ok else "GAP"
+        status = "NOTE" if ok is None else "HOLDS" if ok else "GAP"
         results.append(dict(group=group, name=name, status=status, detail=detail))
         print(f"[{status:>5}] {group} {name}: {detail}", flush=True)
 
@@ -209,8 +214,14 @@ def main():
            f"head unchanged: {after['main'] == before['main']}; rows unchanged: "
            f"{after['checksum'] == before['checksum']}; open changes: {after['open_work']}")
 
+    # The login attacks land commits on main, so they come after E. A second install stands in for another project.
+    code, out, err = lab("init")
+    if code:
+        raise SystemExit("agent_lab.py init failed:\n" + out + err)
+    agent_login_attacks.run(owner, args.config, database, record, json.loads(out)["database"], args.sandbox_image)
+
     summary = dict(database=database, postgresql=details["server_version"], checks=len(results),
-                   holds=sum(r["status"] == "HOLDS" for r in results),
+                   holds=sum(r["status"] == "HOLDS" for r in results), notes=sum(r["status"] == "NOTE" for r in results),
                    gaps=[r["name"] for r in results if r["status"] == "GAP"], real_cloud_verified=False,
                    note="Local dedicated test database on the existing PostgreSQL server; the project database "
                         "was not touched.")
