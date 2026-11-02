@@ -1,8 +1,8 @@
 {
-  "database": "agentdb_test_gpt_23c958cf2d",
+  "database": "agentdb_test_gpt_62dd4e782e",
   "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-  "checks": 317,
-  "holds": 310,
+  "checks": 320,
+  "holds": 313,
   "notes": 7,
   "gaps": [],
   "real_cloud_verified": false,
@@ -282,7 +282,7 @@
       "group": "normal",
       "name": "fork_write_merge_lands_on_main",
       "status": "HOLDS",
-      "detail": "c4a7f90f-a0ac-4593-8999-f09a32403363"
+      "detail": "a5a30fa0-081a-471d-9264-08df5a26950b"
     },
     {
       "group": "normal",
@@ -294,7 +294,7 @@
       "group": "normal",
       "name": "history_names_the_real_login",
       "status": "HOLDS",
-      "detail": "agentdb_atk_da061c7d1b8c"
+      "detail": "agentdb_atk_01fa036c732a"
     },
     {
       "group": "normal",
@@ -312,7 +312,7 @@
       "group": "escalate",
       "name": "reset_role_leaves_nothing",
       "status": "HOLDS",
-      "detail": "agentdb_atk_da061c7d1b8c/agentdb_atk_da061c7d1b8c/off"
+      "detail": "agentdb_atk_01fa036c732a/agentdb_atk_01fa036c732a/off"
     },
     {
       "group": "escalate",
@@ -834,7 +834,7 @@
       "group": "agents",
       "name": "taking_anothers_work_is_recorded_as_the_taker",
       "status": "HOLDS",
-      "detail": "recorded as agentdb_atk_da061c7d1b8c and charged to it: it could copy the rows anyway"
+      "detail": "recorded as agentdb_atk_01fa036c732a and charged to it: it could copy the rows anyway"
     },
     {
       "group": "agents",
@@ -1012,6 +1012,24 @@
     },
     {
       "group": "incident",
+      "name": "the_refusal_says_how_the_change_can_land",
+      "status": "HOLDS",
+      "detail": "ERROR:  AB007: Too large a share of app.products\nDETAIL:  {\"login\": \"agentdb_atk_021201a7dd82\", \"target\": \"app.products\", \"max_table_share\": 0.1, \"changed_by_this_login\": 4000, \"size_before_this_merge\": 4000}\nHINT:  Nothing was merged. Change less. If the task really rewrites this much, a login issu"
+    },
+    {
+      "group": "incident",
+      "name": "a_wider_login_cannot_merge_the_refused_branch",
+      "status": "HOLDS",
+      "detail": "refused AB001"
+    },
+    {
+      "group": "incident",
+      "name": "the_owner_can_merge_the_refused_branch",
+      "status": "HOLDS",
+      "detail": "merged, then rolled back"
+    },
+    {
+      "group": "incident",
       "name": "hundreds_of_fabricated_rows_are_refused_at_the_gate",
       "status": "HOLDS",
       "detail": "refused AB007"
@@ -1086,7 +1104,7 @@
       "group": "incident",
       "name": "a_refused_attempt_leaves_a_trace",
       "status": "HOLDS",
-      "detail": "2026-11-01 22:12:30.716 CST [890398] agentdb_atk_da061c7d1b8c@agentdb_test_gpt_23c958cf2d LOG:  statement: DELETE FROM app.products WHERE sku='x_marker_2fb457568cd2';"
+      "detail": "2026-11-02 12:47:25.994 CST [1036956] agentdb_atk_01fa036c732a@agentdb_test_gpt_62dd4e782e LOG:  statement: DELETE FROM app.products WHERE sku='x_marker_159695d53439';"
     },
     {
       "group": "stop",
@@ -1110,7 +1128,7 @@
       "group": "stop",
       "name": "stopped_login_never_queues_for_mains_lock",
       "status": "HOLDS",
-      "detail": "answered in 0.6 s while main's lock was held"
+      "detail": "answered in 0.7 s while main's lock was held"
     },
     {
       "group": "reads",
@@ -1152,19 +1170,19 @@
       "group": "hold",
       "name": "keeper_ends_an_idle_holder_and_merges_resume",
       "status": "HOLDS",
-      "detail": "ended {'agentdb_atk_da061c7d1b8c': 'idle in transaction'}; next merge rc=0"
+      "detail": "ended {'agentdb_atk_01fa036c732a': 'idle in transaction'}; next merge rc=0"
     },
     {
       "group": "hold",
       "name": "keeper_ends_a_holder_that_looks_busy",
       "status": "HOLDS",
-      "detail": "ended {'agentdb_atk_da061c7d1b8c': 'transaction too long'}; next merge rc=0"
+      "detail": "ended {'agentdb_atk_01fa036c732a': 'transaction too long'}; next merge rc=0"
     },
     {
       "group": "hold",
       "name": "keeper_ends_an_idle_session_holding_an_advisory_lock",
       "status": "HOLDS",
-      "detail": "{'agentdb_atk_da061c7d1b8c': 'idle holding an advisory lock'}"
+      "detail": "{'agentdb_atk_01fa036c732a': 'idle holding an advisory lock'}"
     },
     {
       "group": "hold",
@@ -1254,7 +1272,7 @@
       "group": "undo",
       "name": "a_commit_message_cannot_hide_a_commit",
       "status": "HOLDS",
-      "detail": "7d8254a4-2149-4549-8c1b-7664352af6ed"
+      "detail": "ef1314a0-6396-4509-b5f5-02e179029f93"
     },
     {
       "group": "undo",
@@ -1296,7 +1314,7 @@
       "group": "undo",
       "name": "an_open_transaction_cannot_hold_up_undo",
       "status": "HOLDS",
-      "detail": "finished in 5.2 s"
+      "detail": "finished in 3.6 s"
     },
     {
       "group": "undo",
@@ -1404,19 +1422,19 @@
       "group": "drift",
       "name": "agent_login_made_superuser_is_found",
       "status": "HOLDS",
-      "detail": "agent login too strong: agentdb_atk_da061c7d1b8c; superuser logins changed"
+      "detail": "agent login too strong: agentdb_atk_01fa036c732a; superuser logins changed"
     },
     {
       "group": "drift",
       "name": "agent_login_given_the_old_role_is_found",
       "status": "HOLDS",
-      "detail": "agent login agentdb_atk_da061c7d1b8c holds agentdb_client; login outside the boundary holds agentdb_client: agentdb_atk_da061c7d1b8c"
+      "detail": "agent login agentdb_atk_01fa036c732a holds agentdb_client; login outside the boundary holds agentdb_client: agentdb_atk_01fa036c732a"
     },
     {
       "group": "drift",
       "name": "worker_role_given_another_role_is_found",
       "status": "HOLDS",
-      "detail": "agentdb_worker holds agentdb_client; agentdb_worker may change app.orders; agentdb_worker may change app.products; agentdb_worker may create schemas or temporary tables in this database; agentdb_worker may execute vc.begin_change(text,uuid,text,text); agentdb_worker may execute vc.fork(text,uuid); agentdb_worker may execute vc.materialize(uuid,uuid); agentdb_worker may execute vc.merge(text,uuid,uuid,text); agentdb_worker may execute vc.merge_validated(text,uuid,jsonb,text); login outside the boundary holds agentdb_client: agentdb_atk_1e9583f1a115; login outside the boundary holds agentdb_client: agentdb_atk_231b87d7315e; login outside the boundary holds agentdb_client: agentdb_atk_236f2afd3fd9; login outside the boundary holds agentdb_client: agentdb_atk_27d9a7b3588c; login outside the boundary holds agentdb_client: agentdb_atk_4f3230d8e95b; login outside the boundary holds agentdb_client: agentdb_atk_5d45b9ccf7b1; login outside the boundary holds agentdb_client: agentdb_atk_682cc375bb8d; login outside the boundary holds agentdb_client: agentdb_atk_6af5f4195122; login outside the boundary holds agentdb_client: agentdb_atk_77d38494fc61; login outside the boundary holds agentdb_client: agentdb_atk_7d658821efc0; login outside the boundary holds agentdb_client: agentdb_atk_878fffab8618; login outside the boundary holds agentdb_client: agentdb_atk_950ad20ff1fd; login outside the boundary holds agentdb_client: agentdb_atk_9ee02937ea57; login outside the boundary holds agentdb_client: agentdb_atk_b9b0995398bb; login outside the boundary holds agentdb_client: agentdb_atk_c52a3cd2bf71; login outside the boundary holds agentdb_client: agentdb_atk_c83e860e6ff2; login outside the boundary holds agentdb_client: agentdb_atk_cc4acd158789; login outside the boundary holds agentdb_client: agentdb_atk_d3243f2f506d; login outside the boundary holds agentdb_client: agentdb_atk_da061c7d1b8c"
+      "detail": "agentdb_worker holds agentdb_client; agentdb_worker may change app.orders; agentdb_worker may change app.products; agentdb_worker may create schemas or temporary tables in this database; agentdb_worker may execute vc.begin_change(text,uuid,text,text); agentdb_worker may execute vc.fork(text,uuid); agentdb_worker may execute vc.materialize(uuid,uuid); agentdb_worker may execute vc.merge(text,uuid,uuid,text); agentdb_worker may execute vc.merge_validated(text,uuid,jsonb,text); login outside the boundary holds agentdb_client: agentdb_atk_0035f3fc6c57; login outside the boundary holds agentdb_client: agentdb_atk_01fa036c732a; login outside the boundary holds agentdb_client: agentdb_atk_021201a7dd82; login outside the boundary holds agentdb_client: agentdb_atk_03cf2a1f1b2a; login outside the boundary holds agentdb_client: agentdb_atk_16ca35595e64; login outside the boundary holds agentdb_client: agentdb_atk_1784ea85196c; login outside the boundary holds agentdb_client: agentdb_atk_1da1da262ea0; login outside the boundary holds agentdb_client: agentdb_atk_49470414c216; login outside the boundary holds agentdb_client: agentdb_atk_4a2b69709f9e; login outside the boundary holds agentdb_client: agentdb_atk_4f5daf0c1386; login outside the boundary holds agentdb_client: agentdb_atk_6a75fe3f41a7; login outside the boundary holds agentdb_client: agentdb_atk_742b79b48525; login outside the boundary holds agentdb_client: agentdb_atk_749dc6b20460; login outside the boundary holds agentdb_client: agentdb_atk_8022bad9ab76; login outside the boundary holds agentdb_client: agentdb_atk_905eeaf7e4d8; login outside the boundary holds agentdb_client: agentdb_atk_98c8d366a4ee; login outside the boundary holds agentdb_client: agentdb_atk_a4b70a6a0008; login outside the boundary holds agentdb_client: agentdb_atk_afaaaca7c63b; login outside the boundary holds agentdb_client: agentdb_atk_b25c02a99b5f; login outside the boundary holds agentdb_client: agentdb_atk_e05b64304596"
     },
     {
       "group": "drift",
@@ -1434,7 +1452,7 @@
       "group": "drift",
       "name": "keeper_given_the_old_role_is_found",
       "status": "HOLDS",
-      "detail": "agentdb_keeper holds agentdb_client; agentdb_keeper may change app.orders; agentdb_keeper may change app.products; agentdb_keeper may create schemas or temporary tables in this database; agentdb_keeper may execute vc.begin_change(text,uuid,text,text); agentdb_keeper may execute vc.checkout(text); agentdb_keeper may execute vc.diff_files(uuid,uuid); agentdb_keeper may execute vc.diff_rows(uuid,uuid,uuid); agentdb_keeper may execute vc.finish_change(); agentdb_keeper may execute vc.fork(text,uuid); agentdb_keeper may execute vc.materialize(uuid,uuid); agentdb_keeper may execute vc.merge(text,uuid,uuid,text); agentdb_keeper may execute vc.merge_base(uuid,uuid); agentdb_keeper may execute vc.merge_validated(text,uuid,jsonb,text); agentdb_keeper may execute vc.pin(uuid); agentdb_keeper may execute vc.read_file(uuid,text); agentdb_keeper may execute vc.rows_at(uuid,uuid); agentdb_keeper may execute vc.table_id(regclass); agentdb_keeper may execute vc.visible_rows(uuid); agentdb_keeper may execute vc.write_file(text,bytea,boolean); login outside the boundary holds agentdb_client: agentdb_atkkeeper_dbddfa40"
+      "detail": "agentdb_keeper holds agentdb_client; agentdb_keeper may change app.orders; agentdb_keeper may change app.products; agentdb_keeper may create schemas or temporary tables in this database; agentdb_keeper may execute vc.begin_change(text,uuid,text,text); agentdb_keeper may execute vc.checkout(text); agentdb_keeper may execute vc.diff_files(uuid,uuid); agentdb_keeper may execute vc.diff_rows(uuid,uuid,uuid); agentdb_keeper may execute vc.finish_change(); agentdb_keeper may execute vc.fork(text,uuid); agentdb_keeper may execute vc.materialize(uuid,uuid); agentdb_keeper may execute vc.merge(text,uuid,uuid,text); agentdb_keeper may execute vc.merge_base(uuid,uuid); agentdb_keeper may execute vc.merge_validated(text,uuid,jsonb,text); agentdb_keeper may execute vc.pin(uuid); agentdb_keeper may execute vc.read_file(uuid,text); agentdb_keeper may execute vc.rows_at(uuid,uuid); agentdb_keeper may execute vc.table_id(regclass); agentdb_keeper may execute vc.visible_rows(uuid); agentdb_keeper may execute vc.write_file(text,bytea,boolean); login outside the boundary holds agentdb_client: agentdb_atkkeeper_7242cdbe"
     },
     {
       "group": "drift",
@@ -1464,13 +1482,13 @@
       "group": "drift",
       "name": "agent_login_with_no_expiry_is_found",
       "status": "HOLDS",
-      "detail": "agent login not built by the broker: agentdb_atk_da061c7d1b8c"
+      "detail": "agent login not built by the broker: agentdb_atk_01fa036c732a"
     },
     {
       "group": "drift",
       "name": "login_outside_the_boundary_holding_the_old_role_is_found",
       "status": "HOLDS",
-      "detail": "login outside the boundary holds agentdb_client: agentdb_atk_fe677c341aa8"
+      "detail": "login outside the boundary holds agentdb_client: agentdb_atk_acb143e6f609"
     },
     {
       "group": "drift",
@@ -1494,7 +1512,7 @@
       "group": "freeze",
       "name": "keepers_round_ends_transactions_already_past_the_gate",
       "status": "HOLDS",
-      "detail": "[{'pid': 892238, 'login': 'agentdb_atk_6af5f4195122', 'reason': 'writing while frozen'}, {'pid': 892243, 'login': 'agentdb_atk_6af5f4195122', 'reason': 'writing while frozen'}]"
+      "detail": "[{'pid': 1038781, 'login': 'agentdb_atk_749dc6b20460', 'reason': 'writing while frozen'}, {'pid': 1038789, 'login': 'agentdb_atk_749dc6b20460', 'reason': 'writing while frozen'}]"
     },
     {
       "group": "freeze",
@@ -1722,7 +1740,7 @@
       "group": "reach",
       "name": "login_cannot_connect_to_another_installation",
       "status": "HOLDS",
-      "detail": "psql: error: connection to server at \"127.0.0.1\", port 5432 failed: FATAL:  permission denied for database \"agentdb_test_gpt_ae6afb9088\""
+      "detail": "psql: error: connection to server at \"127.0.0.1\", port 5432 failed: FATAL:  permission denied for database \"agentdb_test_gpt_dd059f79b0\""
     },
     {
       "group": "reach",
@@ -1746,7 +1764,7 @@
       "group": "expiry",
       "name": "keeper_ends_the_expired_logins_sessions",
       "status": "HOLDS",
-      "detail": "{'agentdb_atk_dd665e5232f3': 'login expired'}"
+      "detail": "{'agentdb_atk_c6a0c89e2470': 'login expired'}"
     },
     {
       "group": "retire",
@@ -1806,7 +1824,7 @@
       "group": "cli",
       "name": "status_reports_without_changing_anything",
       "status": "HOLDS",
-      "detail": "exit 0; 21 logins; open databases: ['agentdb', '<other-database-1>', '<other-database-2>', 'postgres', 'template1']"
+      "detail": "exit 0; 22 logins; open databases: ['agentdb', '<other-database-1>', '<other-database-2>', 'postgres', 'template1']"
     },
     {
       "group": "cli",
@@ -1824,13 +1842,13 @@
       "group": "cli",
       "name": "run_retires_the_login_when_the_command_ends",
       "status": "HOLDS",
-      "detail": "agentdb_atk_f6ab9a357570: 0 left"
+      "detail": "agentdb_atk_cc38b48942dc: 0 left"
     },
     {
       "group": "cli",
       "name": "undo_reverts_a_login_from_the_command_line",
       "status": "HOLDS",
-      "detail": "exit 0; ['73656bb1-9370-49c2-9aa0-de855fadbc42']"
+      "detail": "exit 0; ['f18534d7-620f-44d4-bb31-1f7569551239']"
     },
     {
       "group": "cli",
@@ -1860,7 +1878,7 @@
       "group": "cli",
       "name": "a_backup_is_kept_only_after_it_restores",
       "status": "HOLDS",
-      "detail": "exit 0; ['agentdb_test_gpt_23c958cf2d-20261101-221635.dump']; {'app.products': 4000, 'app.orders': 0}"
+      "detail": "exit 0; ['agentdb_test_gpt_62dd4e782e-20261102-125122.dump']; {'app.products': 4000, 'app.orders': 0}"
     },
     {
       "group": "cli",
@@ -1878,13 +1896,13 @@
       "group": "timing",
       "name": "one_row_fork_commit_and_merge",
       "status": "NOTE",
-      "detail": "median ms over 30 rounds on a 4000-row table: trusted path 192.2, through the gate 194.7, on this machine"
+      "detail": "median ms over 30 rounds on a 4000-row table: trusted path 188.9, through the gate 196.1, on this machine"
     },
     {
       "group": "timing",
       "name": "one_self_check",
       "status": "NOTE",
-      "detail": "median 23.6 ms over 10, on this machine"
+      "detail": "median 24.8 ms over 10, on this machine"
     },
     {
       "group": "sandbox",
@@ -1896,7 +1914,7 @@
       "group": "sandbox",
       "name": "in_a_container_every_route_is_closed_and_the_login_works",
       "status": "HOLDS",
-      "detail": "exit 0: [HOLDS] no_other_credentials_in_the_environment: none; [HOLDS] no_credential_files_within_reach: looked in 13 places; [HOLDS] cannot_run_wsl: wsl.exe not found, or it does not run; [HOLDS] cannot_reach_docker_engine: docker client reaches an engine: False; socket mounted: False; [HOLDS] no_passwordless_sudo: sudo -n true; [HOLDS] cannot_log_in_as_postgres_without_a_password: refused on ['/var/run/postgresql', '127.0.0.1', 'host.docker.internal']; [HOLDS] own_login_works_and_is_not_a_superuser: agentdb_atk_4d6818b3abf3 superuser=off {\"login\": \"agentdb_atk_4d6818b3abf3\", \"frozen\": null, \"changed\": {}, \"branches\": [], \"bytes_left\": 100000, \"valid_until\": \"2026-11-01T22:29:14.356684+08:00\", \"main_rows_left\": 5, \"max_table_share\": 0.1}"
+      "detail": "exit 0: [HOLDS] no_other_credentials_in_the_environment: none; [HOLDS] no_credential_files_within_reach: looked in 13 places; [HOLDS] cannot_run_wsl: wsl.exe not found, or it does not run; [HOLDS] cannot_reach_docker_engine: docker client reaches an engine: False; socket mounted: False; [HOLDS] no_passwordless_sudo: sudo -n true; [HOLDS] cannot_log_in_as_postgres_without_a_password: refused on ['/var/run/postgresql', '127.0.0.1', 'host.docker.internal']; [HOLDS] own_login_works_and_is_not_a_superuser: agentdb_atk_fa66cbb5b7bb superuser=off {\"login\": \"agentdb_atk_fa66cbb5b7bb\", \"frozen\": null, \"changed\": {}, \"branches\": [], \"bytes_left\": 100000, \"valid_until\": \"2026-11-02T13:03:58.692801+08:00\", \"main_rows_left\": 5, \"max_table_share\": 0.1}"
     },
     {
       "group": "sandbox",

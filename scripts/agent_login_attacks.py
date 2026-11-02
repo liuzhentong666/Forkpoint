@@ -416,6 +416,13 @@ class Attacks:
           BEGIN; SELECT vc.agent_begin('no-where',vc.head('no-where'),'fix a price');
           UPDATE agent.products SET price=0; SELECT vc.finish_change(); COMMIT;""")
         self.refused("incident", "an_update_with_no_where_is_refused_at_the_gate", wiper, "SELECT vc.agent_merge('no-where');", ("AB007",))
+        # Real agents, refused like this, told people to merge the branch with a wider login. The hint has to give ways that work.
+        hint = wiper.execute("SELECT vc.agent_merge('no-where');", self.database).stderr
+        self.record("incident", "the_refusal_says_how_the_change_can_land", "branch of its own" in hint and "vc.merge" in hint, hint.strip()[:300])
+        wider, _ = self.issue(share=1, **wide)
+        self.refused("incident", "a_wider_login_cannot_merge_the_refused_branch", wider, "SELECT vc.agent_merge('no-where');", ("AB001",))
+        landed = self.owner.execute("BEGIN; SELECT vc.merge('main',vc.head('no-where'),vc.head(),'owner'); ROLLBACK;", self.database)
+        self.record("incident", "the_owner_can_merge_the_refused_branch", landed.returncode == 0, landed.stderr.strip()[:300] or "merged, then rolled back")
         faker, _ = self.issue(**wide)
         self.ok(faker, """SELECT vc.agent_fork('fake',vc.head());
           BEGIN; SELECT vc.agent_begin('fake',vc.head('fake'),'x');

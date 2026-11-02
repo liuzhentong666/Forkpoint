@@ -55,7 +55,7 @@ SELECT vc.agent_status();  -- 剩余预算、份额、过期时间、自己的�
 | AB004 | 不是 main 上的提交，或没有可撤销的 | 给 main 历史里的版本 |
 | AB005 | 这个提交之后行或文件变过 | 先撤销更新的提交，或放弃 |
 | AB006 | 写入必须在 READ COMMITTED 下 | 新开事务；旧快照可能看不到冻结 |
-| AB007 | 改动占这张表或文件的份额太大，什么都没合入 | 少改；任务确实要改这么多，就要发一个份额更大的新登录 |
+| AB007 | 改动占这张表或文件的份额太大，什么都没合入 | 少改；任务确实要改这么多，就由份额更大的新登录在自己的分支上重做（登录只能合入自己建的分支），或由属主用 `vc.merge` 合入这个分支 |
 
 ## Agent 自己造成过的事故
 
@@ -173,7 +173,7 @@ python agent_boundary.py run --agent-host host.docker.internal -- docker run --r
 
 | 检查 | 命令 | 结果 |
 |---|---|---|
-| 攻击 | `python scripts/check_agent_boundaries.py --sandbox-image forkpoint-demo:latest`（镜像由 `docker compose build demo` 构建） | 针对 Agent 登录的 274 项里 267 项成立、7 项是记录（被允许但值得知道的事，或耗时），没有缺口；连同对 `agentdb_client` 和 `agent_lab.py` 的原有检查，共 317 项（[原始结果](../results/agent-boundaries-results.json)）。Agent、发放程序和看守程序都用真实登录和自写 SQL，只有一次性设置和要被发现的目录改动用属主连接 |
+| 攻击 | `python scripts/check_agent_boundaries.py --sandbox-image forkpoint-demo:latest`（镜像由 `docker compose build demo` 构建） | 针对 Agent 登录的 277 项里 270 项成立、7 项是记录（被允许但值得知道的事，或耗时），没有缺口；连同对 `agentdb_client` 和 `agent_lab.py` 的原有检查，共 320 项（[原始结果](../results/agent-boundaries-results.json)）。Agent、发放程序和看守程序都用真实登录和自写 SQL，只有一次性设置和要被发现的目录改动用属主连接 |
 | 事故重放 | 同一脚本的 `incident` 组 | 加这些防护之前（2026-11-01 在测试库上）：整表 `DELETE`、没有 `WHERE` 的 `UPDATE` 和 500 行编造数据都穿过门落到 main。现在都在门口被拒（AB007），main 不变；几次小合入累计也会被拒。份额为 1 的登录确实清空了 4,000 行时，`report` 如实报出，`undo` 恢复出完全相同的行 |
 | 对照 | 同一脚本的 `control` 组 | 同样的攻击在之前最好的登录上（`experiments/readset_agents` 的做法）全部穿透：直接提交到 main 并伪造作者、写别人的分支、合入别人的分支、预算之外的临时表。所以上面的拒绝说明边界成立，而不是攻击坏了 |
 | 真实容器 | 同一脚本的 `sandbox` 组 | 在本机运行 [check_agent_sandbox.py](../scripts/check_agent_sandbox.py) 报告 `wsl.exe`、Docker 引擎和能拿到的凭据（退出码 1）；经 `agent_boundary.py run` 在容器里运行时全部不通（退出码 0），登录照常工作；在容器里放一个令牌，它被查出来 |
@@ -253,7 +253,7 @@ Read sets work as usual: the second argument names the rows the decision read, a
 | AB004 | Not a commit on main, or nothing to undo | Give a revision from main's history |
 | AB005 | A row or file changed after this commit | Undo the newer commit first, or leave this one |
 | AB006 | Agent writes need READ COMMITTED | Start a new transaction; an older snapshot could miss a freeze |
-| AB007 | Too large a share of this table or of the files; nothing was merged | Change less; if the task really rewrites this much, it needs a new login with a larger share |
+| AB007 | Too large a share of this table or of the files; nothing was merged | Change less; if the task really rewrites this much, a new login with a larger share redoes it on its own branch (a login merges only branches it created), or the owner merges this branch with `vc.merge` |
 
 ## What agents have done on their own
 
@@ -371,7 +371,7 @@ All on dedicated test databases on the existing local PostgreSQL 16.15; the proj
 
 | Check | Command | Result |
 |---|---|---|
-| Attacks | `python scripts/check_agent_boundaries.py --sandbox-image forkpoint-demo:latest` (`docker compose build demo` builds the image) | Of 274 checks on agent logins, 267 held and 7 are notes (things allowed that are worth knowing, or timings), with no gaps; with the earlier checks on `agentdb_client` and `agent_lab.py`, 317 in all ([raw results](../results/agent-boundaries-results.json)). Agents, the broker and the keeper all use real logins and raw SQL; only the one-time setup and the catalog damage to be found use the owner's connection |
+| Attacks | `python scripts/check_agent_boundaries.py --sandbox-image forkpoint-demo:latest` (`docker compose build demo` builds the image) | Of 277 checks on agent logins, 270 held and 7 are notes (things allowed that are worth knowing, or timings), with no gaps; with the earlier checks on `agentdb_client` and `agent_lab.py`, 320 in all ([raw results](../results/agent-boundaries-results.json)). Agents, the broker and the keeper all use real logins and raw SQL; only the one-time setup and the catalog damage to be found use the owner's connection |
 | Incident replays | The `incident` group of the same script | Before these guards (2026-11-01, on a test database): a whole-table `DELETE`, an `UPDATE` with no `WHERE` and 500 fabricated rows all went through the gate onto main. Now each is refused at the gate (AB007) and main doesn't change; small merges adding up are refused too. When a login with a share of 1 did empty 4,000 rows, `report` said so and `undo` restored identical rows |
 | Control | The `control` group of the same script | The same attacks all got through on the best login before this (as `experiments/readset_agents` builds it): committing straight to main with a forged author, writing another agent's branch, merging another agent's branch, and temporary tables outside any budget. So the refusals above mean the boundary held, not that the attacks were broken |
 | Real container | The `sandbox` group of the same script | Run on this machine, [check_agent_sandbox.py](../scripts/check_agent_sandbox.py) reports the `wsl.exe` and Docker engine routes and the credentials within reach (exit 1); run in a container through `agent_boundary.py run`, all are closed (exit 0) and the login works; with a token planted in the container, it finds the token |

@@ -230,7 +230,7 @@ BEGIN
         PERFORM vc._refuse('AB007','Too large a share of '||coalesce(spent.relation::text,'the files'),
           jsonb_build_object('login',session_user,'target',coalesce(spent.relation::text,'files'),
             'changed_by_this_login',total,'size_before_this_merge',size,'max_table_share',share),
-          'Nothing was merged. Change less. If the task really rewrites this much, it needs a new login issued with a larger max_table_share.');
+          'Nothing was merged. Change less. If the task really rewrites this much, a login issued with a larger max_table_share has to redo it on a branch of its own, since a login merges only branches it created; or the database owner can merge this branch with vc.merge.');
       END IF;
     END IF;
   END LOOP;
