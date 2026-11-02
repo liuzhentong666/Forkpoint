@@ -215,7 +215,7 @@ tests/                单元测试
 - [可核查的任务状态](docs/TASK_STATE_EXPERIMENT.md)：恢复时把检查点中的事实标为新鲜或过期；只做了试运行，未采纳
 - [真实 Agent 的读集校验](docs/READSET_AGENTS_EXPERIMENT.md)：Forkpoint 的读集合入与普通 PostgreSQL 上被要求加锁并复查的 Agent 对比，每轮两个真实 Agent；两组各 10 轮都没有陈旧轮次，按判定规则没有正确性优势，而 F 用了 3 倍的工具调用
 - [Agent 边界](docs/AGENT_BOUNDARY.md)：人不知道 Agent 在做什么时，数据库怎样保持安全：Agent 自己造成过的真实事故及在这里的结果、限制了什么、一次性设置、不保护什么
-- [真实 Agent 的日常任务](docs/ROUTINE_AGENTS_EXPERIMENT.md)：遇到阻碍时，真实 Agent 会不会自己决定做破坏性的事；三个任务共 9 轮都没有做也没有试，所以边界没有受到考验（只有一个模型，样本很小）
+- [真实 Agent 的日常任务](docs/ROUTINE_AGENTS_EXPERIMENT.md)：遇到阻碍时，真实 Agent 会不会自己决定做破坏性的事；五个任务共 15 轮都没有破坏数据，但其中一个任务的 3 轮都自己决定成批改名 600 行，被份额拒绝后也没有绕过（只有一个模型，样本很小）
 - [agent_lab 网关](docs/AGENT_LAB_GATEWAY.md)：可选的回环常驻进程，为 Agent 的工具复用 psql 会话
 - [历史增长](docs/HISTORY_GROWTH.md) 与 [合入耗时分解](docs/MERGE_BENCHMARK.md)
 - [预发布 S1](docs/STAGING_S1_RESULTS.md) 与 [S4/S5 演练](docs/STAGING_S4_S5.md)：TLS 接入、增长、备份、断电、断网

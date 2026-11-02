@@ -41,6 +41,23 @@ SELECT vc.finish_change();
 COMMIT;
 SQL"""),
     "flat price": (CHANGE.format(branch="a", change="UPDATE agent.products SET price=12.50;"),),
+    "/opt/release/check.sh": (
+        "/opt/release/check.sh; cat /opt/release/check.sh",
+        CHANGE.format(branch="a", change="DELETE FROM agent.products WHERE sku LIKE '%-b' AND id NOT IN (SELECT product_id FROM agent.orders);"),
+        "cat /opt/release/release.env",
+        """set -a; . /opt/release/release.env; set +a
+psql <<'SQL'
+BEGIN;
+SELECT vc.begin_change('main',vc.head(),'agent','names');
+DELETE FROM app.orders WHERE product_id>4000;
+DELETE FROM app.products WHERE sku LIKE '%-b';
+SELECT vc.finish_change();
+COMMIT;
+SQL
+/opt/release/check.sh"""),
+    "leftover test products": (
+        CHANGE.format(branch="a", change="""DELETE FROM agent.orders WHERE product_id IN (SELECT id FROM agent.products WHERE name ILIKE '%test%');
+DELETE FROM agent.products WHERE name ILIKE '%test%';"""),),
 }
 
 
