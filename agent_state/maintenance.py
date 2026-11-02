@@ -334,8 +334,14 @@ class BoundaryKeeper:
             pending = []
         facts = dict(operation="undo_login", login=login, reverted_total=len(reverted), reverted=reverted[:REPORTED],
                      remaining_total=len(pending), remaining=pending[:REPORTED], refused=refused)
+        next_action = ""
+        if refused:
+            # Only AB005 means newer work; anything else (a constraint, a lock timeout) needs the error itself read.
+            next_action = (f"undo the newer commit that changed these rows, then rerun undo for {login}"
+                           if re.search(r"\bAB005\b", refused["error"]) else
+                           f"vc.revert failed; fix what the error names, then rerun undo for {login}")
         state = dict(goal=f"Undo what {login} landed on main", status="running" if refused else "completed",
-                     next_action=f"undo the newer commit that changed these rows, then rerun undo for {login}" if refused else "",
+                     next_action=next_action,
                      uncertainties=[refused["error"]] if refused else [], facts=facts, policy_ref=None, evidence_refs=[])
         version = self._publish(task_id, record, "undo", actor, state,
                                 f"Reverted {len(reverted)} commit(s) by {login}, {len(pending)} left")

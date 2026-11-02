@@ -616,6 +616,12 @@ class Attacks:
         self.ok(u, f"""SELECT vc.agent_fork('u-3',vc.head());
           BEGIN; SELECT vc.agent_begin('u-3',vc.head('u-3'),'revert {revisions[0]}'); SELECT vc.finish_change(); COMMIT;""")
         revisions.append(self.ok(u, "SELECT vc.agent_merge('u-3');"))
+        # Nor make the report say it was reverted, merged or not.
+        self.ok(u, f"""SELECT vc.agent_fork('u-claim',vc.head());
+          BEGIN; SELECT vc.agent_begin('u-claim',vc.head('u-claim'),'revert {revisions[1]}'); SELECT vc.finish_change(); COMMIT;""")
+        claimed = json.loads(self.keeper.sql(f"SELECT vc.agent_report('{u_name}');", self.database))
+        self.record("undo", "a_commit_message_cannot_make_the_report_say_reverted", claimed["reverted"] == 0,
+                    f"{claimed['reverted']} of {claimed['merges']} merges reported reverted")
         self.record("undo", "bad_changes_landed", self.state()["rows"] != clean["rows"], "rows changed on main")
         session = self.hold(u, "SELECT 'open';")
         session.stdout.readline()
@@ -671,6 +677,61 @@ class Attacks:
         branch_commit = self.owner.sql("SELECT vc.head('a-branch-only');")
         self.refused("undo", "cannot_revert_a_commit_that_is_not_on_main", self.keeper, f"SELECT vc.revert('{branch_commit}');", ("AB004",))
         self.refused("undo", "cannot_revert_an_unknown_revision", self.keeper, f"SELECT vc.revert('{uuid.uuid4()}');", ("AB004",))
+
+    def small_tables(self):
+        """Tables a real schema has beside the demo: small ones, an empty one, ordinary foreign keys, trigger functions."""
+        # The owner registers them and reruns 011, as the docs say; parents are registered before their children.
+        pairs = "".join(f"CREATE TABLE app.atk_p{k}(id int PRIMARY KEY); CREATE TABLE app.atk_c{k}(id int PRIMARY KEY,"
+                        f" p int NOT NULL REFERENCES app.atk_p{k}); SELECT vc.register_table('app.atk_p{k}');"
+                        f" SELECT vc.register_table('app.atk_c{k}');" for k in range(1, 5))
+        self.ok(self.owner, "CREATE TABLE app.atk_flags(id int PRIMARY KEY, enabled boolean NOT NULL); SELECT vc.register_table('app.atk_flags');"
+                            "CREATE TABLE app.atk_setting(id int PRIMARY KEY, value text NOT NULL); SELECT vc.register_table('app.atk_setting');"
+                            "CREATE TABLE app.atk_fresh(id int PRIMARY KEY); SELECT vc.register_table('app.atk_fresh');" + pairs)
+        self.ok(self.owner, """BEGIN; SELECT vc.begin_change('main',vc.head(),'seed','small tables');
+          INSERT INTO app.atk_flags SELECT n,true FROM generate_series(1,15) n; INSERT INTO app.atk_setting VALUES(1,'on');
+          SELECT vc.finish_change(); COMMIT;""")
+        self.owner.install_agent_boundary(self.database)
+
+        def change(connection, branch, statements):
+            self.ok(connection, f"""SELECT vc.agent_fork('{branch}',vc.head());
+              BEGIN; SELECT vc.agent_begin('{branch}',vc.head('{branch}'),'change'); {statements} SELECT vc.finish_change(); COMMIT;""")
+
+        def merge_all(connection, branches):
+            return [sqlstate(connection.execute(f"SELECT vc.agent_merge('{b}');", self.database).stderr) or "landed" for b in branches]
+
+        # The first 20 rows are free of the share, but not of the table: they cannot wipe or rewrite a 15-row table.
+        wiper, _ = self.issue()
+        change(wiper, "flags-wipe", "DELETE FROM agent.atk_flags;")
+        self.refused("incident", "wiping_a_table_smaller_than_the_free_rows_is_refused", wiper, "SELECT vc.agent_merge('flags-wipe');", ("AB007",))
+        halves, _ = self.issue()
+        change(halves, "flags-half", "UPDATE agent.atk_flags SET enabled=false WHERE id<=7;")
+        change(halves, "flags-more", "UPDATE agent.atk_flags SET enabled=false WHERE id=8;")
+        landed = merge_all(halves, ("flags-half", "flags-more"))
+        self.record("incident", "a_small_table_cannot_be_rewritten_a_little_at_a_time", landed == ["landed", "AB007"], str(landed))
+        ordinary, _ = self.issue()
+        change(ordinary, "setting", "UPDATE agent.atk_setting SET value='off';")
+        change(ordinary, "fresh", "INSERT INTO agent.atk_fresh SELECT generate_series(1,10);")
+        landed = merge_all(ordinary, ("setting", "fresh"))
+        self.record("incident", "a_one_row_table_and_an_empty_table_still_take_ordinary_changes", landed == ["landed", "landed"], str(landed))
+
+        # Undo puts back rows linked by foreign keys that are not deferrable: children go before their parents.
+        linker, linker_name = self.issue()
+        change(linker, "linked", "".join(f"INSERT INTO agent.atk_p{k} VALUES(1); INSERT INTO agent.atk_c{k} VALUES(1,1);" for k in range(1, 5)))
+        self.ok(linker, "SELECT vc.agent_merge('linked');")
+        result = self.boundary.undo_login("keeper", linker_name)
+        left = self.ok(self.owner, "SELECT " + "+".join(f"(SELECT count(*) FROM app.atk_p{k})+(SELECT count(*) FROM app.atk_c{k})" for k in range(1, 5)) + ";")
+        self.record("undo", "undo_puts_back_rows_linked_by_ordinary_foreign_keys", result["refused"] is None and left == "0",
+                    f"refused: {(result['refused'] or {}).get('error', '')[:160]!r}; rows left: {left}")
+
+        # An application's trigger function beside its tables can only be fired, so it is no problem; a callable one is.
+        self.ok(self.owner, "CREATE FUNCTION app.atk_touch() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END$$;"
+                            "CREATE FUNCTION app.atk_callable() RETURNS int LANGUAGE sql AS $$SELECT 1$$;")
+        try:
+            found = self.problems()
+        finally:
+            self.ok(self.owner, "DROP FUNCTION app.atk_touch(); DROP FUNCTION app.atk_callable();")
+        self.record("drift", "a_trigger_function_beside_the_tables_is_no_problem", not any("atk_touch" in p for p in found), "; ".join(found))
+        self.record("drift", "a_callable_function_beside_the_tables_is_found", f"{WORKER} may execute app.atk_callable()" in found, "; ".join(found))
 
     def drift(self):
         """The self-check finds what nobody is watching for, from the catalog alone."""
@@ -1051,6 +1112,7 @@ def run(owner, config, database, record, other_database, sandbox_image=None):
         attacks.held_up()
         attacks.storage()
         attacks.undo()
+        attacks.small_tables()
         attacks.drift()
         target, name = attacks.issue()
         attacks.merged(target, "t-1", attacks.rows(1))

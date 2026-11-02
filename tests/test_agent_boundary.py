@@ -269,6 +269,19 @@ class BoundaryCheckTests(unittest.TestCase):
                 keeper.check("keeper", task_id="boundary-bad", policy_ref=bad)
             self.assertEqual(len(connection.statements), before, section)
 
+    def test_limits_the_keeper_would_refuse_are_refused_before_a_login_is_issued(self):
+        for text in ("0", "86401", "-5"):
+            with self.assertRaises(argparse.ArgumentTypeError, msg=text):
+                agent_boundary.seconds(text)
+        self.assertEqual((agent_boundary.seconds("1"), agent_boundary.seconds("86400")), (1, 86400))
+
+    def test_a_round_that_fails_is_reported_and_does_not_end_the_rounds(self):
+        # Under run the rounds are a thread: an exception escaping one round would end them while the agent runs on.
+        args = argparse.Namespace(idle_seconds=None, transaction_seconds=None, once=True, interval=0)
+        with mock.patch.object(agent_boundary, "connect"), \
+                mock.patch.object(agent_boundary.BoundaryKeeper, "check", side_effect=Invalid("state too large")):
+            self.assertEqual(agent_boundary.keep(args), 1)
+
     def test_a_task_belonging_to_something_else_is_refused(self):
         keeper, engine = keeper_with(KeeperConnection())
         engine.publish("taken", command_id="c", actor="a", state=dict(goal="other", status="running", facts=dict(operation="other")))
@@ -316,6 +329,15 @@ class UndoTests(unittest.TestCase):
         self.assertEqual((sorted(result["reverted"]), result["remaining"], result["refused"]), (sorted([M3, M1]), [], None))
         self.assertEqual(len([s for s in connection.statements if s == f"SELECT vc.revert('{M3}');"]), 1)  # not twice
         self.assertEqual(engine.read("undo-agent_a")["state"]["status"], "completed")
+
+    def test_a_refusal_that_is_not_newer_work_does_not_send_anyone_looking_for_it(self):
+        connection = self.history()
+        connection.refuse[M3] = "ERROR:  23503: update or delete on table \"p\" violates foreign key constraint \"c_p_fkey\""
+        keeper, engine = keeper_with(connection)
+        keeper.undo_login("keeper", "agent_a")
+        next_action = engine.read("undo-agent_a")["state"]["next_action"]
+        self.assertNotIn("newer commit", next_action)
+        self.assertIn("rerun undo", next_action)
 
     def test_only_an_exact_revert_message_counts_as_reverted(self):
         connection = self.history()

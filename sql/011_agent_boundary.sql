@@ -14,9 +14,11 @@
 --   for what it stores. There are no top-ups. No budget row means no writes.
 -- * A budget says nothing about a table's size, so a login also has max_table_share: beyond
 --   its first 20 rows, it may change at most that share of a table, over its whole life and
---   in any number of merges, and the same for files. That refuses the commonest thing agents
---   have really done, wiping or rewriting the data while on a routine task (an agent running
---   DELETE or UPDATE with no WHERE, or fabricating rows). A login meant to rewrite whole
+--   in any number of merges, and the same for files. Within those 20 it still changes at most
+--   half of the rows (or files) that were there before, and always at least one, so they cannot
+--   wipe or rewrite a small table; adding rows is not limited by that. That refuses the commonest
+--   thing agents have really done, wiping or rewriting the data while on a routine task (an agent
+--   running DELETE or UPDATE with no WHERE, or fabricating rows). A login meant to rewrite whole
 --   tables is issued with a share of 1, which means no limit; that is decided before it starts.
 -- * agentdb_keeper can tighten and undo (vc.freeze, vc.stop_agent, vc.revert) and end
 --   stuck sessions, but nothing it holds can loosen a limit. vc.unfreeze is granted to
@@ -85,7 +87,8 @@ CREATE TABLE IF NOT EXISTS vc.agent_budget(login name PRIMARY KEY,
   main_rows_left bigint NOT NULL CHECK(main_rows_left>=0),
   bytes_left bigint NOT NULL CHECK(bytes_left>=0),
   max_table_share numeric NOT NULL DEFAULT 0.1 CHECK(max_table_share>0 AND max_table_share<=1));
--- What each login has landed on main, by table id or 'files', for max_table_share.
+-- What each login has landed on main, by table id or 'files', for max_table_share; the same
+-- target followed by ' existing' counts only the rows or files that were there before.
 CREATE TABLE IF NOT EXISTS vc.agent_spend(login name NOT NULL,target text NOT NULL,changed bigint NOT NULL,
   PRIMARY KEY(login,target));
 CREATE TABLE IF NOT EXISTS vc.gate(one boolean PRIMARY KEY DEFAULT true CHECK(one),
@@ -200,25 +203,33 @@ BEGIN
   RETURN vc.begin_change(p_branch,p_expected,session_user,p_message);
 END $$;
 
--- Charges one merge against max_table_share, per table and for files. Up to 20 rows never
--- need counting, so an ordinary merge pays nothing for the table's size. The share is of the
--- table as it was before this merge, so whittling it down makes the limit tighter, not looser.
+-- Charges one merge against max_table_share, per table and for files. Up to 20 rows the share
+-- does not apply, so an ordinary merge pays nothing for a large table's size. Within those 20, a
+-- login still changes at most half of the rows that were there before (and always one), so the
+-- free rows cannot wipe or rewrite a table of 40 rows or fewer; that needs a count of at most 40
+-- rows, and only for a merge that changes rows that were there. The size is the table's before
+-- this merge, so whittling it down makes the limit tighter, not looser.
 CREATE OR REPLACE FUNCTION vc._check_share(p_revision uuid,p_before uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
-DECLARE share numeric; spent record; total bigint; size bigint;
+DECLARE share numeric; spent record; total bigint; existing bigint; size bigint; over boolean;
 BEGIN
   SELECT max_table_share INTO share FROM vc.agent_budget WHERE login=session_user;
   FOR spent IN
     SELECT r.table_id::text AS target,t.relation,count(*) AS n,
-           count(*) FILTER (WHERE r.op='I') AS added,count(*) FILTER (WHERE r.op='D') AS removed
+           count(*) FILTER (WHERE r.op='I') AS added,count(*) FILTER (WHERE r.op='D') AS removed,
+           count(*) FILTER (WHERE r.op<>'I') AS prior
     FROM vc.row_change r JOIN vc.tracked_table t ON t.id=r.table_id
     WHERE r.changeset=p_revision GROUP BY r.table_id,t.relation
     UNION ALL
-    SELECT 'files',NULL,count(*),0,0 FROM vc.path_change f WHERE f.changeset=p_revision HAVING count(*)>0
+    SELECT 'files',NULL,count(*),0,0,count(*) FILTER (WHERE vc._file_state(p_before,f.path) IS NOT NULL)
+    FROM vc.path_change f WHERE f.changeset=p_revision HAVING count(*)>0
   LOOP
     INSERT INTO vc.agent_spend AS s VALUES(session_user,spent.target,spent.n)
     ON CONFLICT(login,target) DO UPDATE SET changed=s.changed+EXCLUDED.changed RETURNING s.changed INTO total;
-    IF share<1 AND total>20 THEN
+    INSERT INTO vc.agent_spend AS s VALUES(session_user,spent.target||' existing',spent.prior)
+    ON CONFLICT(login,target) DO UPDATE SET changed=s.changed+EXCLUDED.changed RETURNING s.changed INTO existing;
+    CONTINUE WHEN share>=1 OR (total<=20 AND spent.prior=0);
+    IF total>20 THEN
       IF spent.relation IS NULL THEN
         size:=(SELECT count(*) FROM (SELECT DISTINCT c.path FROM vc.path_change c) p
                WHERE vc._file_state(p_before,p.path) IS NOT NULL);
@@ -226,12 +237,25 @@ BEGIN
         EXECUTE format('SELECT count(*) FROM %s',spent.relation) INTO size;
         size:=size-spent.added+spent.removed;
       END IF;
-      IF total>share*size THEN
-        PERFORM vc._refuse('AB007','Too large a share of '||coalesce(spent.relation::text,'the files'),
-          jsonb_build_object('login',session_user,'target',coalesce(spent.relation::text,'files'),
-            'changed_by_this_login',total,'size_before_this_merge',size,'max_table_share',share),
-          'Nothing was merged. Change less. If the task really rewrites this much, a login issued with a larger max_table_share has to redo it on a branch of its own, since a login merges only branches it created; or the database owner can merge this branch with vc.merge.');
+      over:=total>share*size;
+    ELSE
+      -- At most 40 counted: with 40 or more before, half is 20 or more, which total<=20 never exceeds.
+      IF spent.relation IS NULL THEN
+        size:=(SELECT count(*) FROM (SELECT 1 FROM (SELECT DISTINCT c.path FROM vc.path_change c) p
+               WHERE vc._file_state(p_before,p.path) IS NOT NULL LIMIT 40) x);
+      ELSE
+        EXECUTE format('SELECT count(*) FROM (SELECT 1 FROM %s LIMIT %s) x',spent.relation,40+spent.added) INTO size;
+        size:=size-spent.added+spent.removed;
       END IF;
+      over:=existing>greatest(1,size/2);
+    END IF;
+    IF over THEN
+      PERFORM vc._refuse('AB007','Too large a share of '||coalesce(spent.relation::text,'the files'),
+        jsonb_build_object('login',session_user,'target',coalesce(spent.relation::text,'files'),
+          'changed_by_this_login',total,'existing_changed_by_this_login',existing,'size_before_this_merge',size,
+          'max_table_share',share,'rule',CASE WHEN total>20 THEN 'beyond 20 rows, at most max_table_share of the table'
+                                               ELSE 'within 20 rows, at most half of what was there' END),
+        'Nothing was merged. Change less. If the task really rewrites this much, a login issued with a larger max_table_share has to redo it on a branch of its own, since a login merges only branches it created; or the database owner can merge this branch with vc.merge.');
     END IF;
   END LOOP;
 END $$;
@@ -310,16 +334,24 @@ LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 $$;
 
 -- What a login really landed on main, from history and not from anything it says about itself.
--- It works after the login is retired. Reverted merges stay counted; "reverted" says how many.
+-- It works after the login is retired. Reverted merges stay counted; "reverted" says how many,
+-- from the reverts on main's first-parent chain only. An agent lands nothing there but merges,
+-- whose message the engine writes, so a message it writes on its own branch claims nothing.
 CREATE OR REPLACE FUNCTION vc.agent_report(p_login name) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
-  WITH own AS (
+  WITH RECURSIVE own AS (
     SELECT c.id,c.created_at FROM vc.changeset c
     WHERE c.author=p_login AND EXISTS(SELECT 1 FROM vc.parent p WHERE p.child=c.id AND p.ordinal=2)
+  ), main_line(id) AS (
+    SELECT b.head FROM vc.branch b WHERE b.name='main'
+    UNION ALL
+    SELECT p.parent FROM main_line m JOIN vc.parent p ON p.child=m.id AND p.ordinal=1
+  ), reverts AS (
+    SELECT substr(c.message,8) AS target FROM main_line m JOIN vc.changeset c ON c.id=m.id WHERE c.message LIKE 'revert %'
   )
   SELECT jsonb_build_object('login',p_login,'merges',(SELECT count(*) FROM own),
     'first',(SELECT min(created_at) FROM own),'last',(SELECT max(created_at) FROM own),
-    'reverted',(SELECT count(*) FROM own o JOIN vc.changeset r ON r.message='revert '||o.id::text),
+    'reverted',(SELECT count(*) FROM own o WHERE o.id::text IN (SELECT target FROM reverts)),
     'tables',(SELECT coalesce(jsonb_object_agg(x.relation,jsonb_build_object('inserted',x.i,'updated',x.u,'deleted',x.d)),'{}')
               FROM (SELECT t.relation::text AS relation,count(*) FILTER (WHERE r.op='I') AS i,
                            count(*) FILTER (WHERE r.op='U') AS u,count(*) FILTER (WHERE r.op='D') AS d
@@ -331,6 +363,10 @@ $$;
 
 -- Undo one commit on main as a new commit, from what the commit recorded, so the cost follows
 -- its size. Nothing is rewritten, and a row or file changed since is refused, not overwritten.
+-- Rows go back in an order that ordinary (not deferrable) foreign keys between tracked tables
+-- accept: rows the commit deleted come back first, referenced tables first; then updated rows;
+-- rows it inserted go last, referencing tables first. Rows within one table keep no order, so a
+-- table that references itself still needs its foreign key to be deferrable.
 CREATE OR REPLACE FUNCTION vc.revert(p_revision uuid) RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
 DECLARE h uuid; parent_id uuid; ctx vc.work_tx; t record; d record; f record; now_state jsonb;
@@ -350,10 +386,27 @@ BEGIN
   END IF;
   PERFORM vc.begin_change('main',h,session_user,'revert '||p_revision::text);
   ctx:=vc._context();
-  FOR t IN SELECT r.table_id,array_agg(r.pk) AS keys FROM vc.row_change r WHERE r.changeset=p_revision GROUP BY r.table_id LOOP
+  FOR t IN WITH RECURSIVE edge AS (
+             SELECT k.conrelid AS child,k.confrelid AS parent FROM pg_constraint k
+             WHERE k.contype='f' AND k.conrelid<>k.confrelid
+               AND k.conrelid IN (SELECT relation FROM vc.tracked_table) AND k.confrelid IN (SELECT relation FROM vc.tracked_table)
+           ), depth(relation,n) AS (
+             SELECT relation::oid,0 FROM vc.tracked_table
+             UNION
+             SELECT e.child,dp.n+1 FROM depth dp JOIN edge e ON e.parent=dp.relation WHERE dp.n<64
+           ), level AS (
+             SELECT tt.id,max(dp.n) AS n FROM vc.tracked_table tt JOIN depth dp ON dp.relation=tt.relation GROUP BY tt.id
+           ), grouped AS (
+             SELECT r.table_id,CASE WHEN r.after_row IS NULL THEN 1 WHEN r.before_row IS NULL THEN 3 ELSE 2 END AS step,
+                    array_agg(r.pk) AS keys
+             FROM vc.row_change r WHERE r.changeset=p_revision GROUP BY 1,2
+           )
+           SELECT g.table_id,g.step,g.keys FROM grouped g JOIN level l ON l.id=g.table_id
+           ORDER BY g.step,CASE WHEN g.step=3 THEN -l.n ELSE l.n END LOOP
     FOR d IN SELECT r.pk,r.before_row,r.after_row,c.doc AS current_row FROM vc.row_change r
              LEFT JOIN vc._rows_at_keys(h,t.table_id,t.keys) c ON c.pk=r.pk
-             WHERE r.changeset=p_revision AND r.table_id=t.table_id LOOP
+             WHERE r.changeset=p_revision AND r.table_id=t.table_id
+               AND CASE WHEN r.after_row IS NULL THEN 1 WHEN r.before_row IS NULL THEN 3 ELSE 2 END=t.step LOOP
       IF d.current_row IS DISTINCT FROM d.after_row THEN
         PERFORM vc._refuse('AB005','A row changed after this commit',
           jsonb_build_object('revision',p_revision,'table',t.table_id,'key',d.pk,'now',d.current_row),
@@ -432,10 +485,12 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,vc,pg_temp AS $$
     SELECT c.oid,n.nspname||'.'||c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE c.relkind IN ('r','p','v','m') AND (n.nspname='vc' OR c.oid IN (SELECT relation FROM vc.tracked_table))
   ), func AS (
+    -- A trigger function can only be fired, never called, so EXECUTE on one gives nothing; an
+    -- application's own trigger functions beside its tables would otherwise freeze writes.
     SELECT p.oid,n.nspname||'.'||p.proname||'('||replace(oidvectortypes(p.proargtypes),', ',',')||')' AS name
     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname IN ('vc','agent') OR n.oid IN (
-      SELECT c.relnamespace FROM vc.tracked_table t JOIN pg_class c ON c.oid=t.relation)
+    WHERE p.prorettype NOT IN ('trigger'::regtype,'event_trigger'::regtype) AND (n.nspname IN ('vc','agent') OR n.oid IN (
+      SELECT c.relnamespace FROM vc.tracked_table t JOIN pg_class c ON c.oid=t.relation))
   ), found(problem) AS (
     SELECT 'disabled trigger '||n.nspname||'.'||c.relname||'.'||t.tgname
     FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace

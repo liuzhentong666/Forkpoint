@@ -49,7 +49,7 @@ Agent 能关掉自己的超时，而登录、预算和授权由数据库执行�
 - **阈值**：规则对象若是 JSON 对象且含 `agent_boundary`，其中只允许 `max_idle_in_transaction_seconds`（默认 60）与 `max_transaction_seconds`（默认 300），都是整数 1..86400；无效时抛出 Invalid，不执行任何 SQL。其余同历史增长检查。
 - **幂等**：一轮没有变化就不发布。并发检查者先发布时返回 Conflict，下一轮再比较。数据库的动作（冻结、结束会话）不因 Conflict 而撤回，这份状态只是报告；进程结束后状态丢失不影响边界。
 - **撤销**：`undo_login(actor, login)` 或 `python agent_boundary.py undo <login>`：先用 `vc.stop_agent` 花光它的预算并结束它的会话，再从最新的开始用 `vc.revert` 撤销它在 main 上的提交，不判断这些提交做了什么。遇到 AB005（之后又有人改过）就停下并报告，因为跳过它去撤销更早的提交会留下一个没有人见过的状态；撤销更新的提交后重跑即可继续。
-- **报告**：`vc.agent_report(login)` 或 `python agent_boundary.py report <login>` 从历史得出一个登录落到 main 的内容（每张表的增改删、文件数、被撤销的合入数），不依赖它自己的说法，登录收回后也能查。它尝试过但被拒绝的语句在服务器日志里。
+- **报告**：`vc.agent_report(login)` 或 `python agent_boundary.py report <login>` 从历史得出一个登录落到 main 的内容（每张表的增改删、文件数、被撤销的合入数，只算 main 第一父链上的撤销提交），不依赖它自己的说法，登录收回后也能查。它尝试过但被拒绝的语句在服务器日志里。
 - **备份**：`python agent_boundary.py backup --to <文件夹>` 以属主运行，由系统计划任务按周期触发，因为管理循环以 `agentdb_keeper` 运行，读不了表。只有恢复验证通过才留下 `.dump` 文件。
 - **不做的事**：不解冻，不加预算，不直接写表。这些都要属主。
 
@@ -112,7 +112,7 @@ Agents can turn off their own timeouts, while logins, budgets and grants are enf
 - **Thresholds**: if the rule object is a JSON object and contains `agent_boundary`, only `max_idle_in_transaction_seconds` (default 60) and `max_transaction_seconds` (default 300) are allowed in it, both integers 1..86400; an invalid value raises Invalid before any SQL runs. Otherwise as in the history growth check.
 - **Idempotency**: a round with no change publishes nothing. When a concurrent checker publishes first, Conflict is returned and the next round compares again. A Conflict does not take back what the database did (a freeze, ended sessions): this state is only a report, and losing it when the process ends does not affect the boundary.
 - **Undo**: `undo_login(actor, login)` or `python agent_boundary.py undo <login>` first spends the login's budget with `vc.stop_agent` and ends its sessions, then reverts its commits on main with `vc.revert`, newest first, without judging what they did. It stops at AB005 (someone changed the row since) and reports it, because skipping that commit to undo an older one would leave a state nobody had; rerun after undoing the newer commit.
-- **Report**: `vc.agent_report(login)` or `python agent_boundary.py report <login>` works out from history what a login landed on main (rows inserted, updated and deleted per table, files, merges reverted), without relying on what it says, and works after the login is retired. Statements it tried and was refused are in the server log.
+- **Report**: `vc.agent_report(login)` or `python agent_boundary.py report <login>` works out from history what a login landed on main (rows inserted, updated and deleted per table, files, merges reverted, counting only reverts on main's first-parent chain), without relying on what it says, and works after the login is retired. Statements it tried and was refused are in the server log.
 - **Backup**: `python agent_boundary.py backup --to <folder>` runs as the owner and is triggered on a cycle by the system's scheduler, because the manager's loop runs as `agentdb_keeper`, which can't read tables. It leaves a `.dump` file only once the restore check passes.
 - **What it doesn't do**: unfreeze, add budget or write tables directly. Those are the owner's.
 

@@ -34,7 +34,7 @@ import uuid
 from agent_state.engine import Engine
 from agent_state.maintenance import BoundaryKeeper
 from agent_state.runtime import Runtime
-from agent_state.storage import Conflict, MemoryStore
+from agent_state.storage import MemoryStore, StateError
 from db import FLAGS, Connection, add_connection_arguments, database_name
 
 WORKER, BROKER, KEEPER = "agentdb_worker", "agentdb_broker", "agentdb_keeper"
@@ -45,6 +45,14 @@ LOGIN = r"[a-z][a-z0-9_]{0,62}"
 PASSED_ENVIRONMENT = ("PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "TEMP", "TMP", "TMPDIR", "HOME",
                       "USERPROFILE", "APPDATA", "LOCALAPPDATA", "PROGRAMDATA", "PROGRAMFILES", "LANG", "LC_ALL", "TERM",
                       "DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG")
+
+
+def seconds(text):
+    """A keeper limit as BoundaryKeeper.thresholds accepts it, refused here before any login is issued."""
+    value = int(text)
+    if not 1 <= value <= 86400:
+        raise argparse.ArgumentTypeError(f"{value} is not a whole number of seconds from 1 to 86400")
+    return value
 
 
 def scram_verifier(password):
@@ -161,8 +169,9 @@ def keep(args, stop=None):
                 result = BoundaryKeeper(runtime, session).check("keeper", policy_ref=policy)
                 if result["published"]:
                     print(json.dumps(result), file=sys.stderr, flush=True)
-            except (Conflict, ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
-                # The next round tries again. Keeping quiet here would look like a boundary that stands.
+            except (StateError, ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
+                # The next round tries again; under run, a round that raised would end the rounds for good.
+                # Keeping quiet here would look like a boundary that stands.
                 failed = True
                 print(f"keeper round failed: {error}", file=sys.stderr, flush=True)
             if args.once:
@@ -244,7 +253,8 @@ def main():
     start.add_argument("--temp-file-limit", default="100MB")
     start.add_argument("--prefix", default="agent", help="the start of the login's name")
     start.add_argument("--max-table-share", type=float, default=0.1,
-                       help="beyond its first 20 rows, the share of a table it may change; 1 means no limit")
+                       help="beyond its first 20 rows, the share of a table it may change (within them, at most half of "
+                            "the rows that were there); 1 means no limit")
     start.add_argument("--pass-env", action="append", default=[], help="pass this variable on to the command; repeat as needed")
     start.add_argument("--agent-host", help="the server's address as the command sees it, e.g. host.docker.internal")
     start.add_argument("command", nargs=argparse.REMAINDER, help="-- the agent's command")
@@ -254,8 +264,8 @@ def main():
     loop.add_argument("--once", action="store_true", help="one round, for a scheduler")
     for action in (start, loop):
         action.add_argument("--interval", type=float, default=5, help="seconds between the keeper's rounds")
-        action.add_argument("--idle-seconds", type=int, help="end a session idle in a transaction this long; default 60")
-        action.add_argument("--transaction-seconds", type=int, help="end a transaction open this long; default 300")
+        action.add_argument("--idle-seconds", type=seconds, help="end a session idle in a transaction this long, 1..86400; default 60")
+        action.add_argument("--transaction-seconds", type=seconds, help="end a transaction open this long, 1..86400; default 300")
     back = actions.add_parser("undo", help="stop a login and revert its commits on main")
     back.add_argument("login")
     told = actions.add_parser("report", help="what a login really landed on main, from history")
@@ -292,7 +302,7 @@ def main():
         sys.exit(handler(args))
     except KeyboardInterrupt:
         sys.exit(130)
-    except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
+    except (StateError, ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"{error}\n")
 
 
