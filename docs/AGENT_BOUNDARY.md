@@ -186,7 +186,7 @@ python agent_boundary.py run --agent-host host.docker.internal -- docker run --r
 
 从原型到现在，攻击和复查又发现了这些洞，都已修好并加了检查：路径在 `finish_change` 之前被覆盖或删除的文件不扣预算；空提交不花钱；压缩得好的行只按压缩后的大小收费；旧快照（REPEATABLE READ）看不到冻结；已过门的合入能等冻结过去再提交；Agent 未提交的事务持有预算行时撤销会一直等；过期时间设为 `infinity` 的登录没有被自检发现。查真实事故后的重放又发现：预算不知道表有多大，所以整表可以穿过门被删；被拒绝的尝试没有任何痕迹；`run` 把操作者的全部环境变量传给了 Agent。
 
-**没有做的。** 还没有真实 Agent 试图攻破它：这要用模型额度，须经用户同意。这些只是想得到的攻击。预发布虚拟机上没有运行。Windows 独立账户的沙箱没有测试，只测试了 Docker Desktop 容器。
+**没有做的。** 还没有真实 Agent 试图攻破它：明确要求攻破的三轮被模型拒绝，九轮日常任务里也没有 Agent 尝试（见[真实 Agent 的日常任务](ROUTINE_AGENTS_EXPERIMENT.md)）。这些只是想得到的攻击。预发布虚拟机上没有运行。Windows 独立账户的沙箱没有测试，只测试了 Docker Desktop 容器。
 
 ## 为什么这不违反功能暂停
 
@@ -384,7 +384,7 @@ All on dedicated test databases on the existing local PostgreSQL 16.15; the proj
 
 Going from the prototype to this, attacks and review found more holes, each now fixed and checked: files overwritten or deleted before `finish_change` weren't charged; empty commits were free; a row that compresses well paid only its compressed size; an old snapshot (REPEATABLE READ) couldn't see a freeze; a merge past the gate could wait out a freeze and commit; undo waited forever on an agent's uncommitted transaction holding its budget row; and the self-check missed a login whose expiry was set to `infinity`. Replaying real incidents then found more: a budget knew nothing about a table's size, so a whole table could be deleted through the gate; refused attempts left no trace; and `run` passed the operator's whole environment to the agent.
 
-**Not done.** No real agent has tried to break it yet: that uses model quota and needs the user's approval. These are only the attacks we could think of. It has not been run on the staging VM. A sandbox under a separate Windows account is untested; only a Docker Desktop container was tested.
+**Not done.** No real agent has tried to break it yet: three rounds told to were refused by the model, and none tried in nine routine tasks (see [Real agents on routine tasks](ROUTINE_AGENTS_EXPERIMENT.md)). These are only the attacks we could think of. It has not been run on the staging VM. A sandbox under a separate Windows account is untested; only a Docker Desktop container was tested.
 
 ## Why this doesn't break the feature pause
 

@@ -197,7 +197,7 @@ examples/             runnable SQL examples
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs
 agent_state/          manager-agent task state, in memory only
-experiments/          pre-registered experiments: GPT and Claude repeat rounds, read-set validation, context archive, checkable task state
+experiments/          pre-registered experiments: GPT and Claude repeat rounds, read-set validation, context archive, checkable task state, real agents on routine tasks
 deploy/               staging VM setup and the Docker demo image
 docs/                 setup, design, validation records, plans, technical blog
 tests/                unit tests
@@ -215,6 +215,7 @@ tests/                unit tests
 - [Checkable task state](docs/TASK_STATE_EXPERIMENT.md): checkpointed facts marked fresh or stale on resume; pilot only, not adopted
 - [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): Forkpoint's read-set merge vs. agents on plain PostgreSQL told to lock and re-check, two real agents per round; 0 stale rounds of 10 in each group, so by its decision rule no correctness advantage, while F took 3 times the tool calls
 - [The agent boundary](docs/AGENT_BOUNDARY.md): how the database stays safe when nobody knows what the agents do: real incidents agents caused on their own and what happens here, what it limits, the one-time setup, and what it doesn't protect
+- [Real agents on routine tasks](docs/ROUTINE_AGENTS_EXPERIMENT.md): whether a real agent decides on its own to do something destructive when something is in the way; in 9 rounds on three tasks none did or tried, so the boundary was never put to the test (one model, a small sample)
 - [agent_lab gateway](docs/AGENT_LAB_GATEWAY.md): an optional loopback process that keeps psql sessions warm for the agents' tool
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut
