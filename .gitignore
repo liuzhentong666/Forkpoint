@@ -5,10 +5,7 @@ connection.local.json
 connection.*.local.json
 *.pem
 pgpass.conf
-.venv-cloud/
 cloud-read-benchmark.json
-oss-protocol-benchmark.json
-cloud-postgres-oss-protocol.json
 cloud-postgres-integration.json
 local-review-results.json
 

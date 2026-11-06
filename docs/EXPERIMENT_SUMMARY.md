@@ -4,6 +4,8 @@
 
 2026-10-29 写给想了解本项目做了什么、结果如何的读者，不需要数据库或 AI 背景。详细记录的链接在文末。
 
+> 2026-11-04 注：之后的第六组实验[真实 Agent 的日常任务](ROUTINE_AGENTS_EXPERIMENT.md)（2026-11-01 至 11-02）检验的是 Agent 边界，而不是新功能，因此不在本文之内。
+
 ## 一句话总结
 
 我们做了 Forkpoint：一个加在 PostgreSQL 数据库上的工具，目的是在多个 AI Agent 处理同一份数据时防止它们出错。两周里我们用真实的 AI Agent 做了五组测试。工具每次都按设计正常工作，但 Agent 从来没有犯它要防止的那些错误；在唯一一组与普通数据库对比的测试中，得到良好指示的 Agent 在普通数据库上做得一样好，步骤还更少。所以我们暂停了新功能。
@@ -134,6 +136,8 @@
 # What We Tested, and Why It Didn't Work Out
 
 Written on 2026-10-29 for anyone who wants to know what this project tried and what came of it. No database or AI background is needed. Links to the detailed records are at the end.
+
+> Note added on 2026-11-04: a sixth experiment, [Real agents on routine tasks](ROUTINE_AGENTS_EXPERIMENT.md) (2026-11-01 to 2026-11-02), tested the agent boundary rather than a new feature, so it is not part of this summary.
 
 ## The short version
 

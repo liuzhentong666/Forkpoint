@@ -16,6 +16,8 @@
 
 这些文件保留本地测试事实；文件名中的 cloud 是历史命名，不表示运行地点或真实云连接。后续适配器的本地范围见 多后端本地测试。
 
+> 2026-11-04 注：“多后端本地测试”即 `docs/STORAGE_BACKENDS_VALIDATION.md`，已于 2026-10-30 随存储适配器一起移除（最后存在于提交 `d342ccf`）。它引用的原始记录仍在 [storage-backend-test-results.json](../results/storage-backend-test-results.json)：39 项本机测试，使用内存模型与 SDK 测试替身，没有连接真实云服务。
+
 ## 尚无结果的云端项目
 
 真实桶访问与配置、IAM、条件发布、网络故障恢复、Pub/Sub、跨实例通知、长期运行、容量及费用均无真实验证结果。用户报告已创建 OSS 桶，也不等于本项目已连接或核验该桶。
@@ -41,6 +43,8 @@ This document only describes the source and scope of the local code tests; the r
 - [cloud-postgres-integration.json](../results/cloud-postgres-integration.json): a hand-off experiment between the existing Ubuntu WSL PostgreSQL and the in-memory state backend. `resumed.verified` only means the local database snapshot was verified, and cannot be interpreted as successful cloud storage verification.
 
 These files keep the facts of the local tests; "cloud" in the file names is historical naming and does not indicate where they ran or a real cloud connection. The local scope of the later adapters is in Multi-backend local tests.
+
+> Note added on 2026-11-04: "Multi-backend local tests" was `docs/STORAGE_BACKENDS_VALIDATION.md`, removed with the storage adapters on 2026-10-30 (last present in commit `d342ccf`). The raw record it cited stays in [storage-backend-test-results.json](../results/storage-backend-test-results.json): 39 local tests with in-memory models and SDK stubs, none against a real cloud service.
 
 ## Cloud items with no results yet
 

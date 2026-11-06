@@ -1,8 +1,9 @@
 -- Install into a NEW, dedicated PostgreSQL 16+ database as its owner.
 -- Versioned files + ordinary main tables + SQL-visible isolated branch overlays.
 -- 005_bounded_history.sql later replaces the history walks defined here
--- (vc._ancestors, vc.rows_at, vc._file_state and others) with equivalent ones;
--- db.py install applies 001-005 in order.
+-- (vc._ancestors, vc.rows_at, vc._file_state and others) with equivalent ones,
+-- and 010_unknown_branch_code.sql replaces vc.begin_change; db.py install
+-- applies 001-011 in order, so their definitions are the ones installed.
 BEGIN;
 CREATE SCHEMA vc;
 CREATE SCHEMA agent;
