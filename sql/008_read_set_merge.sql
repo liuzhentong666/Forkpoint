@@ -26,12 +26,13 @@
 -- * The read set replaces the expected-head check, so it is the caller's own
 --   declaration: a row the decision used but the set leaves out is not checked
 --   (an empty set declares that the decision read nothing besides the rows it
---   wrote). Callers send every row their decision used; agent_lab.py exposes this
---   function as merge --reads, naming tables instead of table ids.
+--   wrote). Callers send every row their decision used. (agent_lab.py, a lab tool
+--   moved out of this repository on 2026-11-06, exposed it as merge --reads.)
 -- * Rows are compared by value at the two versions with vc._rows_at_keys, which
 --   follows vc.rows_at's first-parent lineage but resolves only the given keys:
 --   the cost follows that lineage and the number of keys, not the table size.
---   docs/READSET_EXPERIMENT.md has the experiment behind this design, and
+--   docs/READSET_EXPERIMENT.md, moved out of this repository on 2026-11-06 (last
+--   present in 87d3137), has the experiment behind this design, and
 --   scripts/benchmark_read_set_merge.py measures this implementation.
 -- * Rollback (no data to undo; merges made through it are ordinary vc.merge
 --   commits): DROP FUNCTION vc.merge_validated(text,uuid,jsonb,text);
@@ -39,7 +40,7 @@
 BEGIN;
 -- ROWS 10: at most one row per key. With the default estimate (1,000 rows) the
 -- planner costs merge_validated's check above jit_above_cost and JIT-compiles it
--- on every call, about 10 ms even for an empty read set (docs/READSET_EXPERIMENT.md).
+-- on every call, about 10 ms even for an empty read set (measured in the read-set experiment).
 CREATE OR REPLACE FUNCTION vc._rows_at_keys(p_revision uuid,p_table uuid,p_keys jsonb[])
 RETURNS TABLE(pk jsonb,doc jsonb)
 LANGUAGE sql STABLE SECURITY DEFINER ROWS 10 SET search_path=pg_catalog,vc,pg_temp AS $$

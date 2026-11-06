@@ -12,14 +12,9 @@
 
 ## 状态（2026-10-29）：暂停新增功能
 
-促成暂停的五组实验的通俗说明见[我们测试了什么，为什么没有成功](docs/EXPERIMENT_SUMMARY.md)。
+用 Claude Opus 5.5 做的预登记实验，都没有显示 Agent 需要 Forkpoint 所补充的能力。在唯一与普通 PostgreSQL 对比的实验中，每一轮都让两个 Agent 发生冲突；在普通 PostgreSQL 上被告知锁住所读行的 Agent，与 Forkpoint 的分支加读集合入一样安全（两组各 10 轮都没有陈旧轮次），工具调用只用了约三分之一。
 
-用 Claude Opus 5.5 做的预登记实验，都没有显示 Agent 需要 Forkpoint 所补充的能力：
-
-- [真实 Agent 的读集校验](docs/READSET_AGENTS_EXPERIMENT.md)：每一轮都让两个 Agent 发生冲突。在普通 PostgreSQL 上被告知锁住所读行的 Agent，与 Forkpoint 的分支加读集合入一样安全，两组各 10 轮都没有陈旧轮次，而 Forkpoint 用了约 3 倍的工具调用。
-- [上下文存档](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)：按采纳标准，没有证据表明逐字存档胜过模型自写的交接说明。
-- [可核查的任务状态](docs/TASK_STATE_EXPERIMENT.md)：Agent 自行重读了变化过的行，新鲜度标记没有可纠正的内容；未采纳。
-- [重复实验](docs/GPT_REPEAT_EXPERIMENT.md)在 20 轮中没有出现覆盖，但没有不使用 Forkpoint 的对照组。
+实验、原始记录以及 Agent 使用的工具（`agent_lab.py`）已于 2026-11-06 移出本仓库，使它只保留使用 Forkpoint 所需的内容。它们仍在 git 历史中，最后存在于 `87d3137`；通俗说明见[我们测试了什么，为什么没有成功](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/EXPERIMENT_SUMMARY.md)。
 
 因此暂停新增功能：只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后，才新增功能；[参考数据计划](docs/REFERENCE_DATA_PLAN.md)也在此列。修复、测试与文档照常进行。有一种情形尚未测试：无法放进一次数据库调用、需要 Agent 分多步完成修改的工作；只有遇到这类真实任务时才值得测试。
 
@@ -83,7 +78,7 @@ COMMIT;
 
 每次合入都只是一次调用 `SELECT vc.merge('main', :'stock_rev', :'base', 'stock-agent');`，要么完整生效，要么以上面的某个错误码失败。
 
-以上是 PostgreSQL 16.15 上一次真实运行的输出，UUID 做了缩写。同样的场景也用两个真实 GPT Agent 做过[预登记的十轮实验](docs/GPT_REPEAT_EXPERIMENT.md)：完成的 8 轮全部达成目标，没有一轮覆盖对方的工作；另外 2 轮因模型服务额度用尽而中断，计为失败。
+以上是 PostgreSQL 16.15 上一次真实运行的输出，UUID 做了缩写。同样的场景也用两个真实 GPT Agent 做过[预登记的十轮实验](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/GPT_REPEAT_EXPERIMENT.md)：完成的 8 轮全部达成目标，没有一轮覆盖对方的工作；另外 2 轮因模型服务额度用尽而中断，计为失败。
 
 ## 快速开始
 
@@ -191,8 +186,6 @@ db.py                 命令行：检查连接、安装、升级已有安装
 run_tests.py          集成测试（自行创建 agentdb_test_* 库）
 review_local.py       本机审查：维护恢复、受限角色、十个分支全部合入
 agent_boundary.py     给每个 Agent 独立的登录；看守循环、状态与撤销
-agent_lab.py          实验中 GPT 与 Claude Agent 使用的工具命令行
-agent_lab_gateway.py  可选的回环网关，为 agent_lab.py 复用 psql 会话
 compose.yaml          一条命令的 Docker 演示
 sql/                  版本引擎，按 001–011 顺序安装
 examples/             可运行的 SQL 示例
@@ -200,7 +193,6 @@ formal/               Agent 合入 main 的 TLA+ 模型，用 TLC 检查
 scripts/              基准测试、迁移检查、预发布演练
 results/              文档中各项数字对应的原始结果
 agent_state/          管理 Agent 的任务状态，只在内存中
-experiments/          预登记的实验：GPT 与 Claude 重复实验、读集校验、上下文存档、可核查的任务状态、真实 Agent 的日常任务
 deploy/               预发布虚拟机配置和 Docker 演示镜像
 docs/                 安装、设计、验证记录、计划、技术博客
 tests/                单元测试
@@ -211,16 +203,9 @@ tests/                单元测试
 - [安装与升级](docs/SETUP.md)：连接选项、密码、TLS、WSL、迁移、测试
 - [技术博客](docs/TECHNICAL_BLOG.md)：架构，以及两个真实 GPT Agent 带来的发现
 - [设计说明](docs/DESIGN_REVIEW.md)：版本模型以及对原计划的修订
-- [我们测试了什么，为什么没有成功](docs/EXPERIMENT_SUMMARY.md)：促成暂停的五组实验的通俗说明
-- [GPT 与 Claude 重复实验](docs/GPT_REPEAT_EXPERIMENT.md)：两种模型各预登记十轮，保留失败样本
-- [读集校验实验](docs/READSET_EXPERIMENT.md)：在 75 次预登记的合成运行中比较读集校验与陈旧 head 检查，并完整重复一次
-- [上下文存档实验](docs/CONTEXT_ARCHIVE_EXPERIMENT.md)：重置后逐字存档的上下文与模型自写的交接说明对比；按采纳标准没有证据支持存档
-- [可核查的任务状态](docs/TASK_STATE_EXPERIMENT.md)：恢复时把检查点中的事实标为新鲜或过期；只做了试运行，未采纳
-- [真实 Agent 的读集校验](docs/READSET_AGENTS_EXPERIMENT.md)：Forkpoint 的读集合入与普通 PostgreSQL 上被要求加锁并复查的 Agent 对比，每轮两个真实 Agent；两组各 10 轮都没有陈旧轮次，按判定规则没有正确性优势，而 F 用了 3 倍的工具调用
+- [我们测试了什么，为什么没有成功](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/EXPERIMENT_SUMMARY.md)：促成暂停的实验的通俗说明；这些实验及其记录已于 2026-11-06 移出本仓库（最后存在于 `87d3137`）
 - [Agent 边界](docs/AGENT_BOUNDARY.md)：人不知道 Agent 在做什么时，数据库怎样保持安全：Agent 自己造成过的真实事故及在这里的结果、限制了什么、一次性设置、不保护什么
-- [真实 Agent 的日常任务](docs/ROUTINE_AGENTS_EXPERIMENT.md)：遇到阻碍时，真实 Agent 会不会自己决定做破坏性的事；五个任务共 15 轮都没有破坏数据，但其中一个任务的 3 轮都自己决定成批改名 600 行，被份额拒绝后也没有绕过（只有一个模型，样本很小）
 - [形式化模型](docs/FORMAL_MODEL.md)：Agent 合入 main 的 TLA+ 模型，由 TLC 检查两个 Agent、以及三个 Agent 所有的步骤顺序；Agent 在自己的分支上读取时规则成立，但先读 main 再建分支的 Agent 不受读集保护（已在 PostgreSQL 上重放）
-- [agent_lab 网关](docs/AGENT_LAB_GATEWAY.md)：可选的回环常驻进程，为 Agent 的工具复用 psql 会话
 - [历史增长](docs/HISTORY_GROWTH.md) 与 [合入耗时分解](docs/MERGE_BENCHMARK.md)
 - [预发布 S1](docs/STAGING_S1_RESULTS.md) 与 [S4/S5 演练](docs/STAGING_S4_S5.md)：TLS 接入、增长、备份、断电、断网
 - [参考数据计划](docs/REFERENCE_DATA_PLAN.md)：在现有 PostgreSQL 中，对应用读取而不写入的小表做受审变更；尚未实现，已暂停（见“状态”一节）

@@ -40,7 +40,7 @@
 --   from PUBLIC, and large objects, which no budget covers, can no longer be created.
 --   agentdb_client keeps CONNECT and TEMPORARY, and agentdb_manager CONNECT, through grants
 --   of their own. A login that holds neither with INHERIT, or is not the owner, needs its
---   own CONNECT (experiments/readset_agents does this). Roles are server-wide, so other
+--   own CONNECT (as the control logins in scripts/agent_login_attacks.py get). Roles are server-wide, so other
 --   databases on the server still need their own REVOKE; vc.boundary_status lists the open ones.
 -- * Run by a non-superuser owner, the server-wide steps below are skipped: the server
 --   administrator does them in deploy/staging/create_staging_role.sql. Revoking the

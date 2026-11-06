@@ -4,6 +4,8 @@
 
 日期：2026-10-17。使用现有 Ubuntu WSL PostgreSQL 16.15，不启停或替换服务。自动化实验使用专用测试数据库；现有 `agentdb` 仅应用新增函数和授权的迁移，业务数据与版本历史不变。
 
+> 2026-11-06 注：这里提到的 `agent_lab.py`、它的网关与各项实验已移出本仓库，仍在 git 历史中，最后存在于 `87d3137`。
+
 **所有云存储仍未经真实验证，ECS 未部署。** 维护任务状态使用 MemoryStore；OSS 配置检查使用 SDK 测试替身。这里的本地报告不是正式管理任务的恢复存储，也不改变正式状态采用云对象存储的设计。没有运行 Claude。
 
 ## 1. 旧维护者醒来后必须收到冲突
@@ -79,7 +81,7 @@
 
 实验发现并修正了一个客户端接口缺口：库存 Agent 只能通过 `info/diff` 看到文件哈希，无法在合入前核对代码正文。因此新增 `read-code --revision UUID --path ...`，允许按固定版本读取两种实验规则文件；已有库存提案与恢复提案均经此入口检查。最终核验检查 `PRICE = 11.0`、`STOCK = 95` 和真实行数据，不执行政策代码。
 
-这是一项有明确目标、有限工具和协调者安排阶段的两 Agent 实验，不是自由探索盲测，也不代表十个模型并发或长期自主运行能力。数据库操作由 GPT 发起，数据库结果由协调者独立读取核对；中断前的部分操作通过数据库状态确认。结构化记录包含实际 Agent 报告的整理和独立数据库核验，不冒充完整原始工具轨迹。见 [GPT 实验记录](../results/gpt-agent-experiment.json)。
+这是一项有明确目标、有限工具和协调者安排阶段的两 Agent 实验，不是自由探索盲测，也不代表十个模型并发或长期自主运行能力。数据库操作由 GPT 发起，数据库结果由协调者独立读取核对；中断前的部分操作通过数据库状态确认。结构化记录包含实际 Agent 报告的整理和独立数据库核验，不冒充完整原始工具轨迹。见 [GPT 实验记录](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/results/gpt-agent-experiment.json)。
 
 本次行为说明：客户端应同时提供固定版本、结构化冲突和按需读取代码的接口。只有“失败，请重试”不足以区分陈旧指针和需要重新表达意图的冲突；数据库端仍必须拒绝错误合入，不能依靠 Agent 自觉保持正确。
 
@@ -105,6 +107,8 @@
 # Record of Local Maintenance Recovery, Permissions and Agent Experiments
 
 Date: 2026-10-17. Uses the existing Ubuntu WSL PostgreSQL 16.15, without starting/stopping or replacing the service. Automated experiments use dedicated test databases; the existing `agentdb` only had the migration applied that adds new functions and grants, and its business data and version history are unchanged.
+
+> Note added on 2026-11-06: `agent_lab.py`, its gateway and the experiments named here were moved out of this repository; they are in git history, last present in `87d3137`.
 
 **All cloud storage is still not verified against real cloud services, and ECS is not deployed.** Maintenance task state uses MemoryStore; the OSS configuration check uses SDK test doubles. The local reports here are not the recovery storage for formal management tasks, and do not change the design in which formal state uses cloud object storage. Claude was not run.
 
@@ -181,7 +185,7 @@ The whole-row state of the original stock proposal contains price 10, so updatin
 
 The experiment found and fixed a gap in the client interface: the stock Agent could only see file hashes through `info/diff` and could not check the code text before merging. So `read-code --revision UUID --path ...` was added, allowing the two experiment rule files to be read at a pinned version; both the existing stock proposal and the recovery proposal were checked through this entry point. The final verification checks `PRICE = 11.0`, `STOCK = 95` and the real row data, without executing the policy code.
 
-This is a two-Agent experiment with a clear goal, limited tools and phases arranged by a coordinator; it is not a blind test of free exploration, and does not represent the ability of ten models running concurrently or long-term autonomous operation. Database operations were initiated by GPT, and the database results were read and checked independently by the coordinator; some operations before the interruption were confirmed through the database state. The structured record contains an organized version of the actual Agent reports and the independent database verification, and does not pass itself off as the complete raw tool trace. See [GPT experiment record](../results/gpt-agent-experiment.json).
+This is a two-Agent experiment with a clear goal, limited tools and phases arranged by a coordinator; it is not a blind test of free exploration, and does not represent the ability of ten models running concurrently or long-term autonomous operation. Database operations were initiated by GPT, and the database results were read and checked independently by the coordinator; some operations before the interruption were confirmed through the database state. The structured record contains an organized version of the actual Agent reports and the independent database verification, and does not pass itself off as the complete raw tool trace. See [GPT experiment record](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/results/gpt-agent-experiment.json).
 
 What this run's behavior shows: the client should provide interfaces for pinned versions, structured conflicts and on-demand code reading together. A bare "failed, please retry" is not enough to distinguish a stale pointer from a conflict that requires re-expressing the intent; the database side must still reject wrong merges, and cannot rely on Agents voluntarily staying correct.
 

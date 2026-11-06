@@ -52,7 +52,7 @@
 
    这样事务内空闲的失联会话 60 s 内被结束，静默对端的连接约 120 s 内被关闭，执行中的语句在客户端离开后约 10 s 内（静默对端约 130 s 内）被取消。所有客户端都把一个版本事务作为一个脚本发送，事务内的合法空闲约为一次往返，最长的有意停顿（断网演练的持锁会话）约 4 s。取值依据见 [S4/S5 第 4 节](STAGING_S4_S5.md#4-风险失联客户端的会话长时间持有锁)；本机虚拟机由 [configure_postgres.sh](../deploy/staging/configure_postgres.sh) 写入，已配置的虚拟机按 [4a 节](STAGING_VM.md#4a-给已配置的虚拟机加上失联客户端设置用户操作) 补上。
 
-客户端一侧：`review_local.py` 的十写入者合入与 `agent_lab.py merge` 在合入事务内设置 `lock_timeout = '10s'`。等不到 main 锁时报告 `lock_timeout`（SQLSTATE 55P03），与 `stale_head`（40001）一样表示 main 未改变、同一提案可以重试，不当作 `merge_conflict`（P0001）。服务器的 `lock_timeout` 保持默认 0。
+客户端一侧：`review_local.py` 的十写入者合入（以及 2026-11-06 移出本仓库之前的 `agent_lab.py merge`）在合入事务内设置 `lock_timeout = '10s'`。等不到 main 锁时报告 `lock_timeout`（SQLSTATE 55P03），与 `stale_head`（40001）一样表示 main 未改变、同一提案可以重试，不当作 `merge_conflict`（P0001）。服务器的 `lock_timeout` 保持默认 0。
 
 ## S1 核验命令
 
@@ -136,7 +136,7 @@ The following are carried out by the staging server's administrator; this projec
 
    This way a vanished session idle inside a transaction is ended within 60 s, a connection to a silent peer is closed within about 120 s, and a running statement is cancelled within about 10 s after the client leaves (within about 130 s for a silent peer). All clients send one version transaction as one script, so the legitimate idle time inside a transaction is about one round trip, and the longest intentional pause (the lock-holding session in the network-cut drill) is about 4 s. For the basis of the values see [S4/S5 section 4](STAGING_S4_S5.md#4-risk-sessions-of-vanished-clients-hold-locks-for-a-long-time); on the local VM they are written by [configure_postgres.sh](../deploy/staging/configure_postgres.sh), and an already configured VM adds them following [section 4a](STAGING_VM.md#4a-add-the-vanished-client-settings-to-an-already-configured-vm-user-action).
 
-On the client side: the ten-writer merge in `review_local.py` and `agent_lab.py merge` set `lock_timeout = '10s'` inside the merge transaction. When the main lock cannot be obtained in time, `lock_timeout` (SQLSTATE 55P03) is reported, which, like `stale_head` (40001), means main has not changed and the same proposal can be retried; it is not treated as `merge_conflict` (P0001). The server's `lock_timeout` stays at the default 0.
+On the client side: the ten-writer merge in `review_local.py` (and `agent_lab.py merge`, until it moved out of this repository on 2026-11-06) set `lock_timeout = '10s'` inside the merge transaction. When the main lock cannot be obtained in time, `lock_timeout` (SQLSTATE 55P03) is reported, which, like `stale_head` (40001), means main has not changed and the same proposal can be retried; it is not treated as `merge_conflict` (P0001). The server's `lock_timeout` stays at the default 0.
 
 ## S1 verification commands
 

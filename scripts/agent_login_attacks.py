@@ -906,7 +906,7 @@ class Attacks:
         self.record("retire", "self_check_stays_clean", found == [], str(found))
 
     def controls(self):
-        """The same attacks on the best login before this boundary, built as experiments/readset_agents builds it.
+        """The same attacks on the best login before this boundary, built as the readset_agents experiment built it.
         They have to get through: if one did not, the refusals above would prove nothing."""
         control, name = self.hand_built("GRANT agentdb_client TO {name} WITH INHERIT FALSE, SET TRUE; "
                                         'GRANT CONNECT ON DATABASE "{database}" TO {name};')

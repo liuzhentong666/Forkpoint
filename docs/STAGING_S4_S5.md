@@ -4,6 +4,8 @@
 
 2026-10-18。[生产环境测试计划](PRODUCTION_TEST_PLAN.md) 的 S4、S5 阶段，在 [S1](STAGING_S1_RESULTS.md) 所用的 VirtualBox 虚拟机 `agent-db`（Ubuntu 24.04.5、PostgreSQL 16.15）上进行，客户端为 Windows 原生 psql，经 TLS `verify-full` 以非超级用户 `agentdb_staging` 连接。**未使用任何云服务**；对象存储（S2）仍未经真实验证。
 
+> 2026-11-06 注：这里提到的 `agent_lab.py`、它的网关与各项实验已移出本仓库，仍在 git 历史中，最后存在于 `87d3137`。
+
 入口：[scripts/staging_drills.py](../scripts/staging_drills.py)（`growth`、`backup`、`restart`、`crash`、`netcut`、`kill`）与已有的 [scripts/benchmark_merge.py](../scripts/benchmark_merge.py)。每项在服务器上新建自己的 `agentdb_test_*` 库，原始结果在 [results/staging/](../results/staging/)。涉及断电、断网与重启的演练通过本机 `VBoxManage` 控制虚拟机，不需要虚拟机的 shell 或口令。
 
 **结论**：S5 的五项演练全部通过；S4 的目标负载通过，但历史增长测出两处随历史长度增长的成本（第 2 节），以及一处运维风险（第 4 节），需要在扩大规模前处理；第 4 节的服务器与客户端超时已写入脚本，待用户在虚拟机上应用并重跑断网演练。客户端与服务器共用一台笔记本，所有计时只作相对比较。
@@ -80,7 +82,7 @@
 
 `idle_in_transaction_session_timeout` 只计算事务打开、服务器在等客户端下一条语句的时间（“idle in transaction”），不计算语句执行时间。逐个检查了会在事务中停顿的客户端：
 
-- [run_tests.py](../run_tests.py)、[review_local.py](../review_local.py)、[agent_lab.py](../agent_lab.py)（含网关）、`scripts/staging_drills.py` 的 growth/crash/restart/backup：每个 `BEGIN … COMMIT` 都作为一个 psql 脚本整体发送（`Connection.execute` 一次写入标准输入，`db.Session` 用 `\i` 执行）。psql 收到上一条结果就发送下一条，因此服务器看到的事务内空闲约为一次往返：本机 WSL 约 0.16 ms，经 TLS 到虚拟机约 8 ms（第 1 节）。没有脚本在事务中等待模型输出、用户输入或其他进程。
+- [run_tests.py](../run_tests.py)、[review_local.py](../review_local.py)、[agent_lab.py](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/agent_lab.py)（含网关）、`scripts/staging_drills.py` 的 growth/crash/restart/backup：每个 `BEGIN … COMMIT` 都作为一个 psql 脚本整体发送（`Connection.execute` 一次写入标准输入，`db.Session` 用 `\i` 执行）。psql 收到上一条结果就发送下一条，因此服务器看到的事务内空闲约为一次往返：本机 WSL 约 0.16 ms，经 TLS 到虚拟机约 8 ms（第 1 节）。没有脚本在事务中等待模型输出、用户输入或其他进程。
 - `agent_lab.py` 的每次工具调用是一个完整事务；模型思考时间落在两个事务之间。网关池中的 Session 每次调用后回滚并 `DISCARD ALL`，空闲时状态是 “idle”，不在事务内。
 - 有意的停顿只在演练里：kill 的受害会话在所有者启动 psql 查询并终止它期间空闲，不到 1 s；netcut 的持锁会话从 `begin_change` 到断网要经过 3 s 的 `lock_timeout` 探测、psql 启动和 VBoxManage，约 4 s。`review_local.py` 新增的锁超时检查用 `pg_sleep` 持锁，状态是 “active”，不受此设置影响。
 - 长语句（第 2 节中 2,000 个提交时一次合入 50.7 s）处于 “active”，不受此设置影响。`pg_dump`/`pg_restore` 会为自己的会话把 `idle_in_transaction_session_timeout` 设为 0，备份演练不受影响。
@@ -191,6 +193,8 @@
 
 2026-10-18. Phases S4 and S5 of the [Production test plan](PRODUCTION_TEST_PLAN.md), carried out on the VirtualBox virtual machine `agent-db` used for [S1](STAGING_S1_RESULTS.md) (Ubuntu 24.04.5, PostgreSQL 16.15); the client is the native Windows psql, connecting over TLS `verify-full` as the non-superuser `agentdb_staging`. **No cloud services were used**; object storage (S2) is still not verified against real cloud services.
 
+> Note added on 2026-11-06: `agent_lab.py`, its gateway and the experiments named here were moved out of this repository; they are in git history, last present in `87d3137`.
+
 Entry points: [scripts/staging_drills.py](../scripts/staging_drills.py) (`growth`, `backup`, `restart`, `crash`, `netcut`, `kill`) and the existing [scripts/benchmark_merge.py](../scripts/benchmark_merge.py). Each item creates its own `agentdb_test_*` database on the server, and the raw results are in [results/staging/](../results/staging/). Drills involving power-off, network cuts and restarts control the VM through the local `VBoxManage`, without needing the VM's shell or password.
 
 **Conclusion**: all five S5 drills passed; S4's target load passed, but history growth revealed two costs that grow with history length (section 2), as well as one operational risk (section 4), which need to be dealt with before scaling up; the server and client timeouts of section 4 have been written into the scripts, waiting for the user to apply them on the VM and rerun the network-cut drill. The client and server share one laptop, so all timings are for relative comparison only.
@@ -267,7 +271,7 @@ This actually happened once during this testing: during the first growth test th
 
 `idle_in_transaction_session_timeout` only counts the time during which a transaction is open and the server is waiting for the client's next statement ("idle in transaction"), not statement execution time. The clients that might pause inside a transaction were checked one by one:
 
-- [run_tests.py](../run_tests.py), [review_local.py](../review_local.py), [agent_lab.py](../agent_lab.py) (including the gateway), and `scripts/staging_drills.py`'s growth/crash/restart/backup: each `BEGIN … COMMIT` is sent as one whole psql script (`Connection.execute` writes it to standard input in one go, and `db.Session` executes it with `\i`). psql sends the next statement as soon as it receives the previous result, so the idle time inside a transaction seen by the server is about one round trip: about 0.16 ms on the local WSL, about 8 ms over TLS to the VM (section 1). No script waits inside a transaction for model output, user input or other processes.
+- [run_tests.py](../run_tests.py), [review_local.py](../review_local.py), [agent_lab.py](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/agent_lab.py) (including the gateway), and `scripts/staging_drills.py`'s growth/crash/restart/backup: each `BEGIN … COMMIT` is sent as one whole psql script (`Connection.execute` writes it to standard input in one go, and `db.Session` executes it with `\i`). psql sends the next statement as soon as it receives the previous result, so the idle time inside a transaction seen by the server is about one round trip: about 0.16 ms on the local WSL, about 8 ms over TLS to the VM (section 1). No script waits inside a transaction for model output, user input or other processes.
 - Each tool call of `agent_lab.py` is one complete transaction; model thinking time falls between two transactions. Sessions in the gateway pool roll back and run `DISCARD ALL` after each call, so their idle state is "idle", not inside a transaction.
 - Intentional pauses happen only in the drills: kill's victim session is idle while the owner starts psql to query and terminate it, less than 1 s; netcut's lock-holding session goes through a 3 s `lock_timeout` probe, psql startup and VBoxManage between `begin_change` and the network cut, about 4 s. The new lock-timeout check in `review_local.py` holds the lock with `pg_sleep`, whose state is "active", so it is not affected by this setting.
 - Long statements (one merge of 50.7 s at 2,000 commits in section 2) are "active" and not affected by this setting. `pg_dump`/`pg_restore` set `idle_in_transaction_session_timeout` to 0 for their own sessions, so the backup drill is not affected.

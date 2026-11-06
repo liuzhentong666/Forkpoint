@@ -27,7 +27,7 @@
 | `agentdb_keeper`（看守程序） | `vc.boundary_check`、`vc.boundary_status`、`vc.freeze`、`vc.stop_agent`、`vc.revert`、`vc.agent_report`、结束卡住的会话 | 解冻、加预算、写表，只能收紧 |
 | `agentdb_broker`（发放程序） | 建登录（PostgreSQL 16 的 CREATEROLE 规则）、`vc.issue_budget`（只能插入，不能追加） | 建比 `agentdb_worker` 更强的角色、把别的角色给登录、读表 |
 
-`agentdb_client` 和 `agentdb_manager` 不变，留给受信任的工具（`agent_lab.py`、实验、维护）。它们不是边界：`agentdb_client` 能直接提交到 main，也能填任意作者名。
+`agentdb_client` 和 `agentdb_manager` 不变，留给受信任的工具（`review_local.py`、测试、维护）。它们不是边界：`agentdb_client` 能直接提交到 main，也能填任意作者名。
 
 ## Agent 怎么用
 
@@ -166,7 +166,7 @@ python agent_boundary.py run --agent-host host.docker.internal -- docker run --r
 - **发放程序和看守程序本身。** 发放程序能发任意预算；看守程序能冻结、停登录、撤销 main 上任何提交（都有记录，也都能再撤销）。它们必须是 Agent 碰不到的代码。
 - **容器能到的其他东西。** Docker Desktop 的 `host.docker.internal` 也通向本机回环上的其他服务，不只是 PostgreSQL。
 - **数据库管理员。** 超级用户仍是可信方，这不是防超级用户篡改的账本（见 [设计](DESIGN_REVIEW.md)）。
-- **受信任的路径。** `agentdb_client` 和 `SET ROLE` 连接不受预算和冻结约束；它们不应该交给不受信任的 Agent。`agent_lab.py` 和它的网关仍在这条路上，它们是实验工具。
+- **受信任的路径。** `agentdb_client` 和 `SET ROLE` 连接不受预算和冻结约束；它们不应该交给不受信任的 Agent。
 
 ## 证据
 
@@ -176,7 +176,7 @@ python agent_boundary.py run --agent-host host.docker.internal -- docker run --r
 |---|---|---|
 | 攻击 | `python scripts/check_agent_boundaries.py --sandbox-image forkpoint-demo:latest`（镜像由 `docker compose build demo` 构建） | 针对 Agent 登录的 284 项里 277 项成立、7 项是记录（被允许但值得知道的事，或耗时），没有缺口；连同对 `agentdb_client` 和 `agent_lab.py` 的原有检查，共 327 项（[原始结果](../results/agent-boundaries-results.json)）。Agent、发放程序和看守程序都用真实登录和自写 SQL，只有一次性设置和要被发现的目录改动用属主连接 |
 | 事故重放 | 同一脚本的 `incident` 组 | 加这些防护之前（2026-11-01 在测试库上）：整表 `DELETE`、没有 `WHERE` 的 `UPDATE` 和 500 行编造数据都穿过门落到 main。现在都在门口被拒（AB007），main 不变；几次小合入累计也会被拒。15 行的小表整表删除被拒，分几次改到一半以上也被拒；只有一行的表和空表照常能改。份额为 1 的登录确实清空了 4,000 行时，`report` 如实报出，`undo` 恢复出完全相同的行 |
-| 对照 | 同一脚本的 `control` 组 | 同样的攻击在之前最好的登录上（`experiments/readset_agents` 的做法）全部穿透：直接提交到 main 并伪造作者、写别人的分支、合入别人的分支、预算之外的临时表。所以上面的拒绝说明边界成立，而不是攻击坏了 |
+| 对照 | 同一脚本的 `control` 组 | 同样的攻击在之前最好的登录上（readset_agents 实验的做法）全部穿透：直接提交到 main 并伪造作者、写别人的分支、合入别人的分支、预算之外的临时表。所以上面的拒绝说明边界成立，而不是攻击坏了 |
 | 真实容器 | 同一脚本的 `sandbox` 组 | 在本机运行 [check_agent_sandbox.py](../scripts/check_agent_sandbox.py) 报告 `wsl.exe`、Docker 引擎和能拿到的凭据（退出码 1）；经 `agent_boundary.py run` 在容器里运行时全部不通（退出码 0），登录照常工作；在容器里放一个令牌，它被查出来 |
 | 备份 | 同一脚本的 `cli` 组 | 转储、恢复到临时库、每张表与历史一致后才留下 `.dump`；不留临时库；旧的按 `--keep` 清理。真正从备份恢复一个库的流程没有演练；预发布虚拟机上的[备份恢复演练](STAGING_S4_S5.md)是更早的 |
 | 迁移 | `python scripts/check_agent_boundary_migration.py` | 在带历史的旧安装上迁移两次：数据、历史和已有函数不变，函数和触发器与新安装一致，自检干净，受信任的路径照常；按文件开头回滚后再迁移也通过（[原始结果](../results/agent-boundary-migration-results.json)） |
@@ -185,9 +185,11 @@ python agent_boundary.py run --agent-host host.docker.internal -- docker run --r
 | 已有套件 | `run_tests.py`、`review_local.py`、四个迁移检查、各实验的测试（替身，不调用模型）、`docker compose up --build --exit-code-from demo` | 全部退出码 0 |
 | 耗时 | 同一脚本的 `timing` 组，本机 WSL，4,000 行的表，每种 30 轮 | fork、提交并合入一行：受信任的路径中位数 240.8 ms，经过门 250.9 ms（这一数字在两次运行之间相差约一倍，比两条路径的差别大得多）。一次自检中位数 30.8 ms。写路径的额外成本取决于变更大小；一个登录累计改动超过 20 行之后，每次合入要数一次表的全部行数；在那之前，只有改到原有行的合入才数，而且最多数 40 行 |
 
+> 2026-11-06 注：`agent_lab.py`、它的网关和各项实验已移出本仓库（最后存在于 `87d3137`）。`scripts/check_agent_boundaries.py` 不再检查 `agent_lab.py` 的参数（原 D 组 25 项），改为自己新建 `agentdb_test_boundary_*` 库。2026-11-07 重跑（`--sandbox-image forkpoint-demo:latest`）：共 302 项，295 项成立、7 项记录、没有缺口；针对 Agent 登录的 284 项与上表相同（277 项成立）；单元测试现为 62 项，全部通过。
+
 从原型到现在，攻击和复查又发现了这些洞，都已修好并加了检查：路径在 `finish_change` 之前被覆盖或删除的文件不扣预算；空提交不花钱；压缩得好的行只按压缩后的大小收费；旧快照（REPEATABLE READ）看不到冻结；已过门的合入能等冻结过去再提交；Agent 未提交的事务持有预算行时撤销会一直等；过期时间设为 `infinity` 的登录没有被自检发现。查真实事故后的重放又发现：预算不知道表有多大，所以整表可以穿过门被删；被拒绝的尝试没有任何痕迹；`run` 把操作者的全部环境变量传给了 Agent。2026-11-02 的代码审查又发现五处，也已修好并加了检查：前 20 行不受份额限制，所以 20 行以内的小表能被整表删除；`report` 把 Agent 自己分支上消息为 `revert <id>` 的提交当成了撤销；`vc.revert` 先删父行，遇到不可延迟的外键就失败；应用放在表旁边的触发器函数会让自检冻结写入；看守阈值超出范围时，`run` 的看守线程第一轮就退出，Agent 照常运行。
 
-**没有做的。** 还没有真实 Agent 试图攻破它：明确要求攻破的三轮被模型拒绝，十五轮日常任务里也没有 Agent 尝试；份额拒绝过 Agent 自己决定的成批改名，它们没有绕过（见[真实 Agent 的日常任务](ROUTINE_AGENTS_EXPERIMENT.md)）。这些只是想得到的攻击。预发布虚拟机上没有运行。Windows 独立账户的沙箱没有测试，只测试了 Docker Desktop 容器。
+**没有做的。** 还没有真实 Agent 试图攻破它：明确要求攻破的三轮被模型拒绝，十五轮日常任务里也没有 Agent 尝试；份额拒绝过 Agent 自己决定的成批改名，它们没有绕过（见[真实 Agent 的日常任务](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/ROUTINE_AGENTS_EXPERIMENT.md)）。这些只是想得到的攻击。预发布虚拟机上没有运行。Windows 独立账户的沙箱没有测试，只测试了 Docker Desktop 容器。
 
 ## 为什么这不违反功能暂停
 
@@ -226,7 +228,7 @@ Three NOLOGIN roles, none a superuser:
 | `agentdb_keeper` (the keeper) | `vc.boundary_check`, `vc.boundary_status`, `vc.freeze`, `vc.stop_agent`, `vc.revert`, `vc.agent_report`, end stuck sessions | Unfreeze, add budget, write tables: it only tightens |
 | `agentdb_broker` (the broker) | Create logins (PostgreSQL 16's CREATEROLE rules), `vc.issue_budget` (insert only, no top-ups) | Create anything stronger than `agentdb_worker`, give a login any other role, read tables |
 
-`agentdb_client` and `agentdb_manager` are unchanged and stay for trusted tools (`agent_lab.py`, experiments, maintenance). They are not a boundary: `agentdb_client` can commit directly to main and record any author name.
+`agentdb_client` and `agentdb_manager` are unchanged and stay for trusted tools (`review_local.py`, tests, maintenance). They are not a boundary: `agentdb_client` can commit directly to main and record any author name.
 
 ## How an agent uses it
 
@@ -365,7 +367,7 @@ If the keeper stops, budgets and grants still hold, because the database enforce
 - **The broker and the keeper themselves.** The broker can issue any budget; the keeper can freeze, stop logins and revert any commit on main (all recorded, and all undoable). They must be code that agents can't reach.
 - **What a container can reach.** Docker Desktop's `host.docker.internal` also leads to other services on the host's loopback, not just PostgreSQL.
 - **The database administrator.** A superuser is still a trusted party; this is not a ledger that is tamper-proof against one (see the [design](DESIGN_REVIEW.md)).
-- **The trusted path.** `agentdb_client` and `SET ROLE` connections have no budget and ignore a freeze, so they shouldn't go to an untrusted agent. `agent_lab.py` and its gateway are still on that path; they are lab tools.
+- **The trusted path.** `agentdb_client` and `SET ROLE` connections have no budget and ignore a freeze, so they shouldn't go to an untrusted agent.
 
 ## Evidence
 
@@ -375,7 +377,7 @@ All on dedicated test databases on the existing local PostgreSQL 16.15; the proj
 |---|---|---|
 | Attacks | `python scripts/check_agent_boundaries.py --sandbox-image forkpoint-demo:latest` (`docker compose build demo` builds the image) | Of 284 checks on agent logins, 277 held and 7 are notes (things allowed that are worth knowing, or timings), with no gaps; with the earlier checks on `agentdb_client` and `agent_lab.py`, 327 in all ([raw results](../results/agent-boundaries-results.json)). Agents, the broker and the keeper all use real logins and raw SQL; only the one-time setup and the catalog damage to be found use the owner's connection |
 | Incident replays | The `incident` group of the same script | Before these guards (2026-11-01, on a test database): a whole-table `DELETE`, an `UPDATE` with no `WHERE` and 500 fabricated rows all went through the gate onto main. Now each is refused at the gate (AB007) and main doesn't change; small merges adding up are refused too. Deleting a whole 15-row table is refused, and so is changing more than half of it a little at a time; a one-row table and an empty table still take ordinary changes. When a login with a share of 1 did empty 4,000 rows, `report` said so and `undo` restored identical rows |
-| Control | The `control` group of the same script | The same attacks all got through on the best login before this (as `experiments/readset_agents` builds it): committing straight to main with a forged author, writing another agent's branch, merging another agent's branch, and temporary tables outside any budget. So the refusals above mean the boundary held, not that the attacks were broken |
+| Control | The `control` group of the same script | The same attacks all got through on the best login before this (as the readset_agents experiment built it): committing straight to main with a forged author, writing another agent's branch, merging another agent's branch, and temporary tables outside any budget. So the refusals above mean the boundary held, not that the attacks were broken |
 | Real container | The `sandbox` group of the same script | Run on this machine, [check_agent_sandbox.py](../scripts/check_agent_sandbox.py) reports the `wsl.exe` and Docker engine routes and the credentials within reach (exit 1); run in a container through `agent_boundary.py run`, all are closed (exit 0) and the login works; with a token planted in the container, it finds the token |
 | Backup | The `cli` group of the same script | Dumps, restores into a scratch database, and leaves a `.dump` only once each table matches history; leaves no scratch database; older dumps are pruned by `--keep`. Recovering a real database from a backup hasn't been rehearsed here; the [backup and restore drill](STAGING_S4_S5.md) on the staging VM is older |
 | Migration | `python scripts/check_agent_boundary_migration.py` | On an old install with history, migrated twice: data, history and existing functions unchanged, functions and triggers equal a new install's, the self-check clean, the trusted path working; rolling back as the file's header says and migrating again also passes ([raw results](../results/agent-boundary-migration-results.json)) |
@@ -384,9 +386,11 @@ All on dedicated test databases on the existing local PostgreSQL 16.15; the proj
 | Existing suites | `run_tests.py`, `review_local.py`, the four migration checks, each experiment's tests (stand-ins, no model calls), `docker compose up --build --exit-code-from demo` | All exit 0 |
 | Timing | The `timing` group of the same script, local WSL, a 4,000-row table, 30 rounds of each | Fork, commit and merge one row: median 240.8 ms on the trusted path, 250.9 ms through the gate (this number moved by about a factor of two between runs, far more than the gap between the paths). One self-check: median 30.8 ms. The added cost on the write path follows the size of the change; once a login has changed more than 20 rows of a table, each merge counts the whole table; before that, only a merge that changes rows that were there counts them, and at most 40 |
 
+> Note added on 2026-11-06: `agent_lab.py`, its gateway and the experiments were moved out of this repository (last present in `87d3137`). `scripts/check_agent_boundaries.py` no longer checks `agent_lab.py`'s arguments (the 25 checks of group D) and creates its own `agentdb_test_boundary_*` database instead. Rerun on 2026-11-07 (`--sandbox-image forkpoint-demo:latest`): 302 checks, 295 held, 7 notes, no gaps; the 284 on agent logins are as above (277 held). The unit tests are now 62, all passing.
+
 Going from the prototype to this, attacks and review found more holes, each now fixed and checked: files overwritten or deleted before `finish_change` weren't charged; empty commits were free; a row that compresses well paid only its compressed size; an old snapshot (REPEATABLE READ) couldn't see a freeze; a merge past the gate could wait out a freeze and commit; undo waited forever on an agent's uncommitted transaction holding its budget row; and the self-check missed a login whose expiry was set to `infinity`. Replaying real incidents then found more: a budget knew nothing about a table's size, so a whole table could be deleted through the gate; refused attempts left no trace; and `run` passed the operator's whole environment to the agent. A code review on 2026-11-02 found five more, also fixed and checked: the first 20 rows weren't subject to the share, so a table of 20 rows or fewer could be deleted whole; `report` took a commit on the agent's own branch with the message `revert <id>` for an undo; `vc.revert` removed parents first and failed on foreign keys that aren't deferrable; an application's trigger functions beside its tables made the self-check freeze writes; and given a keeper limit out of range, `run` lost its keeper thread in the first round while the agent ran on.
 
-**Not done.** No real agent has tried to break it yet: three rounds told to were refused by the model, and none tried in fifteen routine tasks; the share did refuse a bulk rename agents decided on by themselves, and they didn't route around it (see [Real agents on routine tasks](ROUTINE_AGENTS_EXPERIMENT.md)). These are only the attacks we could think of. It has not been run on the staging VM. A sandbox under a separate Windows account is untested; only a Docker Desktop container was tested.
+**Not done.** No real agent has tried to break it yet: three rounds told to were refused by the model, and none tried in fifteen routine tasks; the share did refuse a bulk rename agents decided on by themselves, and they didn't route around it (see [Real agents on routine tasks](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/ROUTINE_AGENTS_EXPERIMENT.md)). These are only the attacks we could think of. It has not been run on the staging VM. A sandbox under a separate Windows account is untested; only a Docker Desktop container was tested.
 
 ## Why this doesn't break the feature pause
 

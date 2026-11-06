@@ -33,7 +33,7 @@
 | S3 状态服务部署 | ECS（或其他主机）常驻状态服务 + SSH 隧道 | 服务重启后经 API 读回已有任务并核对版本；`scripts/maintain_snapshot.py --state-url` 在预发布 PostgreSQL 上完成一次接手 | 待 S2 |
 | S4 负载与增长 | 目标负载重复 3 次；再把历史加深一个数量级 | 记录合入阶段耗时、重试次数、`vc.merge` SQL 时间、读取量；与本机结果并列；无断言失败 | **已执行（2026-10-18，本机虚拟机）**：目标负载通过；历史增长测出 `_file_state` 全历史回溯与快照间隔导致的成本增长；修复（005 迁移与快照策略）合入后复测，2,000 个提交时合入 50.7 s → 181 ms、提交 499 ms → 20 ms，见 [S4/S5 结果第 7 节](STAGING_S4_S5.md) |
 | S5 故障演练 | PostgreSQL 重启、备份与恢复、断网、对象存储错误注入 | 恢复后 `vc.work_tx` 为 0；恢复库的 head 与业务表哈希与备份点一致；未知结果都被报告为未知 | **数据库部分已通过（2026-10-18）**：备份恢复、会话终止、正常重启、断电、断网五项通过；断网暴露的失联会话持锁风险已通过服务器超时设置限制在约 61 s 内，复测通过，见 [S4/S5 结果第 7 节](STAGING_S4_S5.md)。对象存储错误注入待 S2/S3 |
-| S6 真实 Agent | 在预发布环境重复已登记的两 Agent 实验 | 按 [实验协议](../experiments/gpt_repeat/PROTOCOL.md) 新登记一轮；覆盖事件为 0；失败样本保留 | 未开始：S1 已通过，需用户同意使用模型额度 |
+| S6 真实 Agent | 在预发布环境重复已登记的两 Agent 实验 | 按 [实验协议](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/experiments/gpt_repeat/PROTOCOL.md) 新登记一轮；覆盖事件为 0；失败样本保留 | 未开始：S1 已通过，需用户同意使用模型额度 |
 
 ## 4. 数据与权限规则
 
@@ -91,7 +91,7 @@ Each phase starts only after the previous phase passes; if any item fails, stop 
 | S3 State service deployment | Long-running state service on ECS (or another host) + SSH tunnel | After a service restart, existing tasks are read back through the API and versions checked; `scripts/maintain_snapshot.py --state-url` completes one hand-off on the staging PostgreSQL | Waiting for S2 |
 | S4 Load and growth | Repeat the target load 3 times; then deepen history by an order of magnitude | Record merge-phase time, retry counts, `vc.merge` SQL time and read volume; side by side with the local results; no assertion failures | **Executed (2026-10-18, local VM)**: target load passed; history growth measured cost growth caused by `_file_state` full-history lookback and the snapshot interval; after the fix (the 005 migration and snapshot policy) was merged, re-measured: at 2,000 commits merge 50.7 s → 181 ms, commit 499 ms → 20 ms, see [S4/S5 results section 7](STAGING_S4_S5.md) |
 | S5 Failure drills | PostgreSQL restart, backup and restore, network cut, object storage error injection | After recovery `vc.work_tx` is 0; the restored database's head and business table hashes match the backup point; unknown results are all reported as unknown | **Database part passed (2026-10-18)**: backup restore, session termination, normal restart, power-off and network cut, all five passed; the risk exposed by the network cut of a vanished session holding locks has been limited to about 61 s through server timeout settings, and the retest passed, see [S4/S5 results section 7](STAGING_S4_S5.md). Object storage error injection waits for S2/S3 |
-| S6 Real Agents | Repeat the registered two-Agent experiment in the staging environment | Register a new round according to the [experiment protocol](../experiments/gpt_repeat/PROTOCOL.md); 0 overwrite events; failed samples kept | Not started: S1 has passed; needs the user's approval to use model quota |
+| S6 Real Agents | Repeat the registered two-Agent experiment in the staging environment | Register a new round according to the [experiment protocol](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/experiments/gpt_repeat/PROTOCOL.md); 0 overwrite events; failed samples kept | Not started: S1 has passed; needs the user's approval to use model quota |
 
 ## 4. Data and permission rules
 

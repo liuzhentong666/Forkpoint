@@ -94,7 +94,7 @@ EXPLAIN ANALYZE（模板状态和第 10 次合入前状态各测 5 次）：单�
 
 `review_local.py` 的写入者现在默认各用一个 Session，`--client spawn` 恢复原做法。一次完整运行（库 `agentdb_test_review_0fbedc9103`）中，十个分支全部合入，核验全部通过：建分支阶段 0.39 s（原 4.97 s），合入阶段 1.19 s（原 9.47 s），端到端 2.30 s（原 14.93 s），陈旧 head 重试仍为 45 次。打开 10 个会话另需 2.07 s，在计时开始之前完成。原纪录保存在 `results/local-review-results.2026-10-17-spawn.json`。
 
-`agent_lab.py` 每次工具调用都是一个新的 Python 进程，无法跨调用保持 Session。可选的常驻网关 `agent_lab_gateway.py` 替 Agent 持有 Session，默认关闭，尚未用于任何真实 GPT 实验，见 [agent_lab 常驻网关](AGENT_LAB_GATEWAY.md)。
+`agent_lab.py` 每次工具调用都是一个新的 Python 进程，无法跨调用保持 Session。可选的常驻网关 `agent_lab_gateway.py` 替 Agent 持有 Session，默认关闭，尚未用于任何真实 GPT 实验（两者已于 2026-11-06 移出本仓库，最后存在于 `87d3137`），见 [agent_lab 常驻网关](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/AGENT_LAB_GATEWAY.md)。
 
 ## 批量解析目标状态后的复测（2026-10-18）
 
@@ -234,7 +234,7 @@ After the resident session modes of `scripts/benchmark_merge.py` were switched t
 
 The writers of `review_local.py` now each use a Session by default, and `--client spawn` restores the original approach. In one complete run (database `agentdb_test_review_0fbedc9103`), all ten branches were merged and all verifications passed: branch creation phase 0.39 s (originally 4.97 s), merge phase 1.19 s (originally 9.47 s), end to end 2.30 s (originally 14.93 s), still 45 stale-head retries. Opening the 10 sessions takes another 2.07 s, done before timing starts. The original record is saved in `results/local-review-results.2026-10-17-spawn.json`.
 
-Each tool call of `agent_lab.py` is a new Python process and cannot keep a Session across calls. The optional resident gateway `agent_lab_gateway.py` holds Sessions for the Agents; it is off by default and has not yet been used for any real GPT experiment; see [agent_lab resident gateway](AGENT_LAB_GATEWAY.md).
+Each tool call of `agent_lab.py` is a new Python process and cannot keep a Session across calls. The optional resident gateway `agent_lab_gateway.py` holds Sessions for the Agents; it is off by default and has not yet been used for any real GPT experiment (both moved out of this repository on 2026-11-06, last present in `87d3137`); see [agent_lab resident gateway](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/AGENT_LAB_GATEWAY.md).
 
 ## Re-measurement after batch-resolving the target state (2026-10-18)
 

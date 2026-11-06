@@ -1,24 +1,19 @@
 """Adversarial check of what an agent can and cannot do to a fresh installation.
 
-Existing local PostgreSQL only. `agent_lab.py init` creates agentdb_test_gpt_*
-(a fresh install, seeded). The check then audits the catalog (functions and
-tables agentdb_client can reach, schemas it can create in, the search_path of
-SECURITY DEFINER functions), tries with agentdb_client's own SQL what the
-catalog cannot show, tries to break version history through the granted
-functions, and feeds agent_lab.py, the tool behind the model agents, arguments
-its validation must reject; each rejection has to come from the check under
-test. Then main's head and rows must be unchanged. After that it attacks the
-boundary around agent logins as a real login with raw SQL (agent_login_attacks.py).
-An attempt that gets through is a GAP and the exit code is 1; a NOTE records
-something allowed that a reader should know. agent_lab.py runs without
-AGENTDB_LAB_GATEWAY, so its own checks are the ones tested.
+Existing local PostgreSQL only. It creates agentdb_test_boundary_* (a fresh
+install, seeded as review_local.py seeds). The check then audits the catalog
+(functions and tables agentdb_client can reach, schemas it can create in, the
+search_path of SECURITY DEFINER functions), tries with agentdb_client's own SQL
+what the catalog cannot show, and tries to break version history through the
+granted functions. Then main's head and rows must be unchanged. After that it
+attacks the boundary around agent logins as a real login with raw SQL
+(agent_login_attacks.py). An attempt that gets through is a GAP and the exit
+code is 1; a NOTE records something allowed that a reader should know.
 Never writes to the project database and never starts or stops the server.
 """
 import argparse
 import json
-import os
 from pathlib import Path
-import subprocess
 import sys
 import uuid
 
@@ -26,7 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import agent_login_attacks
-from db import FLAGS, Connection, sqlstate
+from db import Connection, sqlstate
+from review_local import seed
 
 GENESIS = "00000000-0000-0000-0000-000000000001"
 # 002_demo_app.sql grants agentdb_client exactly these, and 008_read_set_merge.sql adds vc.merge_validated.
@@ -46,28 +42,26 @@ def connect(config, database, role=None):
     return Connection(argparse.Namespace(config=config, database=database, role=role, password=False))
 
 
+def fresh_install(config):
+    """A new agentdb_test_boundary_* database with every migration installed and the demo rows seeded."""
+    database = "agentdb_test_boundary_" + uuid.uuid4().hex[:10]
+    owner = connect(config, database)
+    owner.check()
+    owner.create_database(database)
+    owner.install()
+    seed(owner)
+    return database
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--config", type=Path, help="Connection config, also passed to agent_lab.py; "
-                                                    "default connection.local.json")
+    parser.add_argument("--config", type=Path, help="Connection config; default connection.local.json")
     parser.add_argument("--output", type=Path, default=ROOT / "results" / "agent-boundaries-results.json")
     parser.add_argument("--sandbox-image", help="Docker image with psql and python3; also runs the sandbox check in a real "
                                                 "container, which must reach the server at host.docker.internal")
     args = parser.parse_args()
-    config = ["--config", str(args.config)] if args.config else []
-    env = {k: v for k, v in os.environ.items() if k != "AGENTDB_LAB_GATEWAY"}
 
-    def lab(*argv):
-        p = subprocess.run([sys.executable, str(ROOT / "agent_lab.py"), *argv, *config], cwd=ROOT, env=env,
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180,
-                           creationflags=FLAGS)
-        return p.returncode, p.stdout, p.stderr
-
-    code, out, err = lab("init")
-    if code:
-        raise SystemExit("agent_lab.py init failed:\n" + out + err)
-    setup = json.loads(out)
-    database, base = setup["database"], setup["base"]
+    database = fresh_install(args.config)
     print(f"Test database: {database}", flush=True)
     owner, client = connect(args.config, database), connect(args.config, database, "agentdb_client")
     details = owner.check()
@@ -139,74 +133,6 @@ def main():
           SELECT vc.write_file('{path}',convert_to('x','UTF8'));
           ROLLBACK;""", {"P0001"})
 
-    # D: agent_lab.py arguments. gpt-a-v exists, so only argument validation can stop these proposals.
-    owner.sql(f"SELECT vc.fork('gpt-a-v','{base}');")
-    target = ["--database", database]
-    proposal = ["propose", *target, "--branch", "gpt-a-v", "--expected", base, "--actor", "gpt-a"]
-
-    def lab_reject(name, reason, *argv):
-        code, out, err = lab(*argv)
-        last = (err.strip().splitlines() or [""])[-1]
-        # A rejection exits 2 and is never an uncaught exception: an argument error before any
-        # SQL, or (where the reason names one) an engine refusal that agent_lab reports as JSON.
-        record("D", name, code == 2 and "Traceback" not in err and reason in out + err,
-               f"exit {code}: {last[:160]}" if code else f"ACCEPTED: {out[-200:]!r}")
-
-    gpt = "Use a gpt- branch name"
-    lab_reject("branch_with_quote_rejected", gpt, "fork", *target, "--branch", "gpt-x'); SELECT 1; --", "--base", base)
-    lab_reject("branch_main_rejected", gpt, "propose", *target, "--branch", "main", "--expected", base,
-               "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11")
-    lab_reject("revision_not_uuid_rejected", "--revision must be a revision UUID",
-               "info", *target, "--revision", "x' OR '1'='1")
-    lab_reject("fork_without_base_rejected", "fork requires --base", "fork", *target, "--branch", "gpt-x-1")
-    lab_reject("fork_of_an_existing_branch_refused", "branch_exists", "fork", *target, "--branch", "gpt-a-v",
-               "--base", base)
-    lab_reject("fork_of_an_unknown_base_refused", "not_found", "fork", *target, "--branch", "gpt-x-2",
-               "--base", str(uuid.uuid4()))
-    lab_reject("propose_with_a_stale_expected_refused", "stale_branch_head", "propose", *target, "--branch", "gpt-a-v",
-               "--expected", GENESIS, "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11")
-    lab_reject("propose_on_a_missing_branch_refused", "not_found", "propose", *target, "--branch", "gpt-x-3",
-               "--expected", base, "--actor", "gpt-a", "--field", "price", "--value", "11", "--code", "PRICE = 11")
-    for value in ("NaN", "Infinity", "-1", "100001", "1e6", "abc"):
-        lab_reject(f"price_{value}_rejected", "Finite nonnegative value up to 100000 required",
-                   *proposal, "--field", "price", "--value", value, "--code", "PRICE = 1")
-    lab_reject("fractional_stock_rejected", "Stock must be an integer",
-               *proposal, "--field", "stock", "--value", "1.5", "--code", "STOCK = 1")
-    lab_reject("oversized_code_rejected", "Policy code exceeds 4096 bytes",
-               *proposal, "--field", "price", "--value", "11", "--code", "# " + "x" * 4100)
-    lab_reject("unparsable_code_rejected", "Policy code is not valid Python",
-               *proposal, "--field", "price", "--value", "11", "--code", "def (:")
-    lab_reject("non_test_database_rejected", "dedicated agentdb_test_gpt_<10 hex> database is required",
-               "info", "--database", "agentdb")
-    lab_reject("path_outside_choices_rejected", "invalid choice",
-               "read-code", *target, "--path", "src/app.py", "--revision", base)
-    merge = ["merge", *target, "--revision", base, "--actor", "gpt-a"]
-    lab_reject("read_set_naming_another_table_rejected", "--reads must be a JSON object",
-               *merge, "--reads", '{"vc.changeset": [{"id": 1}]}')
-    lab_reject("read_set_with_expected_rejected", "not both", *merge, "--expected", base, "--reads", "{}")
-    # Key values are the engine's to check: SQL in one is data, refused as a value the column cannot take.
-    lab_reject("read_key_with_sql_refused", "invalid_read_set",
-               *merge, "--reads", '{"app.products": [{"id": "1\'); DELETE FROM app.products; --"}]}')
-    lab_reject("read_set_repeating_a_table_rejected", "repeats a table or column name",
-               *merge, "--reads", '{"app.products": [{"id": 101}], "app.products": [{"id": 102}]}')
-    lab_reject("merge_of_an_unknown_revision_is_not_found", "not_found",
-               "merge", *target, "--revision", str(uuid.uuid4()), "--actor", "gpt-a", "--reads", "{}")
-    payload = 'PRICE = 11\nNOTE = "\'; DELETE FROM app.products; -- :\'revision\' \\\\gset $$ $x$"\n'
-    stored, problems = None, ""
-    fork_code, _, fork_err = lab("fork", *target, "--branch", "gpt-a-payload", "--base", base)
-    code, out, err = lab("propose", *target, "--branch", "gpt-a-payload", "--expected", base, "--actor", "gpt-a",
-                         "--field", "price", "--value", "11", "--code", payload)
-    if fork_code or code:
-        problems = (fork_err + err)[-200:]
-    else:
-        code, out, err = lab("read-code", *target, "--path", "experiments/pricing.py",
-                             "--revision", json.loads(out)["revision"])
-        stored = json.loads(out)["content"] if code == 0 else None
-    rows = int(owner.sql("SELECT count(*) FROM app.products;"))
-    record("D", "code_with_sql_and_psql_syntax_stored_verbatim", stored == payload and rows == before["products"],
-           f"stored == sent: {stored == payload}; app.products rows {before['products']} -> {rows}"
-           + (f"; helper error {problems!r}" if problems else ""))
-
     # E: nothing reached main.
     after = json.loads(owner.sql(STATE))
     record("E", "main_unchanged_after_all_attempts",
@@ -215,10 +141,7 @@ def main():
            f"{after['checksum'] == before['checksum']}; open changes: {after['open_work']}")
 
     # The login attacks land commits on main, so they come after E. A second install stands in for another project.
-    code, out, err = lab("init")
-    if code:
-        raise SystemExit("agent_lab.py init failed:\n" + out + err)
-    agent_login_attacks.run(owner, args.config, database, record, json.loads(out)["database"], args.sandbox_image)
+    agent_login_attacks.run(owner, args.config, database, record, fresh_install(args.config), args.sandbox_image)
 
     summary = dict(database=database, postgresql=details["server_version"], checks=len(results),
                    holds=sum(r["status"] == "HOLDS" for r in results), notes=sum(r["status"] == "NOTE" for r in results),

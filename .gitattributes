@@ -1,4 +1,3 @@
 # Keep LF in the working copy on every platform, regardless of core.autocrlf.
-# deploy/staging/*.sh run on Linux, and source hashes recorded
-# by experiments/gpt_repeat must not change with the checkout's line endings.
+# deploy/staging/*.sh run on Linux.
 * text=auto eol=lf

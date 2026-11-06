@@ -6,6 +6,8 @@
 
 日期：2026-10-25，2026-10-28 修订（内容哈希检查改由管理 Agent 执行），2026-10-30 修订（云存储已移除、功能暂停、记录未解决的问题）。状态：计划，尚未实现，自 2026-10-29 起暂停：只有在预登记的任务先显示 Agent 在普通 PostgreSQL 上失败之后才恢复（见 [README](../README.zh-CN.md) 的"状态"一节），恢复前须先解决第 8 节的问题。除第 8 节标明的结果外，为本文没有运行测试。代码基线：`8df240733dcd73f9d0fbd47b8dadfff3005f1ccc`。标为"实测"的行为是 2026-10-25 在本机 PostgreSQL 16 的一次性测试库中观察到的，未保留结果文件。
 
+> 2026-11-06 注：这里提到的 `agent_lab.py`、它的网关与各项实验已移出本仓库，仍在 git 历史中，最后存在于 `87d3137`。
+
 ## 1. 目标与边界
 
 许多团队通过后台管理界面或种子数据迁移修改价格表、商品目录、功能配置和权限表，往往缺少审阅，历史不完整，也没有干净的撤销办法。本计划让这些表像代码一样修改：在分支上改，以 diff 审阅，合入时针对真实数据校验，可以撤销。一切发生在团队现有的 PostgreSQL 中，应用照常读取普通表。
@@ -26,7 +28,7 @@
 | 步骤 | 做法 | 现状 |
 |---|---|---|
 | 1 纳管 | 在一个事务中阻止对该表的写入（读取不受影响），把现有行记录为第一个 changeset，安装捕获触发器、TRUNCATE 防护和分支视图，再建立快照。 | 新增：`vc.register_table` 目前只接受空表（[001_core.sql](../sql/001_core.sql)） |
-| 2 修改 | Agent 或人员创建分支，通过 `agent.<表名>` 编辑，以 `vc.diff_rows` 的输出作为审阅内容。Agent 使用 [agent_lab.py](../agent_lab.py)；人员的入口由 D3 决定。 | 已有 |
+| 2 修改 | Agent 或人员创建分支，通过 `agent.<表名>` 编辑，以 `vc.diff_rows` 的输出作为审阅内容。Agent 使用 [agent_lab.py](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/agent_lab.py)；人员的入口由 D3 决定。 | 已有 |
 | 3 合入 | `vc.merge_validated` 先做读集检查：分支依据的行若在 main 上已被改动，报 RS001（[008_read_set_merge.sql](../sql/008_read_set_merge.sql)）；随后 `vc.merge` 把行写入真实表，因此 PostgreSQL 自己的约束针对真实数据运行，包括未纳管表的外键：删除仍被订单引用的商品会失败。按代码，分支上只检查主键唯一，CHECK、NOT NULL、其他 UNIQUE 和外键在合入时检查。合入持有 main 的锁直到提交，因此依次进行；在参考数据的修改频率下这不是问题。 | 已有 |
 | 4 撤销 | 撤销是另一个变更：恢复某次合入之前的行，按同样方式校验后合入。 | 新增辅助函数 |
 | 5 审计 | `vc.pin` 和 `vc.rows_at` 按 revision 给出表当时的内容；`vc.history` 给出每个 changeset 的作者、说明和时间。 | 已有 |
@@ -101,6 +103,8 @@ G3 事先登记的度量：合入时拦下的错误变更（分别按约束和�
 
 Date: October 25, 2026; revised October 28, 2026 (the manager agent runs the content-hash check); revised October 30, 2026 (cloud storage removed, the pause, open problems recorded). Status: plan, not implemented, and paused since 2026-10-29: it resumes only after a pre-registered task first shows agents failing on plain PostgreSQL (see the Status section of the [README](../README.md)), and the problems in section 8 must be solved first. Apart from the results marked in section 8, no test was run for this document. Code baseline: `8df240733dcd73f9d0fbd47b8dadfff3005f1ccc`. Behaviors marked "observed" were seen on 2026-10-25 in a throwaway test database on the local PostgreSQL 16; no result file was kept.
 
+> Note added on 2026-11-06: `agent_lab.py`, its gateway and the experiments named here were moved out of this repository; they are in git history, last present in `87d3137`.
+
 ## 1. Goal and boundaries
 
 Many teams change price lists, product catalogs, feature configuration, and permission tables through admin screens or seed-data migrations, often with little review, patchy history, and no clean undo. This plan lets them change those tables the way they change code: on a branch, reviewed as a diff, checked against live data at merge, and reversible. It all happens inside the team's existing PostgreSQL, and the application keeps reading ordinary tables.
@@ -121,7 +125,7 @@ Three earlier plans for enrolling whole production databases (low-cost adoption,
 | Step | What happens | Status |
 |---|---|---|
 | 1 Enroll | In one transaction, block writes to the table (reads continue), record the existing rows as the first changeset, install the capture trigger, the TRUNCATE guard, and the branch view, then take a snapshot. | New: `vc.register_table` accepts only empty tables today ([001_core.sql](../sql/001_core.sql)) |
-| 2 Change | An agent or a person creates a branch and edits through `agent.<table>`; the output of `vc.diff_rows` is what gets reviewed. Agents use [agent_lab.py](../agent_lab.py); D3 decides the entry point for people. | Exists |
+| 2 Change | An agent or a person creates a branch and edits through `agent.<table>`; the output of `vc.diff_rows` is what gets reviewed. Agents use [agent_lab.py](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/agent_lab.py); D3 decides the entry point for people. | Exists |
 | 3 Merge | `vc.merge_validated` first checks the read set: if rows the branch relied on have changed on main, it raises RS001 ([008_read_set_merge.sql](../sql/008_read_set_merge.sql)). `vc.merge` then writes the rows to the real table, so PostgreSQL's own constraints run against live data, including foreign keys from unmanaged tables: deleting a product that orders still reference fails. From the code, only primary-key uniqueness is checked on a branch; CHECK, NOT NULL, other UNIQUE, and foreign-key constraints are checked at merge. A merge holds main's lock until commit, so merges run one at a time, which is no problem at the rate reference data changes. | Exists |
 | 4 Undo | A revert is another change: it restores the rows from before a merge and is checked and merged the same way. | New helper |
 | 5 Audit | `vc.pin` and `vc.rows_at` give a table's contents at a revision; `vc.history` gives each changeset's author, message, and time. | Exists |

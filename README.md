@@ -12,14 +12,9 @@ Formerly AgentDB, renamed on 2026-10-20. Database and role names such as `agentd
 
 ## Status (2026-10-29): new features paused
 
-For a plain-language account of the five experiments behind the pause, see [What we tested, and why it didn't work out](docs/EXPERIMENT_SUMMARY.md).
+Pre-registered experiments with Claude Opus 5.5 have not shown agents needing what Forkpoint adds. In the one that compared it with plain PostgreSQL, two agents were made to collide in every round, and agents told to lock the rows they read were as safe as Forkpoint's branches and read-set merge (0 stale rounds of 10 in each group), with about a third of the tool calls.
 
-Pre-registered experiments with Claude Opus 5.5 have not shown agents needing what Forkpoint adds:
-
-- [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): two agents were made to collide in every round. Agents on plain PostgreSQL that were told to lock the rows they read were as safe as Forkpoint's branches and read-set merge, with 0 stale rounds of 10 in each group, and Forkpoint took about 3 times the tool calls.
-- [Context archive](docs/CONTEXT_ARCHIVE_EXPERIMENT.md): by its adoption rule, no evidence that a word-for-word archive beats the model's own handoff note.
-- [Checkable task state](docs/TASK_STATE_EXPERIMENT.md): the agent re-read the changed row by itself, so freshness marks had nothing to correct; not adopted.
-- The [repeat experiments](docs/GPT_REPEAT_EXPERIMENT.md) saw no overwrite in 20 rounds, but had no group working without Forkpoint.
+The experiments, their raw records and the tool the agents used (`agent_lab.py`) were moved out of this repository on 2026-11-06, so that it holds only what someone using Forkpoint needs. They remain in git history, last present in `87d3137`; [What we tested, and why it didn't work out](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/EXPERIMENT_SUMMARY.md) is the plain-language account.
 
 New features are therefore paused: one is added only after a pre-registered task first shows agents failing on plain PostgreSQL. This includes the [reference-data plan](docs/REFERENCE_DATA_PLAN.md). Fixes, tests and documentation continue. One case is untested: work that cannot fit in one database call, where an agent makes its change over many steps; it is worth testing only for a real task of that kind.
 
@@ -83,7 +78,7 @@ COMMIT;
 
 Each merge is one call, `SELECT vc.merge('main', :'stock_rev', :'base', 'stock-agent');`, and it either lands completely or fails with one of the codes above.
 
-That is the output of a real run on PostgreSQL 16.15, with the UUIDs shortened. The same scenario was run with two real GPT agents in a [pre-registered ten-round experiment](docs/GPT_REPEAT_EXPERIMENT.md). All 8 rounds that finished reached the goal, and no round overwrote the other agent's work. The other 2 rounds stopped when the model service hit its usage limit; they count as failures.
+That is the output of a real run on PostgreSQL 16.15, with the UUIDs shortened. The same scenario was run with two real GPT agents in a [pre-registered ten-round experiment](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/GPT_REPEAT_EXPERIMENT.md). All 8 rounds that finished reached the goal, and no round overwrote the other agent's work. The other 2 rounds stopped when the model service hit its usage limit; they count as failures.
 
 ## Quick start
 
@@ -191,8 +186,6 @@ db.py                 CLI: check the connection, install, upgrade an existing in
 run_tests.py          integration tests (creates its own agentdb_test_* database)
 review_local.py       local review: maintenance recovery, restricted role, ten branches merged
 agent_boundary.py     gives each agent its own login; the keeper's loop, status and undo
-agent_lab.py          the tool CLI the GPT and Claude agents use in the experiments
-agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm for agent_lab.py
 compose.yaml          the one-command Docker demo
 sql/                  the version engine, installed in order 001–011
 examples/             runnable SQL examples
@@ -200,7 +193,6 @@ formal/               TLA+ model of how agents merge into main, checked with TLC
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs
 agent_state/          manager-agent task state, in memory only
-experiments/          pre-registered experiments: GPT and Claude repeat rounds, read-set validation, context archive, checkable task state, real agents on routine tasks
 deploy/               staging VM setup and the Docker demo image
 docs/                 setup, design, validation records, plans, technical blog
 tests/                unit tests
@@ -211,16 +203,9 @@ tests/                unit tests
 - [Setup and upgrades](docs/SETUP.md): connection options, passwords, TLS, WSL, migrations, tests
 - [Technical blog](docs/TECHNICAL_BLOG.md): architecture and what two real GPT agents taught us
 - [Design notes](docs/DESIGN_REVIEW.md): the version model and revisions to the original plan
-- [What we tested, and why it didn't work out](docs/EXPERIMENT_SUMMARY.md): the five experiments behind the pause, in plain language
-- [GPT and Claude repeat experiments](docs/GPT_REPEAT_EXPERIMENT.md): ten pre-registered rounds with each model, failures kept
-- [Read-set experiment](docs/READSET_EXPERIMENT.md): read-set validation vs. the stale-head check in 75 pre-registered synthetic runs, replicated
-- [Context archive experiment](docs/CONTEXT_ARCHIVE_EXPERIMENT.md): a word-for-word archive of the context vs. the model's own handoff note after a reset; by its adoption rule, no evidence for the archive
-- [Checkable task state](docs/TASK_STATE_EXPERIMENT.md): checkpointed facts marked fresh or stale on resume; pilot only, not adopted
-- [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): Forkpoint's read-set merge vs. agents on plain PostgreSQL told to lock and re-check, two real agents per round; 0 stale rounds of 10 in each group, so by its decision rule no correctness advantage, while F took 3 times the tool calls
+- [What we tested, and why it didn't work out](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/EXPERIMENT_SUMMARY.md): the experiments behind the pause, in plain language; they and their records were moved out of this repository on 2026-11-06 (last present in `87d3137`)
 - [The agent boundary](docs/AGENT_BOUNDARY.md): how the database stays safe when nobody knows what the agents do: real incidents agents caused on their own and what happens here, what it limits, the one-time setup, and what it doesn't protect
-- [Real agents on routine tasks](docs/ROUTINE_AGENTS_EXPERIMENT.md): whether a real agent decides on its own to do something destructive when something is in the way; in 15 rounds on five tasks none destroyed any data, but on one task all 3 rounds decided by themselves on a 600-row rename, which the share limit refused and they didn't route around (one model, a small sample)
 - [Formal model](docs/FORMAL_MODEL.md): a TLA+ model of how agents merge into main, checked by TLC over every order of the steps of two agents, and of three; the rules hold when agents read on their branch, but an agent that reads main before forking isn't protected by its read set (replayed on PostgreSQL)
-- [agent_lab gateway](docs/AGENT_LAB_GATEWAY.md): an optional loopback process that keeps psql sessions warm for the agents' tool
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut
 - [Reference-data plan](docs/REFERENCE_DATA_PLAN.md): reviewed changes to small tables the application reads but doesn't write, inside an existing PostgreSQL; not implemented, paused (see Status)

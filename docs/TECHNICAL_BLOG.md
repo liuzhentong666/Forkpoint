@@ -50,7 +50,7 @@ Forkpoint 的第一阶段围绕这些问题展开：在 PostgreSQL 中实现代�
 
 这次接手表明，任务说明与可定位的版本引用能成为恢复的具体入口。原库存提案仍由旧分支保留，修正后的提案另行提交；最终检查没有发现遗留工作事务。这里使用的是 PostgreSQL 中已有的版本记录，没有验证云端管理检查点的恢复。
 
-这是一项有明确任务、有限工具和分阶段协调的两 Agent 实验。协调者安排了合入顺序，并提示区分两类冲突及从新版本重新提案；GPT 负责实际读取、判断、提交和核验。代码只检查语法与常量，未执行。结论限于这次受控流程，长期自主运行和更多模型并发仍待测试。详细过程及独立数据库核验见[本机实验报告](LOCAL_REVIEW_RESULTS.md)与[结构化 GPT 记录](../results/gpt-agent-experiment.json)。
+这是一项有明确任务、有限工具和分阶段协调的两 Agent 实验。协调者安排了合入顺序，并提示区分两类冲突及从新版本重新提案；GPT 负责实际读取、判断、提交和核验。代码只检查语法与常量，未执行。结论限于这次受控流程，长期自主运行和更多模型并发仍待测试。详细过程及独立数据库核验见[本机实验报告](LOCAL_REVIEW_RESULTS.md)与[结构化 GPT 记录](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/results/gpt-agent-experiment.json)。
 
 ## 从一次观察到十轮重复实验
 
@@ -68,7 +68,7 @@ Forkpoint 的第一阶段围绕这些问题展开：在 PostgreSQL 中实现代�
 
 本组中第 3、4 轮收到服务端 `usageLimitExceeded` 返回；这些轮次没有被替换。它们未完成，不能作为模型不会恢复冲突的证据；中断前未覆盖也不能推断继续执行一定安全。错误原文、每次工具请求和响应、逐 Agent 用量均保存为原始 JSONL，后续可以重新分析，而不必依赖这篇摘要。
 
-这组实验仍然由协调器控制“库存提案→价格合入→库存恢复”的顺序，并明确提示先尝试旧版本、必要时重新提案；不是十个模型同时写入，也不是没有提示的自主恢复。总体成功率包含运行服务失败；二项模型下的 95% Wilson 区间为 49.0%–94.3%，共享账户故障与小样本使它不能直接代表生产可靠性。逐轮结果、部分用量口径和原始证据入口见[重复实验报告](GPT_REPEAT_EXPERIMENT.md)。云服务仍未经真实验证。
+这组实验仍然由协调器控制“库存提案→价格合入→库存恢复”的顺序，并明确提示先尝试旧版本、必要时重新提案；不是十个模型同时写入，也不是没有提示的自主恢复。总体成功率包含运行服务失败；二项模型下的 95% Wilson 区间为 49.0%–94.3%，共享账户故障与小样本使它不能直接代表生产可靠性。逐轮结果、部分用量口径和原始证据入口见[重复实验报告](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/GPT_REPEAT_EXPERIMENT.md)。云服务仍未经真实验证。
 
 ## 从 Scion 得到的启发，如何落到数据库上
 
@@ -377,7 +377,7 @@ The first attempt was interrupted by the model account's quota limit. At that po
 
 This hand-off shows that the task description and locatable version references can serve as a concrete entry point for recovery. The original stock proposal is still kept by the old branch, and the corrected proposal was committed separately; the final check found no leftover work transactions. What was used here is the version records already in PostgreSQL; recovery from cloud management checkpoints was not verified.
 
-This is a two-Agent experiment with a clear task, limited tools and phased coordination. The coordinator arranged the merge order and hinted to distinguish the two kinds of conflict and to re-propose from the new version; GPT did the actual reading, judging, committing and verifying. The code was only checked for syntax and constants, not executed. The conclusions are limited to this controlled flow; long-term autonomous operation and more models running concurrently remain to be tested. For the detailed process and independent database verification see the [local experiment report](LOCAL_REVIEW_RESULTS.md) and the [structured GPT record](../results/gpt-agent-experiment.json).
+This is a two-Agent experiment with a clear task, limited tools and phased coordination. The coordinator arranged the merge order and hinted to distinguish the two kinds of conflict and to re-propose from the new version; GPT did the actual reading, judging, committing and verifying. The code was only checked for syntax and constants, not executed. The conclusions are limited to this controlled flow; long-term autonomous operation and more models running concurrently remain to be tested. For the detailed process and independent database verification see the [local experiment report](LOCAL_REVIEW_RESULTS.md) and the [structured GPT record](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/results/gpt-agent-experiment.json).
 
 ## From one observation to a ten-round repeat experiment
 
@@ -395,7 +395,7 @@ Of the 8 completed rounds, all 8 went through the two kinds of conflict, old mai
 
 In this group, rounds 3 and 4 received the server's `usageLimitExceeded` response; these rounds were not replaced. They did not complete, and cannot be used as evidence that the model would fail to recover from conflicts; the absence of overwrites before the interruption also cannot be used to infer that continuing would certainly have been safe. The error texts, every tool request and response, and per-Agent usage are all saved as raw JSONL, so they can be re-analyzed later without relying on this summary.
 
-This group of experiments is still controlled by the coordinator in the order "stock proposal → price merge → stock recovery", and explicitly hints to try the old version first and re-propose when necessary; it is not ten models writing at the same time, nor autonomous recovery without hints. The overall success rate includes failures of the running service; the 95% Wilson interval under a binomial model is 49.0%–94.3%, and shared account failures and the small sample mean it cannot directly represent production reliability. For per-round results, the counting basis of partial usage and the entry points to the raw evidence see the [repeat experiment report](GPT_REPEAT_EXPERIMENT.md). Cloud services are still not verified against real cloud services.
+This group of experiments is still controlled by the coordinator in the order "stock proposal → price merge → stock recovery", and explicitly hints to try the old version first and re-propose when necessary; it is not ten models writing at the same time, nor autonomous recovery without hints. The overall success rate includes failures of the running service; the 95% Wilson interval under a binomial model is 49.0%–94.3%, and shared account failures and the small sample mean it cannot directly represent production reliability. For per-round results, the counting basis of partial usage and the entry points to the raw evidence see the [repeat experiment report](https://github.com/liuzhentong666/Forkpoint/blob/87d3137/docs/GPT_REPEAT_EXPERIMENT.md). Cloud services are still not verified against real cloud services.
 
 ## How the inspiration from Scion maps onto a database
 

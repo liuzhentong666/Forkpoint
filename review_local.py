@@ -9,7 +9,6 @@ import threading
 import time
 import uuid
 
-from agent_lab import MERGE_ERRORS, MERGE_LOCK_TIMEOUT
 from db import Connection, add_connection_arguments, sqlstate
 from agent_state.engine import Engine
 from agent_state.maintenance import SnapshotMaintenance
@@ -18,6 +17,13 @@ from agent_state.storage import Conflict, MemoryStore
 import run_tests
 
 ROOT = Path(__file__).resolve().parent
+# Merge failures by SQLSTATE, as agent_lab.py named them before it moved out of this
+# repository (last present in 87d3137). After stale_head or lock_timeout main is
+# unchanged and the same proposal may be tried again; merge_conflict means a row the
+# proposal wrote changed on main. The read-set codes come only from vc.merge_validated.
+MERGE_LOCK_TIMEOUT = "10s"
+MERGE_ERRORS = {"40001": "stale_head", "P0001": "merge_conflict", "55P03": "lock_timeout",
+                "RS001": "read_conflict", "22023": "invalid_read_set", "P0002": "not_found"}
 
 
 def connect(args, database, role=None):
