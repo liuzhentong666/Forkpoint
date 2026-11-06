@@ -2,6 +2,8 @@
 
 **在 PostgreSQL 里给 AI Agent 用的 Git 式分支。** 每个 Agent 在自己的分支上工作，把代码文件和表中的行一起提交；只有在不覆盖别人的工作、并且真实约束仍然成立时，才能合入 `main`。
 
+**暂不能用于已有的数据库。** Forkpoint 只能安装到新的空数据库（已有表的库，`python db.py install` 会拒绝），表也只能在为空时纳管。表纳管之后，对它的每一次写入（包括你的应用的写入）都必须经过 `vc.begin_change` 和 `vc.finish_change`。所以要用在已有的项目上，得先把数据迁到新库，并修改应用的写入方式（见[设计说明第 8 节](docs/DESIGN_REVIEW.md#8-现有应用并非完全无改动)）。
+
 [English](README.md) · [技术博客](docs/TECHNICAL_BLOG.md) · [设计说明](docs/DESIGN_REVIEW.md)
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)

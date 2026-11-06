@@ -2,6 +2,8 @@
 
 **Git-style branches for AI agents, inside PostgreSQL.** Each agent works on its own branch, commits code files and table rows together, and merges into `main` only if nobody else's work gets overwritten and your real constraints still hold.
 
+**Not yet for an existing database.** Forkpoint installs only into a new, empty database (`python db.py install` refuses one that already has tables), and a table can be registered only while it's empty. Once a table is registered, every write to it, your application's included, has to go through `vc.begin_change` and `vc.finish_change`. So to use it with a project you already have, you first move the data into a new database and change how the application writes ([design notes, section 8](docs/DESIGN_REVIEW.md#8-existing-applications-are-not-completely-unchanged)).
+
 [中文说明](README.zh-CN.md) · [Technical blog](docs/TECHNICAL_BLOG.md) · [Design notes](docs/DESIGN_REVIEW.md)
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)
