@@ -37,6 +37,7 @@
 SELECT vc.agent_fork('my-branch', vc.head());
 BEGIN;
 SELECT vc.agent_begin('my-branch', vc.head('my-branch'), '为什么改');
+SELECT price FROM agent.products WHERE id = 7;  -- 建分支之后，在分支上读
 UPDATE agent.products SET price = 12 WHERE id = 7;
 SELECT vc.finish_change();
 COMMIT;
@@ -44,7 +45,7 @@ SELECT vc.agent_merge('my-branch', jsonb_build_object(vc.table_id('app.products'
 SELECT vc.agent_status();  -- 剩余预算、份额、过期时间、自己的分支、是否冻结
 ```
 
-读集校验照常：第二个参数是决定读过的行，它们变过就报 RS001。拒绝都带固定的 SQLSTATE，事实以 JSON 放在 DETAIL，下一步放在 HINT，所以 Agent 不需要人也能恢复：
+读集校验照常：第二个参数是决定读过的行，它们自建分支以来在 main 上变过，就报 RS001。所以要在 `vc.agent_fork` 之后、在自己的分支上读这些行：建分支之前在 main 上的读取不会被检查，即使这期间别的 Agent 改过这些行，按它做的决定也能合入（见[形式化模型](FORMAL_MODEL.md)）。拒绝都带固定的 SQLSTATE，事实以 JSON 放在 DETAIL，下一步放在 HINT，所以 Agent 不需要人也能恢复：
 
 | 码 | 意思 | 下一步 |
 |---|---|---|
@@ -235,6 +236,7 @@ The same steps as today, except that the functions take no author:
 SELECT vc.agent_fork('my-branch', vc.head());
 BEGIN;
 SELECT vc.agent_begin('my-branch', vc.head('my-branch'), 'why');
+SELECT price FROM agent.products WHERE id = 7;  -- read on the branch, after forking
 UPDATE agent.products SET price = 12 WHERE id = 7;
 SELECT vc.finish_change();
 COMMIT;
@@ -242,7 +244,7 @@ SELECT vc.agent_merge('my-branch', jsonb_build_object(vc.table_id('app.products'
 SELECT vc.agent_status();  -- budget left, share, expiry, own branches, frozen or not
 ```
 
-Read sets work as usual: the second argument names the rows the decision read, and RS001 refuses the merge if they changed. Every refusal has a stable SQLSTATE, the facts as JSON in DETAIL and the next step in HINT, so an agent can recover without a person:
+Read sets work as usual: the second argument names the rows the decision read, and RS001 refuses the merge if they changed on main since the branch was forked. So read those rows on your branch, after `vc.agent_fork`: a read made on main before forking isn't checked, and a decision based on it can land even though another agent changed those rows in between (see the [formal model](FORMAL_MODEL.md)). Every refusal has a stable SQLSTATE, the facts as JSON in DETAIL and the next step in HINT, so an agent can recover without a person:
 
 | Code | Meaning | Next step |
 |---|---|---|

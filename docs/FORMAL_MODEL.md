@@ -42,7 +42,7 @@ TLC 2.19（TLA+ 工具 v1.7.4），单线程，Java 17，开发用的笔记本�
 
 在 PostgreSQL 16.15 上新建的 `agentdb_test_*` 库中重放了一次，以属主身份调用 `vc.merge_validated`（`vc.agent_merge` 执行的就是它），B 的读集写明了这个商品。B 先建分支、在分支上读取时，B 的合入被拒绝，报 RS001（库存 1，一张订单）。B 先读 main 时，B 的合入成功，只记下 `app.orders I`，结果库存 1，却有两张各一件的订单。重放脚本没有纳入版本库。
 
-怎样避免：在 `vc.agent_fork` 之后，在分支上读取。[Agent 边界](AGENT_BOUNDARY.md)中给 Agent 的用法示例就是这个顺序，但没有说明在此之前的读取不会被检查。本文没有修改那份说明。
+怎样避免：在 `vc.agent_fork` 之后，在分支上读取。[Agent 边界](AGENT_BOUNDARY.md)中给 Agent 的说明现在写明了这一点。引擎没有改动：建分支之前的读取仍然不会被检查。
 
 ## 运行
 
@@ -106,7 +106,7 @@ Main ends with two orders of one unit each and w1 still at 1, though two units w
 
 It was replayed once on PostgreSQL 16.15, in a new `agentdb_test_*` database, as the owner, calling `vc.merge_validated` (which is what `vc.agent_merge` runs) with B's read set naming the product. With B forking first and reading on its branch, B's merge was refused with RS001 (stock 1, one order). With B reading main first, B's merge landed recording only `app.orders I`, leaving stock 1 with two orders of one unit. The replay script isn't committed.
 
-What avoids it: read on the branch, after `vc.agent_fork`. The instructions for agents in [The agent boundary](AGENT_BOUNDARY.md) show that order but don't say that reads made before it go unchecked. This doc doesn't change them.
+What avoids it: read on the branch, after `vc.agent_fork`, as the instructions for agents in [The agent boundary](AGENT_BOUNDARY.md) now say. The engine is unchanged, so a read made before forking still isn't checked.
 
 ## Running it
 
