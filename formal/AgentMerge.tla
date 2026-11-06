@@ -1,6 +1,6 @@
 ----------------------------- MODULE AgentMerge -----------------------------
 (***************************************************************************)
-(* How agents move main. Two agents each sell from a shop's stock and land *)
+(* How agents move main. Each agent sells from a shop's stock and lands    *)
 (* the sale through vc.agent_merge; TLC tries every order of their steps.  *)
 (*                                                                         *)
 (* Modeled from the SQL:                                                   *)
@@ -27,16 +27,16 @@
 EXTENDS Naturals, Sequences, FiniteSets, TLC
 
 CONSTANTS
+    Agents,        \* the agents' names, such as {"a", "b"}
     ReadOnBranch,  \* TRUE: agents read on their branch, as documented. FALSE: an agent may also read main first, then fork.
     CheckWritten,  \* TRUE: merge_validated checks the rows the branch wrote (008). FALSE: only vc.merge's rule for them.
-    SharedLogin,   \* TRUE: the two agents are sessions of one login, so they share its budget.
+    SharedLogin,   \* TRUE: the agents are sessions of one login, so they share its budget.
     Budgets,       \* budgets to issue (vc.agent_budget.main_rows_left); TLC checks each one
     MaxCalls       \* vc.agent_merge calls per branch; 2 adds a retry while the first may still run
 
-ASSUME /\ ReadOnBranch \in BOOLEAN /\ CheckWritten \in BOOLEAN /\ SharedLogin \in BOOLEAN
+ASSUME /\ Agents # {} /\ ReadOnBranch \in BOOLEAN /\ CheckWritten \in BOOLEAN /\ SharedLogin \in BOOLEAN
        /\ Budgets \subseteq Nat /\ Budgets # {} /\ MaxCalls \in Nat \ {0}
 
-Agents == {"a", "b"}
 Warehouses == {"w1", "w2"}
 Order(a) == "order_" \o a                         \* the agent's order row: the units it sold, 0 before
 Keys == Warehouses \cup {Order(a) : a \in Agents}

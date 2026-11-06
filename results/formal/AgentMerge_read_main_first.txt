@@ -1,5 +1,5 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
-Running breadth-first search Model-Checking with fp 99 and seed -802708601651324550 with 1 worker on 22 cores with 7195MB heap and 64MB offheap memory [pid: 25800] (Windows 11 10.0 amd64, Oracle Corporation 17.0.11 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 63 and seed 7576524237810084433 with 1 worker on 22 cores with 7195MB heap and 64MB offheap memory [pid: 54796] (Windows 11 10.0 amd64, Oracle Corporation 17.0.11 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file AgentMerge.tla
 Parsing file Naturals.tla
 Parsing file Sequences.tla
@@ -10,10 +10,10 @@ Semantic processing of module Sequences
 Semantic processing of module FiniteSets
 Semantic processing of module TLC
 Semantic processing of module AgentMerge
-Starting... (2026-11-06 07:54:37)
+Starting... (2026-11-06 09:23:56)
 Computing initial states...
-Finished computing initial states: 2 distinct states generated at 2026-11-06 07:54:38.
-Progress(8) at 2026-11-06 07:54:41: 85,259 states generated (85,259 s/min), 40,400 distinct states found (40,400 ds/min), 18,384 states left on queue.
+Finished computing initial states: 2 distinct states generated at 2026-11-06 09:23:56.
+Progress(9) at 2026-11-06 09:23:59: 89,958 states generated (89,958 s/min), 42,025 distinct states found (42,025 ds/min), 19,331 states left on queue.
 Error: Invariant MainIsSerial is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -116,4 +116,4 @@ State 13: <Finish line 185, col 5 to line 196, col 50 of module AgentMerge>
 534215 states generated, 289102 distinct states found, 88330 states left on queue.
 The depth of the complete state graph search is 13.
 The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 2).
-Finished in 23s at (2026-11-06 07:55:01)
+Finished in 26s at (2026-11-06 09:24:22)
