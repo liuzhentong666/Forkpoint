@@ -194,6 +194,7 @@ agent_lab_gateway.py  optional loopback gateway that keeps psql sessions warm fo
 compose.yaml          the one-command Docker demo
 sql/                  the version engine, installed in order 001–011
 examples/             runnable SQL examples
+formal/               TLA+ model of how agents merge into main, checked with TLC
 scripts/              benchmarks, migration checks, staging drills
 results/              raw results behind the numbers in the docs
 agent_state/          manager-agent task state, in memory only
@@ -216,6 +217,7 @@ tests/                unit tests
 - [Read sets with real agents](docs/READSET_AGENTS_EXPERIMENT.md): Forkpoint's read-set merge vs. agents on plain PostgreSQL told to lock and re-check, two real agents per round; 0 stale rounds of 10 in each group, so by its decision rule no correctness advantage, while F took 3 times the tool calls
 - [The agent boundary](docs/AGENT_BOUNDARY.md): how the database stays safe when nobody knows what the agents do: real incidents agents caused on their own and what happens here, what it limits, the one-time setup, and what it doesn't protect
 - [Real agents on routine tasks](docs/ROUTINE_AGENTS_EXPERIMENT.md): whether a real agent decides on its own to do something destructive when something is in the way; in 15 rounds on five tasks none destroyed any data, but on one task all 3 rounds decided by themselves on a 600-row rename, which the share limit refused and they didn't route around (one model, a small sample)
+- [Formal model](docs/FORMAL_MODEL.md): a TLA+ model of how agents merge into main, checked by TLC over every order of two agents' steps; the rules hold when agents read on their branch, but an agent that reads main before forking isn't protected by its read set (replayed on PostgreSQL)
 - [agent_lab gateway](docs/AGENT_LAB_GATEWAY.md): an optional loopback process that keeps psql sessions warm for the agents' tool
 - [History growth](docs/HISTORY_GROWTH.md) and [merge timing](docs/MERGE_BENCHMARK.md)
 - [Staging S1](docs/STAGING_S1_RESULTS.md) and [S4/S5 drills](docs/STAGING_S4_S5.md): TLS access, growth, backup, crash, network cut

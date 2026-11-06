@@ -97,6 +97,8 @@ python run_tests.py
 python -m unittest discover -s tests -v
 ```
 
+Agent 合入 main 的形式化模型在 `formal/` 中，需要 Java 和 TLA+ 工具，见 [形式化模型](FORMAL_MODEL.md)。
+
 基准测试、迁移检查和预发布演练在 `scripts/` 中，原始结果在 `results/` 中。按改动范围应运行哪些检查，见 [AGENTS.md](../AGENTS.md) 的“验证入口与交付要求”。
 
 ## 管理 Agent 的任务状态
@@ -207,6 +209,8 @@ The unit tests for the state engine need only the Python standard library:
 ```console
 python -m unittest discover -s tests -v
 ```
+
+The formal model of how agents merge into main is in `formal/` and needs Java and the TLA+ tools; see [Formal model](FORMAL_MODEL.md).
 
 Benchmarks, migration checks and staging drills are in `scripts/`, and their raw results in `results/`. Which checks to run for which kind of change is listed in [AGENTS.md](../AGENTS.md) under "Verification entry points and delivery requirements".
 

@@ -1,0 +1,119 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 99 and seed -802708601651324550 with 1 worker on 22 cores with 7195MB heap and 64MB offheap memory [pid: 25800] (Windows 11 10.0 amd64, Oracle Corporation 17.0.11 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file AgentMerge.tla
+Parsing file Naturals.tla
+Parsing file Sequences.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module AgentMerge
+Starting... (2026-11-06 07:54:37)
+Computing initial states...
+Finished computing initial states: 2 distinct states generated at 2026-11-06 07:54:38.
+Progress(8) at 2026-11-06 07:54:41: 85,259 states generated (85,259 s/min), 40,400 distinct states found (40,400 ds/min), 18,384 states left on queue.
+Error: Invariant MainIsSerial is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ phase = [a |-> "start", b |-> "start"]
+/\ dec = [a |-> [rule |-> "none", x |-> "none", q |-> 0, reads |-> {}, saw |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]], b |-> [rule |-> "none", x |-> "none", q |-> 0, reads |-> {}, saw |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]]]
+/\ lock = <<"none", 0>>
+/\ issued = 3
+/\ hist = <<[rows |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0], parents |-> <<>>, by |-> "genesis"]>>
+/\ left = [agent |-> 3]
+/\ base = [a |-> 0, b |-> 0]
+/\ serial = [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]
+/\ tip = [a |-> 0, b |-> 0]
+/\ call = ( <<"a", 1>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"a", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 1>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] )
+/\ head = 1
+
+State 2: <ReadMain line 110, col 5 to line 114, col 76 of module AgentMerge>
+/\ phase = [a |-> "read", b |-> "start"]
+/\ dec = [a |-> [rule |-> "take", x |-> "w1", q |-> 1, reads |-> {}, saw |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]], b |-> [rule |-> "none", x |-> "none", q |-> 0, reads |-> {}, saw |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]]]
+
+State 3: <Fork line 118, col 5 to line 122, col 70 of module AgentMerge>
+/\ phase = [a |-> "decided", b |-> "start"]
+/\ base = [a |-> 1, b |-> 0]
+/\ tip = [a |-> 1, b |-> 0]
+
+State 4: <Commit line 135, col 5 to line 143, col 70 of module AgentMerge>
+/\ phase = [a |-> "committed", b |-> "start"]
+/\ hist = <<[rows |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0], parents |-> <<>>, by |-> "genesis"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 0], parents |-> <<1>>, by |-> "a"]>>
+/\ tip = [a |-> 2, b |-> 0]
+
+State 5: <ReadMain line 110, col 5 to line 114, col 76 of module AgentMerge>
+/\ phase = [a |-> "committed", b |-> "read"]
+/\ dec = [a |-> [rule |-> "take", x |-> "w1", q |-> 1, reads |-> {}, saw |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]], b |-> [rule |-> "take", x |-> "w1", q |-> 1, reads |-> {}, saw |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]]]
+
+State 6: <Start line 149, col 5 to line 154, col 82 of module AgentMerge>
+/\ call = ( <<"a", 1>> :> [pc |-> "waiting", held |-> 0, result |-> "none"] @@
+  <<"a", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 1>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] )
+
+State 7: <Lock line 158, col 5 to line 162, col 76 of module AgentMerge>
+/\ lock = <<"a", 1>>
+/\ call = ( <<"a", 1>> :> [pc |-> "locked", held |-> 1, result |-> "none"] @@
+  <<"a", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 1>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] )
+
+State 8: <Finish line 185, col 5 to line 196, col 50 of module AgentMerge>
+/\ lock = <<"none", 0>>
+/\ hist = <<[rows |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0], parents |-> <<>>, by |-> "genesis"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 0], parents |-> <<1>>, by |-> "a"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 0], parents |-> <<1, 2>>, by |-> "a"]>>
+/\ left = [agent |-> 1]
+/\ serial = [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 0]
+/\ call = ( <<"a", 1>> :> [pc |-> "done", held |-> 1, result |-> "landed"] @@
+  <<"a", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 1>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] )
+/\ head = 3
+
+State 9: <Fork line 118, col 5 to line 122, col 70 of module AgentMerge>
+/\ phase = [a |-> "committed", b |-> "decided"]
+/\ base = [a |-> 1, b |-> 3]
+/\ tip = [a |-> 2, b |-> 3]
+
+State 10: <Commit line 135, col 5 to line 143, col 70 of module AgentMerge>
+/\ phase = [a |-> "committed", b |-> "committed"]
+/\ hist = <<[rows |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0], parents |-> <<>>, by |-> "genesis"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 0], parents |-> <<1>>, by |-> "a"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 0], parents |-> <<1, 2>>, by |-> "a"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 1], parents |-> <<3>>, by |-> "b"]>>
+/\ tip = [a |-> 2, b |-> 4]
+
+State 11: <Start line 149, col 5 to line 154, col 82 of module AgentMerge>
+/\ call = ( <<"a", 1>> :> [pc |-> "done", held |-> 1, result |-> "landed"] @@
+  <<"a", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 1>> :> [pc |-> "waiting", held |-> 0, result |-> "none"] @@
+  <<"b", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] )
+
+State 12: <Lock line 158, col 5 to line 162, col 76 of module AgentMerge>
+/\ lock = <<"b", 1>>
+/\ call = ( <<"a", 1>> :> [pc |-> "done", held |-> 1, result |-> "landed"] @@
+  <<"a", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 1>> :> [pc |-> "locked", held |-> 3, result |-> "none"] @@
+  <<"b", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] )
+
+State 13: <Finish line 185, col 5 to line 196, col 50 of module AgentMerge>
+/\ phase = [a |-> "committed", b |-> "committed"]
+/\ dec = [a |-> [rule |-> "take", x |-> "w1", q |-> 1, reads |-> {}, saw |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]], b |-> [rule |-> "take", x |-> "w1", q |-> 1, reads |-> {}, saw |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0]]]
+/\ lock = <<"none", 0>>
+/\ issued = 3
+/\ hist = <<[rows |-> [w1 |-> 2, w2 |-> 2, order_a |-> 0, order_b |-> 0], parents |-> <<>>, by |-> "genesis"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 0], parents |-> <<1>>, by |-> "a"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 0], parents |-> <<1, 2>>, by |-> "a"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 1], parents |-> <<3>>, by |-> "b"], [rows |-> [w1 |-> 1, w2 |-> 2, order_a |-> 1, order_b |-> 1], parents |-> <<3, 4>>, by |-> "b"]>>
+/\ left = [agent |-> 0]
+/\ base = [a |-> 1, b |-> 3]
+/\ serial = [w1 |-> 0, w2 |-> 2, order_a |-> 1, order_b |-> 1]
+/\ tip = [a |-> 2, b |-> 4]
+/\ call = ( <<"a", 1>> :> [pc |-> "done", held |-> 1, result |-> "landed"] @@
+  <<"a", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] @@
+  <<"b", 1>> :> [pc |-> "done", held |-> 3, result |-> "landed"] @@
+  <<"b", 2>> :> [pc |-> "idle", held |-> 0, result |-> "none"] )
+/\ head = 5
+
+534215 states generated, 289102 distinct states found, 88330 states left on queue.
+The depth of the complete state graph search is 13.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 2).
+Finished in 23s at (2026-11-06 07:55:01)
